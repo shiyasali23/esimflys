@@ -41,3 +41,25 @@ media/
 tmp/
 .tmp-workbook-analysis/
 .remember/
+
+# ===== Root-only files: kept locally, excluded from the repo =====
+# (repo ships only frontend/, backend/, README.md, .gitignore)
+/ARCHITECTURE.md
+/CLAUDE.md
+/ESIM_PLATFORM_ANALYSIS_REPORT.md
+/MEMORY.md
+/PROJECT.md
+/RULES.md
+/SKILLS.md
+/TASKS.md
+/UI_GUIDELINES.md
+/esim_backend_design.md
+/esim_frontend_design.md
+/how_reference_platfrom_build.md
+/data/
+/scripts/
+/favicon/
+/images/
+/stitch_esimflys_travel_platform/
+/eSIM_DB_Catalogue_Launch.xlsx
+/eSIM_DB_Catalogue_Launch*.xlsx
