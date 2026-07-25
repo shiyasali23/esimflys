@@ -1,0 +1,22 @@
+{
+  "brand": "eSIMFlys",
+  "tagline": "Instant travel eSIM data — no roaming, no kiosks.",
+  "ticker": [
+    "Clear per-day pricing",
+    "Scan a QR, connect on arrival",
+    "Local 4G/5G in 60+ countries",
+    "No roaming fees",
+    "Keep your own number"
+  ],
+  "appStores": [
+    { "label": "App Store", "status": "coming-soon" },
+    { "label": "Google Play", "status": "coming-soon" }
+  ],
+  "social": [],
+  "stats": [
+    { "label": "Countries covered", "value": "60+" },
+    { "label": "Data plans", "value": "385" },
+    { "label": "Networks", "value": "4G / 5G" },
+    { "label": "Typical setup", "value": "2 min" }
+  ]
+}

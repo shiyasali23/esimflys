@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>eSIM Japan - Premium Connectivity | eSIMFlys</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Hanken+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#f9f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-variant": "#dce2f6",
+                    "surface-container-high": "#e2e8fc",
+                    "secondary-fixed-dim": "#f0c103",
+                    "surface-container-highest": "#dce2f6",
+                    "on-secondary-fixed-variant": "#574400",
+                    "tertiary": "#a43a00",
+                    "on-tertiary-container": "#fffeff",
+                    "on-primary-fixed": "#00184a",
+                    "on-secondary-container": "#6e5700",
+                    "tertiary-fixed-dim": "#ffb599",
+                    "on-secondary-fixed": "#241a00",
+                    "tertiary-container": "#cd4b00",
+                    "on-tertiary-fixed": "#370e00",
+                    "success": "#C6F135",
+                    "secondary-fixed": "#ffe08a",
+                    "surface-container": "#e9edff",
+                    "primary": "#0053d5",
+                    "surface-container-low": "#f1f3ff",
+                    "inverse-on-surface": "#edf0ff",
+                    "on-background": "#151b2a",
+                    "secondary": "#745b00",
+                    "outline": "#737687",
+                    "on-error": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface": "#f9f9ff",
+                    "secondary-container": "#fdcc1c",
+                    "primary-fixed": "#dbe1ff",
+                    "tertiary-fixed": "#ffdbce",
+                    "surface-bright": "#f9f9ff",
+                    "error": "#E94534",
+                    "primary-container": "#1f6bff",
+                    "inverse-surface": "#2a3040",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-primary-fixed-variant": "#003fa5",
+                    "paper": "#F7F9FC",
+                    "on-primary-container": "#fffeff",
+                    "on-surface": "#151b2a",
+                    "line": "#E2E8F1",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-tint": "#0054d7",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#c2c6d8",
+                    "on-surface-variant": "#424655",
+                    "on-tertiary-fixed-variant": "#7f2b00",
+                    "surface-dim": "#d3daee",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "128": "128px",
+                    "16": "16px",
+                    "64": "64px",
+                    "24": "24px",
+                    "32": "32px",
+                    "8": "8px",
+                    "4": "4px",
+                    "48": "48px",
+                    "12": "12px",
+                    "96": "96px",
+                    "160": "160px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "label-bold": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "display-xl": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "label-caps": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"]
+            },
+          }
+        }
+      }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-plan {
+            border: 2px solid theme('colors.primary');
+            background-color: theme('colors.surface-container-low');
+        }
+        .sticky-summary {
+            top: 100px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-line">
+<div class="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-8">
+<a class="font-display-lg text-headline-md tracking-tighter text-primary" href="/">eSIMFlys</a>
+<div class="hidden md:flex gap-6">
+<a class="font-label-bold text-label-bold text-primary border-b-2 border-primary pb-1" href="#">Destinations</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-primary transition-colors" href="#">How it Works</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-primary transition-colors" href="#">Support</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant hover:text-primary transition-colors" href="#">About</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="hidden md:block font-label-bold text-label-bold text-on-surface-variant hover:text-primary transition-colors">Login</button>
+<button class="bg-primary text-on-primary px-6 py-2.5 rounded-[10px] font-label-bold text-label-bold active:scale-95 transition-transform">Get Started</button>
+</div>
+</div>
+</nav>
+<main class="pt-32 pb-24 max-w-7xl mx-auto px-6">
+<!-- Hero Header -->
+<header class="mb-12">
+<div class="flex items-center gap-4 mb-4">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<nav class="flex gap-2 font-label-bold text-label-bold text-on-surface-variant">
+<a class="hover:text-primary" href="#">Destinations</a>
+<span>/</span>
+<span class="text-on-surface">Japan</span>
+</nav>
+</div>
+<h1 class="font-display-lg text-display-lg tracking-tight mb-2">eSIM Japan</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">High-speed 5G connectivity across the land of the rising sun. Stay connected from Tokyo to Kyoto without switching SIM cards.</p>
+</header>
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left Column: Plan Selection -->
+<div class="lg:col-span-8">
+<h2 class="font-headline-md text-headline-md mb-6">Choose your plan</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="plans-container">
+<!-- Unlimited Card (Best Value) -->
+<div class="relative p-6 rounded-2xl border border-primary bg-surface-container-low cursor-pointer transition-all hover:shadow-lg active:scale-[0.98] plan-card" id="plan-unlimited" onclick="selectPlan('unlimited')">
+<div class="absolute -top-3 right-6 bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-bold text-xs uppercase tracking-wider">Best Value</div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-headline-md text-headline-md">Unlimited Data</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Valid for 30 days</p>
+</div>
+<span class="material-symbols-outlined text-primary" id="icon-unlimited" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-headline-lg text-primary">$34.50</span>
+<span class="text-on-surface-variant font-body-sm">USD</span>
+</div>
+<ul class="mt-6 space-y-3">
+<li class="flex items-center gap-2 font-body-sm"><span class="material-symbols-outlined text-success text-lg">bolt</span> 5G High-Speed Access</li>
+<li class="flex items-center gap-2 font-body-sm"><span class="material-symbols-outlined text-success text-lg">verified_user</span> Instant Activation</li>
+<li class="flex items-center gap-2 font-body-sm"><span class="material-symbols-outlined text-success text-lg">router</span> Hotspot Supported</li>
+</ul>
+</div>
+<!-- 10GB Card -->
+<div class="p-6 rounded-2xl border border-line bg-white cursor-pointer transition-all hover:shadow-lg active:scale-[0.98] plan-card" id="plan-10gb" onclick="selectPlan('10gb')">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-headline-md text-headline-md">10 GB</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Valid for 30 days</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant" id="icon-10gb">radio_button_unchecked</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-headline-lg text-on-surface">$18.90</span>
+<span class="text-on-surface-variant font-body-sm">USD</span>
+</div>
+<ul class="mt-6 space-y-3">
+<li class="flex items-center gap-2 font-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-on-surface-variant text-lg">bolt</span> 5G High-Speed Access</li>
+<li class="flex items-center gap-2 font-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-on-surface-variant text-lg">verified_user</span> Instant Activation</li>
+</ul>
+</div>
+<!-- 5GB Card -->
+<div class="p-6 rounded-2xl border border-line bg-white cursor-pointer transition-all hover:shadow-lg active:scale-[0.98] plan-card" id="plan-5gb" onclick="selectPlan('5gb')">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-headline-md text-headline-md">5 GB</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Valid for 15 days</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant" id="icon-5gb">radio_button_unchecked</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-headline-lg text-on-surface">$9.50</span>
+<span class="text-on-surface-variant font-body-sm">USD</span>
+</div>
+<ul class="mt-6 space-y-3">
+<li class="flex items-center gap-2 font-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-on-surface-variant text-lg">bolt</span> 5G High-Speed Access</li>
+</ul>
+</div>
+<!-- 1GB Card -->
+<div class="p-6 rounded-2xl border border-line bg-white cursor-pointer transition-all hover:shadow-lg active:scale-[0.98] plan-card" id="plan-1gb" onclick="selectPlan('1gb')">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-headline-md text-headline-md">1 GB</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Valid for 7 days</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant" id="icon-1gb">radio_button_unchecked</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-headline-lg text-on-surface">$4.50</span>
+<span class="text-on-surface-variant font-body-sm">USD</span>
+</div>
+<ul class="mt-6 space-y-3">
+<li class="flex items-center gap-2 font-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-on-surface-variant text-lg">bolt</span> 5G High-Speed Access</li>
+</ul>
+</div>
+</div>
+<!-- Destination Narrative Section -->
+<div class="mt-16 pt-16 border-t border-line">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+<div>
+<h2 class="font-headline-md text-headline-md mb-4">Connectivity in Japan</h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed mb-6">
+                                Experience Japan's world-class infrastructure with our premium network partners. From the neon-lit streets of Shinjuku to the quiet temples of Nara, our eSIM ensures you never lose touch.
+                            </p>
+<div class="flex gap-8 items-center opacity-60">
+<span class="font-label-caps text-label-caps">PARTNERS</span>
+<div class="flex gap-6">
+<span class="font-headline-md italic tracking-tighter">NTT DoCoMo</span>
+<span class="font-headline-md italic tracking-tighter">SoftBank</span>
+</div>
+</div>
+</div>
+<div class="rounded-2xl overflow-hidden shadow-xl">
+<div class="w-full h-64 bg-cover bg-center" data-alt="A cinematic, high-resolution photo of a bullet train speeding past Mount Fuji during sunset. The lighting is warm and golden, reflecting a premium travel experience. The composition is clean and minimalist, mirroring an Apple-style aesthetic with plenty of visual breathing room." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuADM_yjnBZBeSDqsGwCgyp8WnTEytdBWADOw224jfhdj1GJ8Rm04w11qWnzxpcbUgQj1Y792m80RubjwTnyTRpeM-K3-HXbJ34WQTUXWsMPfrRiHKjs1KY2CtDh_KVRX6Y2whQ6rseKbqH094B03Snl0M2e5UET6xfcw8Np0FlSzkcnj10lFMvIoyMRol2w3tozxTotpBlYrF-RQ5-yexcVFRmyJSzc4UClszQer1g5uuL4nNRqqrr5RQ')"></div>
+</div>
+</div>
+</div>
+<!-- Technical Specs Strip -->
+<div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="bg-surface-container p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary mb-2">signal_cellular_alt</span>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Network</p>
+<p class="font-label-bold text-on-surface">5G / LTE</p>
+</div>
+<div class="bg-surface-container p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary mb-2">speed</span>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Speed</p>
+<p class="font-label-bold text-on-surface">Up to 1Gbps</p>
+</div>
+<div class="bg-surface-container p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary mb-2">public</span>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">IP Type</p>
+<p class="font-label-bold text-on-surface">Local IP</p>
+</div>
+<div class="bg-surface-container p-4 rounded-xl">
+<span class="material-symbols-outlined text-primary mb-2">vpn_key</span>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Activation</p>
+<p class="font-label-bold text-on-surface">Auto-install</p>
+</div>
+</div>
+</div>
+<!-- Right Column: Sticky Summary -->
+<aside class="lg:col-span-4 lg:sticky sticky-summary">
+<div class="glass-card p-8 rounded-3xl border border-line shadow-sm">
+<h3 class="font-headline-md text-headline-md mb-6">Purchase Summary</h3>
+<div class="space-y-6">
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant font-body-md">Selected Plan</span>
+<span class="font-label-bold text-on-surface" id="summary-plan-name">Unlimited Data</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant font-body-md">Duration</span>
+<span class="font-label-bold text-on-surface" id="summary-duration">30 Days</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant font-body-md">Network</span>
+<span class="font-label-bold text-on-surface">5G High-Speed</span>
+</div>
+<div class="pt-6 border-t border-line flex justify-between items-end">
+<span class="font-headline-md text-headline-md">Total</span>
+<div class="text-right">
+<span class="font-display-lg text-headline-lg text-primary block" id="summary-price">$34.50</span>
+<span class="text-[10px] font-label-caps text-on-surface-variant">ALL TAXES INCLUDED</span>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-4 rounded-[10px] font-label-bold text-body-lg hover:shadow-lg active:scale-95 transition-all mt-4">
+                            Continue to checkout
+                        </button>
+<div class="flex items-center justify-center gap-2 py-4 grayscale opacity-40">
+<span class="material-symbols-outlined text-sm">lock</span>
+<span class="text-[10px] font-label-caps tracking-widest">SECURE CHECKOUT</span>
+</div>
+</div>
+</div>
+<!-- Activation Card -->
+<div class="mt-6 bg-secondary-fixed text-on-secondary-fixed p-6 rounded-2xl">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined">schedule</span>
+<h4 class="font-label-bold text-label-bold">When to activate?</h4>
+</div>
+<p class="font-body-sm text-body-sm">Plan validity begins automatically when your eSIM connects to a supported network in Japan. You can install it anytime before your trip.</p>
+</div>
+</aside>
+</div>
+<!-- Installation Strip -->
+<section class="mt-32">
+<h2 class="font-headline-md text-headline-md text-center mb-12">Install in 4 simple steps</h2>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div class="text-center group">
+<div class="w-16 h-16 bg-surface-container rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-primary">shopping_cart</span>
+</div>
+<p class="font-label-bold text-on-surface mb-2">1. Purchase</p>
+<p class="font-body-sm text-on-surface-variant">Select your plan and complete payment.</p>
+</div>
+<div class="text-center group">
+<div class="w-16 h-16 bg-surface-container rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-primary">qr_code_2</span>
+</div>
+<p class="font-label-bold text-on-surface mb-2">2. Receive QR</p>
+<p class="font-body-sm text-on-surface-variant">Check your email for the activation code.</p>
+</div>
+<div class="text-center group">
+<div class="w-16 h-16 bg-surface-container rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-primary">settings_phone</span>
+</div>
+<p class="font-label-bold text-on-surface mb-2">3. Scan &amp; Set</p>
+<p class="font-body-sm text-on-surface-variant">Scan the code in your phone settings.</p>
+</div>
+<div class="text-center group">
+<div class="w-16 h-16 bg-surface-container rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-primary">flight_takeoff</span>
+</div>
+<p class="font-label-bold text-on-surface mb-2">4. Ready</p>
+<p class="font-body-sm text-on-surface-variant">Toggle data roaming on arrival. Done!</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-line">
+<div class="max-w-7xl mx-auto px-8 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+<div class="col-span-2 md:col-span-1">
+<p class="font-headline-md text-headline-md text-primary mb-4">eSIMFlys</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6">Global connectivity for the modern nomad.</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps mb-4">LEGAL</p>
+<ul class="space-y-2">
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Cookie Settings</a></li>
+</ul>
+</div>
+<div>
+<p class="font-label-caps text-label-caps mb-4">SUPPORT</p>
+<ul class="space-y-2">
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Us</a></li>
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Help Center</a></li>
+</ul>
+</div>
+<div>
+<p class="font-label-caps text-label-caps mb-4">PARTNERS</p>
+<ul class="space-y-2">
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Affiliates</a></li>
+<li><a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Travel Agencies</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-8 py-6 border-t border-line text-center md:text-left">
+<p class="font-body-sm text-body-sm text-on-surface-variant opacity-60">© 2024 eSIMFlys Global. All rights reserved.</p>
+</div>
+</footer>
+<script>
+        const plans = {
+            'unlimited': { name: 'Unlimited Data', duration: '30 Days', price: '$34.50' },
+            '10gb': { name: '10 GB High-Speed', duration: '30 Days', price: '$18.90' },
+            '5gb': { name: '5 GB High-Speed', duration: '15 Days', price: '$9.50' },
+            '1gb': { name: '1 GB High-Speed', duration: '7 Days', price: '$4.50' }
+        };
+
+        function selectPlan(planId) {
+            // Update UI Cards
+            document.querySelectorAll('.plan-card').forEach(card => {
+                card.classList.remove('border-primary', 'bg-surface-container-low');
+                card.classList.add('border-line', 'bg-white');
+            });
+            
+            const selectedCard = document.getElementById(`plan-${planId}`);
+            selectedCard.classList.remove('border-line', 'bg-white');
+            selectedCard.classList.add('border-primary', 'bg-surface-container-low');
+
+            // Update Icons
+            document.querySelectorAll('.plan-card span.material-symbols-outlined[id^="icon-"]').forEach(icon => {
+                icon.textContent = 'radio_button_unchecked';
+                icon.classList.remove('text-primary');
+                icon.classList.add('text-outline-variant');
+                icon.style.fontVariationSettings = "'FILL' 0";
+            });
+
+            const selectedIcon = document.getElementById(`icon-${planId}`);
+            selectedIcon.textContent = 'check_circle';
+            selectedIcon.classList.remove('text-outline-variant');
+            selectedIcon.classList.add('text-primary');
+            selectedIcon.style.fontVariationSettings = "'FILL' 1";
+
+            // Update Summary
+            const planData = plans[planId];
+            const summaryPrice = document.getElementById('summary-price');
+            const summaryPlan = document.getElementById('summary-plan-name');
+            const summaryDuration = document.getElementById('summary-duration');
+
+            // Animated text update
+            summaryPrice.style.opacity = '0';
+            summaryPlan.style.opacity = '0';
+            
+            setTimeout(() => {
+                summaryPrice.textContent = planData.price;
+                summaryPlan.textContent = planData.name;
+                summaryDuration.textContent = planData.duration;
+                summaryPrice.style.opacity = '1';
+                summaryPlan.style.opacity = '1';
+            }, 150);
+        }
+
+        // Initialize with first plan
+        window.onload = () => selectPlan('unlimited');
+    </script>
+</body></html>

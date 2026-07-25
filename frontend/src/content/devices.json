@@ -1,0 +1,71 @@
+{
+  "checker": {
+    "title": "Devices that support eSIM.",
+    "subtitle": "Type your phone model and get an instant answer. We cover the most common iPhones, Galaxies, and Pixels.",
+    "label": "Your phone model",
+    "placeholder": "e.g. iPhone 15 Pro, Galaxy S24, Pixel 8",
+    "resultYes": "Yes — this device supports eSIM.",
+    "resultUnknown": "Not in our quick list — try the manual check below.",
+    "compatible": [
+      "iphone xs", "iphone xr", "iphone 11", "iphone 12", "iphone 13", "iphone 14",
+      "iphone 15", "iphone 16", "iphone se",
+      "pixel 3", "pixel 4", "pixel 5", "pixel 6", "pixel 7", "pixel 8", "pixel 9", "pixel fold",
+      "galaxy s20", "galaxy s21", "galaxy s22", "galaxy s23", "galaxy s24", "galaxy s25",
+      "galaxy z fold", "galaxy z flip", "galaxy note 20", "galaxy fold", "galaxy flip",
+      "motorola razr", "moto razr", "rakuten", "oppo find x", "huawei p40",
+      "xiaomi 12", "xiaomi 13", "xiaomi 14", "surface pro", "surface go",
+      "apple watch", "galaxy watch", "pixel watch", "ipad pro", "ipad air", "ipad mini"
+    ]
+  },
+  "manualCheck": {
+    "title": "Don't see your device?",
+    "body": "Dial *#06# — if you see an EID number, your device supports eSIM. You can also open Settings and look for \"Add eSIM\" or \"Add Cellular Plan.\""
+  },
+  "categories": [
+    {
+      "name": "Smartphones",
+      "brands": [
+        { "brand": "Apple", "examples": "iPhone XS / XR and every model since" },
+        { "brand": "Samsung", "examples": "Galaxy S20+, Z Fold / Z Flip, Note 20" },
+        { "brand": "Google", "examples": "Pixel 3 and newer, Pixel Fold" },
+        { "brand": "Motorola", "examples": "Razr, Edge and select G-series" },
+        { "brand": "Xiaomi", "examples": "Xiaomi 12 / 13 / 14 (select regions)" },
+        { "brand": "Others", "examples": "Oppo Find X, Huawei P40, Rakuten (varies)" }
+      ]
+    },
+    {
+      "name": "Smartwatches",
+      "brands": [
+        { "brand": "Apple Watch", "examples": "Series 3 (Cellular) and newer" },
+        { "brand": "Samsung", "examples": "Galaxy Watch LTE models" },
+        { "brand": "Google", "examples": "Pixel Watch (LTE)" }
+      ]
+    },
+    {
+      "name": "Tablets",
+      "brands": [
+        { "brand": "Apple", "examples": "iPad Pro / Air / mini (Wi-Fi + Cellular)" },
+        { "brand": "Samsung", "examples": "Galaxy Tab (select LTE / 5G models)" }
+      ]
+    },
+    {
+      "name": "Laptops",
+      "brands": [
+        { "brand": "Microsoft", "examples": "Surface Pro / Go LTE" },
+        { "brand": "Windows PCs", "examples": "Select ThinkPad, Dell, HP with WWAN" }
+      ]
+    },
+    {
+      "name": "Wi-Fi Routers",
+      "brands": [
+        { "brand": "Travel routers", "examples": "eSIM-capable travel routers (availability varies by model)" }
+      ]
+    },
+    {
+      "name": "Cars",
+      "brands": [
+        { "brand": "Connected vehicles", "examples": "eSIM-based infotainment on select makers" }
+      ]
+    }
+  ]
+}

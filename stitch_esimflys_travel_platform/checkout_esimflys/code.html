@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Checkout | eSIMFlys Global</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Hanken+Grotesk:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .transition-soft {
+            transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Custom scrollbar for clean look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f9f9ff",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-variant": "#dce2f6",
+                      "surface-container-high": "#e2e8fc",
+                      "secondary-fixed-dim": "#f0c103",
+                      "surface-container-highest": "#dce2f6",
+                      "on-secondary-fixed-variant": "#574400",
+                      "tertiary": "#a43a00",
+                      "on-tertiary-container": "#fffeff",
+                      "on-primary-fixed": "#00184a",
+                      "on-secondary-container": "#6e5700",
+                      "tertiary-fixed-dim": "#ffb599",
+                      "on-secondary-fixed": "#241a00",
+                      "tertiary-container": "#cd4b00",
+                      "on-tertiary-fixed": "#370e00",
+                      "success": "#C6F135",
+                      "secondary-fixed": "#ffe08a",
+                      "surface-container": "#e9edff",
+                      "primary": "#0053d5",
+                      "surface-container-low": "#f1f3ff",
+                      "inverse-on-surface": "#edf0ff",
+                      "on-background": "#151b2a",
+                      "secondary": "#745b00",
+                      "outline": "#737687",
+                      "on-error": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "surface": "#f9f9ff",
+                      "secondary-container": "#fdcc1c",
+                      "primary-fixed": "#dbe1ff",
+                      "tertiary-fixed": "#ffdbce",
+                      "surface-bright": "#f9f9ff",
+                      "error": "#E94534",
+                      "primary-container": "#1f6bff",
+                      "inverse-surface": "#2a3040",
+                      "primary-fixed-dim": "#b3c5ff",
+                      "on-primary-fixed-variant": "#003fa5",
+                      "paper": "#F7F9FC",
+                      "on-primary-container": "#fffeff",
+                      "on-surface": "#151b2a",
+                      "line": "#E2E8F1",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#b3c5ff",
+                      "surface-tint": "#0054d7",
+                      "on-tertiary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "outline-variant": "#c2c6d8",
+                      "on-surface-variant": "#424655",
+                      "on-tertiary-fixed-variant": "#7f2b00",
+                      "surface-dim": "#d3daee",
+                      "error-container": "#ffdad6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "4px",
+                      "lg": "8px",
+                      "xl": "12px",
+                      "2xl": "16px",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "128": "128px",
+                      "16": "16px",
+                      "64": "64px",
+                      "24": "24px",
+                      "32": "32px",
+                      "8": "8px",
+                      "4": "4px",
+                      "48": "48px",
+                      "12": "12px",
+                      "96": "96px",
+                      "160": "160px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-md": ["Hanken Grotesk"],
+                      "label-bold": ["Inter"],
+                      "headline-lg": ["Hanken Grotesk"],
+                      "display-xl": ["Hanken Grotesk"],
+                      "body-md": ["Inter"],
+                      "display-lg": ["Hanken Grotesk"],
+                      "label-caps": ["Inter"],
+                      "headline-lg-mobile": ["Hanken Grotesk"]
+              },
+              "fontSize": {
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "display-xl": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["64px", {"lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-line dark:border-outline-variant shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-8">
+<a class="font-display-lg text-headline-md tracking-tighter text-primary dark:text-primary-fixed" href="/">eSIMFlys</a>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-label-bold text-label-bold text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Destinations</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">How it Works</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">Support</a>
+<a class="font-label-bold text-label-bold text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors duration-200" href="#">About</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-bold text-label-bold text-primary px-4 py-2 hover:bg-surface-container-low rounded-full transition-soft">Login</button>
+<button class="font-label-bold text-label-bold bg-primary text-on-primary px-6 py-2 rounded-full hover:shadow-lg transition-soft active:scale-95">Get Started</button>
+</div>
+</div>
+</header>
+<main class="pt-32 pb-64 px-6 max-w-7xl mx-auto">
+<!-- Back Link -->
+<a class="inline-flex items-center gap-2 mb-8 text-on-surface-variant hover:text-primary transition-soft font-label-bold group" href="/plans">
+<span class="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+            Back to plans
+        </a>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left Column: Plan Details -->
+<div class="lg:col-span-7 space-y-8">
+<section>
+<div class="flex items-center justify-between mb-6">
+<h1 class="font-headline-lg text-headline-md lg:text-headline-lg">Secure Checkout</h1>
+<div class="flex items-center gap-2 bg-success/10 text-on-background px-3 py-1 rounded-full border border-success/20">
+<span class="material-symbols-outlined text-[18px] text-on-background" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label-caps text-label-caps">SECURE SSL</span>
+</div>
+</div>
+<!-- Plan Overview Card -->
+<div class="bg-surface-container-lowest rounded-2xl border border-line overflow-hidden">
+<div class="p-6 border-b border-line bg-surface-container-low/30 flex flex-wrap gap-4 items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[32px]">public</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md">Europe Regional Plan</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">42 Countries Included</p>
+</div>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full bg-paper border border-line font-label-caps text-label-caps flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-success"></span> 5G Enabled
+                                </span>
+<span class="px-3 py-1 rounded-full bg-paper border border-line font-label-caps text-label-caps">Instant Delivery</span>
+</div>
+</div>
+<div class="p-8">
+<table class="w-full text-left border-separate border-spacing-y-4">
+<thead>
+<tr class="text-on-surface-variant font-label-caps text-label-caps uppercase tracking-widest">
+<th class="pb-2">Feature</th>
+<th class="pb-2">Specification</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<tr>
+<td class="py-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">language</span>
+                                            Coverage
+                                        </td>
+<td class="py-3 font-label-bold">Europe (EU+UK+CH)</td>
+</tr>
+<tr>
+<td class="py-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">data_usage</span>
+                                            Data Amount
+                                        </td>
+<td class="py-3 font-label-bold">10 GB High Speed</td>
+</tr>
+<tr>
+<td class="py-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">schedule</span>
+                                            Duration
+                                        </td>
+<td class="py-3 font-label-bold">30 Days after activation</td>
+</tr>
+<tr>
+<td class="py-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">cell_tower</span>
+                                            Networks
+                                        </td>
+<td class="py-3 flex flex-wrap gap-2">
+<span class="px-2 py-0.5 rounded-lg bg-surface-container font-label-bold text-[12px]">Vodafone</span>
+<span class="px-2 py-0.5 rounded-lg bg-surface-container font-label-bold text-[12px]">Orange</span>
+<span class="px-2 py-0.5 rounded-lg bg-surface-container font-label-bold text-[12px]">O2</span>
+<span class="px-2 py-0.5 rounded-lg bg-surface-container font-label-bold text-[12px]">T-Mobile</span>
+</td>
+</tr>
+<tr>
+<td class="py-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">settings_ethernet</span>
+                                            APN Settings
+                                        </td>
+<td class="py-3 font-label-bold">Automatic (eSIMFlys)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Auth Panel -->
+<section class="bg-surface-container-lowest rounded-2xl border border-line p-8">
+<h3 class="font-headline-md text-headline-md mb-6">1. Your Identity</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<button class="flex items-center justify-center gap-3 w-full p-4 rounded-xl border border-line bg-paper hover:bg-surface-container-low transition-soft group">
+<svg class="w-5 h-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" fill="#EA4335"></path>
+</svg>
+<span class="font-label-bold text-on-surface">Continue with Google</span>
+</button>
+<div class="relative">
+<input class="w-full h-full p-4 pl-12 rounded-xl bg-paper border border-line focus:ring-2 focus:ring-primary/20 focus:border-primary transition-soft outline-none" placeholder="Email Address" type="email"/>
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">mail</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Price & Summary -->
+<aside class="lg:col-span-5 lg:sticky lg:top-24 space-y-6">
+<!-- Pricing Card -->
+<div class="bg-surface-container-lowest rounded-2xl border border-line p-8 shadow-sm">
+<h3 class="font-headline-md text-headline-md mb-6">Order Summary</h3>
+<div class="space-y-4 mb-8">
+<div class="flex justify-between font-body-md text-on-surface-variant">
+<span>Europe 10GB Plan</span>
+<span>$19.90</span>
+</div>
+<div class="flex justify-between font-body-md text-on-surface-variant">
+<span>eSIM Activation</span>
+<span class="text-success font-label-bold">FREE</span>
+</div>
+<div class="flex justify-between font-body-md text-on-surface-variant">
+<span>Service Tax (0%)</span>
+<span>$0.00</span>
+</div>
+<div class="pt-4 border-t border-line flex justify-between items-end">
+<div>
+<span class="font-label-bold text-on-surface">Total Amount</span>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-tighter">VAT Included where applicable</p>
+</div>
+<span class="text-headline-md font-headline-md text-primary">$19.90</span>
+</div>
+</div>
+<!-- Promo Code -->
+<div class="mb-8">
+<label class="block font-label-bold text-on-surface-variant mb-2">Promo Code</label>
+<div class="flex gap-2">
+<input class="flex-1 p-3 rounded-xl bg-paper border border-line focus:border-primary outline-none transition-soft" placeholder="FLY20" type="text"/>
+<button class="px-6 py-3 rounded-xl bg-surface-container-high text-primary font-label-bold hover:bg-surface-container-highest transition-soft">Apply</button>
+</div>
+</div>
+<!-- Payment Button -->
+<button class="w-full py-4 bg-primary text-on-primary font-label-bold text-body-lg rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-soft active:scale-[0.98] flex items-center justify-center gap-3 mb-6">
+                        Proceed to Payment
+                        <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<!-- Trust Signals -->
+<div class="flex items-center justify-center gap-6 opacity-60">
+<span class="material-symbols-outlined text-[32px]">credit_card</span>
+<span class="material-symbols-outlined text-[32px]">account_balance_wallet</span>
+<span class="material-symbols-outlined text-[32px]">contactless</span>
+<span class="material-symbols-outlined text-[32px]">shield_with_heart</span>
+</div>
+</div>
+<!-- Assistance Card -->
+<div class="bg-primary/5 rounded-2xl p-6 border border-primary/10">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary">support_agent</span>
+<div>
+<h4 class="font-label-bold text-on-surface">Need help with checkout?</h4>
+<p class="font-body-sm text-on-surface-variant mt-1">Our support team is available 24/7 to assist with your eSIM setup.</p>
+<a class="inline-block mt-3 text-primary font-label-bold hover:underline transition-soft" href="#">Chat with us</a>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-lowest dark:bg-inverse-surface border-t border-line dark:border-outline-variant mt-24">
+<div class="max-w-7xl mx-auto px-8 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+<div class="col-span-2 md:col-span-1">
+<a class="font-headline-md text-headline-md text-primary" href="/">eSIMFlys</a>
+<p class="mt-4 font-body-sm text-on-surface-variant max-w-[200px]">Connecting the world, one digital sim at a time. Seamless, fast, and affordable.</p>
+</div>
+<div>
+<h4 class="font-label-bold text-primary mb-4">Quick Links</h4>
+<div class="flex flex-col gap-2">
+<a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Destinations</a>
+<a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Affiliates</a>
+<a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Us</a>
+</div>
+</div>
+<div>
+<h4 class="font-label-bold text-primary mb-4">Legal</h4>
+<div class="flex flex-col gap-2">
+<a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Cookie Settings</a>
+</div>
+</div>
+<div>
+<h4 class="font-label-bold text-primary mb-4">Newsletter</h4>
+<div class="flex gap-2">
+<input class="w-full p-2 bg-paper border border-line rounded-lg text-body-sm outline-none" placeholder="email@travel.com" type="email"/>
+<button class="bg-primary text-on-primary px-3 py-2 rounded-lg">
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-8 py-6 border-t border-line">
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center opacity-60">© 2024 eSIMFlys Global. All rights reserved.</p>
+</div>
+</footer>
+<script>
+        // Micro-interaction: Active state animation
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('scale-95');
+            });
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('scale-95');
+            });
+            button.addEventListener('mouseleave', () => {
+                button.classList.remove('scale-95');
+            });
+        });
+
+        // Simple scroll observer for fade-in effects
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('opacity-0', 'translate-y-4');
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section, aside').forEach(el => {
+            el.classList.add('transition-all', 'duration-700', 'opacity-0', 'translate-y-4');
+            observer.observe(el);
+        });
+    </script>
+</body></html>

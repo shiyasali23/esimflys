@@ -1,0 +1,31 @@
+{
+  "slug": "maldives",
+  "locale": "en",
+  "status": "approved",
+  "metaTitle": "Maldives eSIM | Data Plans from $0.87/day",
+  "metaDescription": "Get a Maldives eSIM on the Dhiraagu 4G network with 1-20 GB plans from $0.87/day. Install by scanning a QR code and keep your number for calls and texts.",
+  "intro": "An eSIMFlys eSIM keeps your phone online in the Maldives without swapping a physical SIM or searching for Wi-Fi when you arrive. It's a digital SIM that you add by scanning a QR code, and it carries data only, so your regular SIM stays in the phone for calls and texts. Your plan runs on the Dhiraagu network.",
+  "countryContext": "The Maldives is a destination in Asia made up of many separate islands, and travelers often move between resorts, guesthouses, and boats during a stay. Data plans here connect through Dhiraagu, a local mobile network. Setting up your connection before you travel means you can keep in touch, follow transfer details, and share photos without relying on hotel Wi-Fi alone.",
+  "networkNotes": "In the Maldives, your eSIMFlys plan connects to Dhiraagu over its 4G service. You don't need to pick or set up the network manually — after you install the eSIM and turn on data roaming for that line, your phone registers with the local network on its own. There's no physical SIM to insert and no shop to visit.",
+  "connectionDetails": "Maldives plans are fixed-data bundles starting from $0.87/day, offered in 1, 3, 5, 10, and 20 GB sizes with a validity of 7 or 30 days. A smaller tier handles maps, messaging, and email; a larger one leaves room for photos, calls over apps, and video. If you run low, every plan can be topped up.",
+  "activationNotes": "Set up your eSIM over Wi-Fi before you leave, while your connection is steady. Adding it means scanning a QR code, then leaving the line ready. Most plans begin counting from the first time the eSIM connects to a network in the Maldives, so it activates close to your arrival. Enable data roaming for the eSIM line.",
+  "whyEsim": "With an eSIM, you reach the Maldives already set up, skipping any hunt for a local SIM after a long journey. It's digital, so you handle everything before you leave and keep your existing SIM in place for your usual number. As long as your phone is eSIM-capable and carrier-unlocked, it's ready to connect when you arrive.",
+  "faqs": [
+    {
+      "q": "Which network does the eSIM use in the Maldives, and will my phone support it?",
+      "a": "Your data runs on Dhiraagu over its 4G service, and your phone connects automatically once the eSIM is installed. You'll need an eSIM-capable, carrier-unlocked handset — most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer are compatible. Dial *#06# to confirm your phone shows an EID."
+    },
+    {
+      "q": "When does my Maldives plan begin?",
+      "a": "Most plans start when the eSIM first connects to a network in the Maldives, rather than when you buy it. That means you can install it on Wi-Fi before you travel and keep it waiting. Your chosen validity — 7 or 30 days — then counts from that first connection."
+    },
+    {
+      "q": "Will I keep my own number in the Maldives?",
+      "a": "Yes. The plan is data-only, so it carries your internet while your normal SIM stays in the phone and keeps handling calls and texts on your existing number. You don't remove anything — the eSIM works as a separate data line alongside your usual SIM."
+    },
+    {
+      "q": "How many gigabytes should I pick for the Maldives?",
+      "a": "It comes down to how long you're staying and how you use data. A 1 or 3 GB plan suits light use like messaging and maps on a short trip, while 5 or 10 GB covers regular browsing, email, and photo sharing across a longer stay. Choose 20 GB for heavier streaming, and top up any plan if you need more."
+    }
+  ]
+}

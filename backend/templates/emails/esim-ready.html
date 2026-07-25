@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Your eSIM is ready</h1>
+    <p>Your eSIM for order <strong>{{ order_number }}</strong> has been provisioned.</p>
+    {% if esim %}
+    <p>Plan: {{ esim.order_item.product_name }} ({{ esim.order_item.country_name }}).</p>
+    {% endif %}
+    <p>
+      For your security, your QR code and activation details are not included in this email.
+      Please sign in to your eSIMFlys account to view and install your eSIM.
+    </p>
+  </body>
+</html>

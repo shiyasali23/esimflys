@@ -1,0 +1,50 @@
+{
+  "header": [
+    { "label": "Home", "href": "/" },
+    { "label": "Destinations", "href": "/destinations" },
+    { "label": "Supported devices", "href": "/supported-devices" },
+    { "label": "How it works", "href": "/#how-it-works" },
+    { "label": "FAQ", "href": "/#faq" }
+  ],
+  "footer": [
+    {
+      "title": "eSIMFlys",
+      "links": [
+        { "label": "About", "href": "/about" },
+        { "label": "Browse plans", "href": "/destinations" },
+        { "label": "Contact", "href": "/contact" },
+        { "label": "Help center", "href": "/help" },
+        { "label": "How it works", "href": "/#how-it-works" }
+      ]
+    },
+    {
+      "title": "Top destinations",
+      "links": [
+        { "label": "Saudi Arabia", "href": "/esim/saudi-arabia" },
+        { "label": "UAE", "href": "/esim/united-arab-emirates" },
+        { "label": "Thailand", "href": "/esim/thailand" },
+        { "label": "Indonesia", "href": "/esim/indonesia" },
+        { "label": "All destinations", "href": "/destinations" }
+      ]
+    },
+    {
+      "title": "Resources",
+      "links": [
+        { "label": "What is an eSIM", "href": "/what-is-esim" },
+        { "label": "Supported devices", "href": "/supported-devices" },
+        { "label": "Glossary", "href": "/glossary" },
+        { "label": "Help center", "href": "/help" },
+        { "label": "My eSIMs", "href": "/account/esims" },
+        { "label": "FAQ", "href": "/#faq" }
+      ]
+    },
+    {
+      "title": "Legal",
+      "links": [
+        { "label": "Terms", "href": "/legal/terms" },
+        { "label": "Privacy", "href": "/legal/privacy" },
+        { "label": "Refunds", "href": "/legal/refund" }
+      ]
+    }
+  ]
+}

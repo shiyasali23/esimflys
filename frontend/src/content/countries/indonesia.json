@@ -1,0 +1,31 @@
+{
+  "slug": "indonesia",
+  "locale": "en",
+  "status": "approved",
+  "metaTitle": "Indonesia eSIM | Telkomsel, XL & Smartfren Data",
+  "metaDescription": "Get online in Indonesia on Telkomsel, XL and Smartfren with a data eSIM from $0.30/day. Install by QR and keep your number for calls and texts.",
+  "intro": "An eSIMFlys eSIM gets your phone online in Indonesia without tracking down a local shop or changing the SIM inside your handset. You buy a plan, scan a QR code, and the data is ready to activate when you arrive. Since the eSIM only carries data, your existing SIM stays put, so your normal number still handles your calls and texts.",
+  "countryContext": "Indonesia is a large Southeast Asian destination that travellers reach for both work and leisure, and mobile data helps you navigate, book and stay in touch while you are there. eSIMFlys plans connect to Indonesian mobile networks, using Telkomsel 5G, XL 4G and Smartfren 4G. Setting up before departure means you land with data instead of arranging a local SIM.",
+  "networkNotes": "In Indonesia your eSIM connects through Telkomsel 5G, XL 4G and Smartfren 4G, picking an available network automatically after you arrive. There is no manual operator selection and nothing to set up by hand. Provided your phone is eSIM-capable and carrier-unlocked, it registers on a supported network once you switch the eSIM line on.",
+  "connectionDetails": "Indonesia plans start from $0.30/day and come as fixed data, 1, 3, 5, 10, 20 or 50 GB, or an unlimited-daily option that renews 2 GB each day. Validity covers 5, 7, 10 or 30 days, and some plans accept top-ups if you need more. That handles maps, messaging, ride-hailing, uploads and everyday browsing.",
+  "activationNotes": "Scan the QR code and install your eSIM over Wi-Fi before you leave, but keep the line switched off until you land in Indonesia. Most plans start counting from the eSIM's first connection to a local network, not from purchase. Once you arrive, turn the eSIM line on and enable data roaming so it can connect.",
+  "whyEsim": "Instead of switching on your home carrier's roaming, an eSIM lets you buy a set block of Indonesian data before you travel, so you know what you are paying for. And rather than queuing for a local SIM after you land, you install it in advance, avoid swapping cards, and keep your usual number live for calls and texts.",
+  "faqs": [
+    {
+      "q": "What networks does the eSIM use, and will my phone be compatible?",
+      "a": "In Indonesia the eSIM connects through Telkomsel 5G, XL 4G and Smartfren 4G, selected automatically when you arrive. It works on eSIM-capable, carrier-unlocked phones, most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer. Dial *#06# to confirm your phone has an EID."
+    },
+    {
+      "q": "When does my Indonesia plan begin?",
+      "a": "Most plans begin when the eSIM first connects to a local network in Indonesia, rather than when you buy it. That lets you install it on Wi-Fi before flying. Your validity window, 5, 7, 10 or 30 days, then counts from that first connection."
+    },
+    {
+      "q": "Will I keep my own number?",
+      "a": "Yes. Because the eSIM only carries data, your normal SIM stays in the phone and your usual number still works for calls and texts. Keep data roaming off on your home line and use the eSIM for internet to avoid unexpected home-carrier charges."
+    },
+    {
+      "q": "How much data should I pick for Indonesia?",
+      "a": "It comes down to your trip. Light use like maps and chat suits a smaller 1, 3 or 5 GB plan, while longer stays or heavier streaming and uploads point to 10, 20 or 50 GB, or the 2 GB-per-day unlimited-daily plan. Some plans also allow top-ups if you run out."
+    }
+  ]
+}

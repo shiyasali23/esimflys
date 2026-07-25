@@ -1,0 +1,31 @@
+{
+  "slug": "montenegro",
+  "locale": "en",
+  "status": "approved",
+  "metaTitle": "Montenegro eSIM | Data Plans from $0.30/day",
+  "metaDescription": "Montenegro eSIM on m:tel CG 5G with fixed 1-20 GB or unlimited-daily plans from $0.30/day. Install by QR code and keep your number for calls and texts.",
+  "intro": "An eSIMFlys eSIM gets your phone online in Montenegro as soon as you arrive, with no physical SIM to buy and no scramble for Wi-Fi. You install it by scanning a QR code, and because it handles data only, your everyday SIM stays put for calls and texts. Plans here run on the m:tel CG network.",
+  "countryContext": "Montenegro is a destination in Southeast Europe, and visitors often combine time on the coast with trips inland or across nearby borders. Data plans here connect through m:tel CG, a local mobile network. Arranging your connection before departure helps you handle directions, ferry or bus times, and messages home without depending on cafe or hotel Wi-Fi.",
+  "networkNotes": "In Montenegro, your eSIMFlys plan connects to m:tel CG, using its 5G service where available. You don't configure the network yourself — once the eSIM is installed and data roaming is enabled for that line, your phone joins the local network automatically. There's no physical card to swap and no need to visit a store.",
+  "connectionDetails": "Montenegro offers two plan types from $0.30/day: fixed bundles of 1, 3, 5, 10, and 20 GB, or an unlimited-daily plan. Validity runs 5, 7, 10, or 30 days depending on the plan. Choose a small fixed tier for maps and messaging, a larger one for video, or unlimited-daily for steady everyday use; top-ups are available.",
+  "activationNotes": "Install your eSIM over Wi-Fi before you set off, while your connection is dependable. You add the plan by scanning a QR code, then keep the line ready. Most plans start counting once the eSIM first connects to a network in Montenegro, so it activates around the time you arrive. Remember to switch on data roaming for the eSIM line.",
+  "whyEsim": "An eSIM lets you arrive in Montenegro already connected, with nothing to buy at the airport and no waiting to get online. Since it's fully digital, you organise it before you leave and keep your normal SIM in the phone. Provided your device is eSIM-capable and carrier-unlocked, it will connect once you land.",
+  "faqs": [
+    {
+      "q": "Which network will my Montenegro eSIM use, and is my phone compatible?",
+      "a": "Your data connects through m:tel CG, including its 5G service where available, and your phone joins the network automatically after installation. You'll need an eSIM-capable, carrier-unlocked phone — most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer work. Dial *#06# to check for an EID."
+    },
+    {
+      "q": "When does my Montenegro plan start?",
+      "a": "Most plans begin when the eSIM first connects to a network in Montenegro, not when you purchase it, so you can install on Wi-Fi before travelling. Your validity then runs from that first connection — Montenegro plans come in 5, 7, 10, or 30-day options."
+    },
+    {
+      "q": "Can I keep my own number while using the eSIM?",
+      "a": "Yes. The eSIM carries data only, so your usual SIM stays in the phone and continues handling calls and texts on your existing number. Nothing needs to be removed — the eSIM runs as a separate data line beside your normal SIM."
+    },
+    {
+      "q": "Which Montenegro plan size should I choose?",
+      "a": "For light use like maps and messaging on a short visit, a 1 or 3 GB fixed plan is often enough. For regular browsing, email, and video across a longer stay, consider 10 or 20 GB, or the unlimited-daily plan if you'd rather not track usage. Every plan can be topped up if you run low."
+    }
+  ]
+}

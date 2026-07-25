@@ -1,0 +1,41 @@
+{
+  "intro": {
+    "title": "Find your perfect plan",
+    "subtitle": "Three quick questions about your trip, your data habits, and how long you're away — then we'll narrow our plans down to the ones that actually fit."
+  },
+  "steps": [
+    {
+      "key": "purpose",
+      "question": "What's your trip purpose?",
+      "options": [
+        { "label": "Vacation & sightseeing", "desc": "Photos, maps, social, occasional calls" },
+        { "label": "Business trip", "desc": "Email, calls, maps and the odd video meeting" },
+        { "label": "Remote work", "desc": "Daily video calls, big uploads, weeks of use" },
+        { "label": "Backpacking", "desc": "Long trip, budget-friendly, light usage" },
+        { "label": "Family vacation", "desc": "Full days out with maps, photos and streaming" },
+        { "label": "Quick stop or layover", "desc": "A few days, maps and essentials" }
+      ]
+    },
+    {
+      "key": "needs",
+      "question": "How much data do you need?",
+      "options": [
+        { "label": "Light", "desc": "Maps, chat, boarding passes" },
+        { "label": "Medium", "desc": "Social, photos, some video" },
+        { "label": "Heavy", "desc": "Video calls, streaming, big uploads" },
+        { "label": "Unlimited", "desc": "Don't want to think about it" }
+      ]
+    },
+    {
+      "key": "duration",
+      "question": "How long is your trip?",
+      "options": [
+        { "label": "1–7 days", "desc": "Short stay" },
+        { "label": "1–2 weeks", "desc": "Standard trip" },
+        { "label": "3–4 weeks", "desc": "Extended travel" },
+        { "label": "1 month+", "desc": "Long haul" }
+      ]
+    }
+  ],
+  "cta": { "label": "See matching plans", "href": "/destinations" }
+}

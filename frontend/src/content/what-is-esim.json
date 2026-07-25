@@ -1,0 +1,11 @@
+{
+  "title": "What is an eSIM?",
+  "intro": "An eSIM (embedded SIM) is a digital SIM chip built into your phone, tablet, or watch. Instead of inserting a plastic card, you download a data plan and your device connects to a local network — so you skip roaming fees and airport SIM kiosks.",
+  "sections": [
+    { "h": "How an eSIM works", "p": "Your device has a small reprogrammable chip. When you buy a plan you receive a QR code; scanning it installs the eSIM profile. You then choose it as your travel data line and connect to a partner network at your destination." },
+    { "h": "eSIM vs physical SIM", "p": "A physical SIM is a removable card tied to one carrier. An eSIM is digital: you can store several profiles, switch between them in settings, and keep your regular SIM active for calls and texts while an eSIM handles data." },
+    { "h": "Why travelers use eSIMs", "p": "No hunting for a kiosk on arrival, no swapping tiny trays, and no surprise roaming bills. You buy before you fly, install on Wi-Fi, and land already online with pricing shown upfront." },
+    { "h": "How to install an eSIM", "p": "Buy a plan, open the emailed QR code on another screen, and scan it from your phone's cellular settings. Choose the eSIM as your data line and turn it on when you reach your destination. Setup usually takes two to three minutes." }
+  ],
+  "cta": { "label": "Browse travel plans", "href": "/destinations" }
+}

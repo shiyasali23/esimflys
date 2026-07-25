@@ -1,0 +1,11 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Thank you for your order</h1>
+    <p>Your eSIMFlys order <strong>{{ order_number }}</strong> is confirmed.</p>
+    {% if order %}
+    <p>Total paid: {{ order.total_minor }} {{ order.currency }} (minor units).</p>
+    {% endif %}
+    <p>We're preparing your eSIM now. You'll get another email as soon as it's ready to install.</p>
+  </body>
+</html>

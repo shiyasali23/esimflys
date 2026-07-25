@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign In | eSIMFlys</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Hanken+Grotesk:wght@600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#f9f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-variant": "#dce2f6",
+                    "surface-container-high": "#e2e8fc",
+                    "secondary-fixed-dim": "#f0c103",
+                    "surface-container-highest": "#dce2f6",
+                    "on-secondary-fixed-variant": "#574400",
+                    "tertiary": "#a43a00",
+                    "on-tertiary-container": "#fffeff",
+                    "on-primary-fixed": "#00184a",
+                    "on-secondary-container": "#6e5700",
+                    "tertiary-fixed-dim": "#ffb599",
+                    "on-secondary-fixed": "#241a00",
+                    "tertiary-container": "#cd4b00",
+                    "on-tertiary-fixed": "#370e00",
+                    "success": "#C6F135",
+                    "secondary-fixed": "#ffe08a",
+                    "surface-container": "#e9edff",
+                    "primary": "#0053d5",
+                    "surface-container-low": "#f1f3ff",
+                    "inverse-on-surface": "#edf0ff",
+                    "on-background": "#151b2a",
+                    "secondary": "#745b00",
+                    "outline": "#737687",
+                    "on-error": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface": "#f9f9ff",
+                    "secondary-container": "#fdcc1c",
+                    "primary-fixed": "#dbe1ff",
+                    "tertiary-fixed": "#ffdbce",
+                    "surface-bright": "#f9f9ff",
+                    "error": "#E94534",
+                    "primary-container": "#1f6bff",
+                    "inverse-surface": "#2a3040",
+                    "primary-fixed-dim": "#b3c5ff",
+                    "on-primary-fixed-variant": "#003fa5",
+                    "paper": "#F7F9FC",
+                    "on-primary-container": "#fffeff",
+                    "on-surface": "#151b2a",
+                    "line": "#E2E8F1",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#b3c5ff",
+                    "surface-tint": "#0054d7",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#c2c6d8",
+                    "on-surface-variant": "#424655",
+                    "on-tertiary-fixed-variant": "#7f2b00",
+                    "surface-dim": "#d3daee",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "128": "128px",
+                    "16": "16px",
+                    "64": "64px",
+                    "24": "24px",
+                    "32": "32px",
+                    "8": "8px",
+                    "4": "4px",
+                    "48": "48px",
+                    "12": "12px",
+                    "96": "96px",
+                    "160": "160px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "label-bold": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "display-xl": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "label-caps": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-bold": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-xl": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "display-lg": ["64px", {"lineHeight": "72px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        .auth-card-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .focus-ring {
+            transition: box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+        }
+        
+        .focus-ring:focus {
+            outline: none;
+            border-color: #0053d5;
+            box-shadow: 0 0 0 2px rgba(0, 83, 213, 0.2);
+        }
+
+        /* Ruthless whitespace and Apple-grade minimalist feel */
+        body {
+            background-color: #f9f9ff;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface min-h-screen flex flex-col">
+<!-- Top Navigation Header (Suppressed Global Nav for Auth Flow) -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md px-6 py-4">
+<div class="max-w-7xl mx-auto flex items-center justify-between">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group" onclick="history.back()">
+<span class="material-symbols-outlined text-[20px] transition-transform group-hover:-translate-x-1">arrow_back</span>
+<span class="font-label-bold text-label-bold">Back</span>
+</button>
+<div class="font-display-lg text-headline-md tracking-tighter text-primary">
+                eSIMFlys
+            </div>
+<div class="w-16"></div> <!-- Spacer for optical centering -->
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-6 pt-24 pb-12">
+<div class="w-full max-w-5xl">
+<!-- Auth Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+<!-- Left Column: Primary Auth (7 Columns) -->
+<div class="md:col-span-7 bg-surface-container-lowest border border-line rounded-xl p-8 md:p-12 shadow-sm auth-card-transition">
+<div class="mb-8">
+<h1 class="font-headline-lg-mobile md:font-headline-md text-headline-lg-mobile md:text-headline-md text-on-surface mb-2">Sign in fast</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Access your global data plans and trip history.</p>
+</div>
+<!-- Social Login -->
+<button class="w-full flex items-center justify-center gap-3 bg-white border border-line py-3 rounded-lg font-label-bold text-label-bold hover:bg-surface-container-low transition-colors duration-200 mb-8">
+<svg class="w-5 h-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 6.28l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+                        Continue with Google
+                    </button>
+<div class="relative flex items-center mb-8">
+<div class="flex-grow border-t border-line"></div>
+<span class="flex-shrink mx-4 text-on-surface-variant font-label-caps text-label-caps">OR USE EMAIL</span>
+<div class="flex-grow border-t border-line"></div>
+</div>
+<!-- Traditional Form -->
+<form class="space-y-6" id="authForm">
+<div class="space-y-2">
+<label class="font-label-bold text-label-bold text-on-surface" for="email">Email Address</label>
+<input class="w-full px-4 py-3 bg-paper border border-line rounded-[10px] font-body-md text-body-md focus-ring" id="email" placeholder="name@company.com" type="email"/>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<label class="font-label-bold text-label-bold text-on-surface" for="password">Password</label>
+<a class="font-label-bold text-label-bold text-primary hover:underline" href="#">Forgot password?</a>
+</div>
+<div class="relative">
+<input class="w-full px-4 py-3 bg-paper border border-line rounded-[10px] font-body-md text-body-md focus-ring" id="password" placeholder="••••••••" type="password"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-3.5 rounded-[10px] font-label-bold text-label-bold hover:bg-primary-container transition-all active:scale-[0.98] shadow-sm" type="submit">
+                            Sign In
+                        </button>
+</form>
+<div class="mt-8 text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                            Don't have an account? 
+                            <button class="font-label-bold text-label-bold text-primary hover:underline ml-1" id="toggleAuth">Create one</button>
+</p>
+</div>
+</div>
+<!-- Right Column: Guest Checkout (5 Columns) -->
+<div class="md:col-span-5 bg-white border border-line rounded-xl p-8 md:p-12 flex flex-col justify-between overflow-hidden relative group">
+<div class="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+<div class="relative z-10">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Prefer not to create an account yet?</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8">You can buy and install an eSIM as a guest. We'll send the activation code to your email.</p>
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-bold text-label-bold text-on-surface" for="guestEmail">Guest Email</label>
+<input class="w-full px-4 py-3 bg-paper border border-line rounded-[10px] font-body-md text-body-md focus-ring" id="guestEmail" placeholder="guest@traveler.com" type="email"/>
+</div>
+<button class="w-full flex items-center justify-center gap-2 bg-white text-primary border border-primary py-3.5 rounded-full font-label-bold text-label-bold hover:bg-primary/5 transition-all active:scale-[0.98]">
+                                Continue as guest
+                                <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="mt-12 relative z-10 pt-8 border-t border-line">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div>
+<p class="font-label-bold text-label-bold text-on-surface">Instant Activation</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Guest orders are ready in seconds.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Space -->
+<footer class="w-full bg-surface-container-lowest border-t border-line">
+<div class="max-w-7xl mx-auto px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="font-body-sm text-body-sm text-on-surface-variant">© 2024 eSIMFlys Global. All rights reserved.</p>
+<div class="flex gap-6">
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Us</a>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interaction for toggle
+        const toggleBtn = document.getElementById('toggleAuth');
+        const h1 = document.querySelector('h1');
+        const submitBtn = document.querySelector('form button[type="submit"]');
+        let isLogin = true;
+
+        toggleBtn.addEventListener('click', () => {
+            isLogin = !isLogin;
+            if (isLogin) {
+                h1.innerText = 'Sign in fast';
+                submitBtn.innerText = 'Sign In';
+                toggleBtn.innerText = 'Create one';
+                document.querySelector('.mb-8 p').innerText = 'Access your global data plans and trip history.';
+            } else {
+                h1.innerText = 'Create an account';
+                submitBtn.innerText = 'Create Account';
+                toggleBtn.innerText = 'Sign in instead';
+                document.querySelector('.mb-8 p').innerText = 'Join 1M+ travelers flying with eSIMFlys.';
+            }
+            
+            // Add a subtle animation class
+            const leftCard = document.querySelector('.md:col-span-7');
+            leftCard.style.transform = 'translateY(-4px)';
+            setTimeout(() => {
+                leftCard.style.transform = 'translateY(0)';
+            }, 150);
+        });
+
+        // Form submission prevention
+        document.getElementById('authForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Mock success state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span>';
+            setTimeout(() => {
+                submitBtn.innerHTML = 'Welcome back!';
+                submitBtn.classList.replace('bg-primary', 'bg-success');
+                submitBtn.classList.replace('text-on-primary', 'text-on-background');
+            }, 1200);
+        });
+
+        // Password visibility toggle
+        const passToggle = document.querySelector('.relative button');
+        const passInput = document.getElementById('password');
+        passToggle.addEventListener('click', () => {
+            const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passInput.setAttribute('type', type);
+            passToggle.querySelector('span').innerText = type === 'password' ? 'visibility' : 'visibility_off';
+        });
+    </script>
+</body></html>

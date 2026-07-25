@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Your top-up is complete</h1>
+    <p>The data top-up for your eSIM (order <strong>{{ order_number }}</strong>) has been applied.</p>
+    {% if esim %}
+    <p>Your eSIM is ready to keep using — no reinstall needed.</p>
+    {% endif %}
+  </body>
+</html>

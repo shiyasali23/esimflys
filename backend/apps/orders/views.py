@@ -1,0 +1,199 @@
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.common.exceptions import Conflict
+
+from . import services
+from .models import Cart, Order
+from .serializers import (
+    AddItemSerializer,
+    CartSerializer,
+    CheckoutSerializer,
+    OrderLookupSerializer,
+    OrderSerializer,
+    PromoInputSerializer,
+    UpdateItemSerializer,
+)
+
+CART_TOKEN_HEADER = "X-Cart-Token"
+
+
+def _user(request):
+    return request.user if request.user.is_authenticated else None
+
+
+def _cart_token(request):
+    return request.headers.get(CART_TOKEN_HEADER)
+
+
+def _with_items(cart):
+    return Cart.objects.prefetch_related("items__catalog_plan").get(pk=cart.pk)
+
+
+def _require_active_cart(request):
+    cart = services.get_active_cart(user=_user(request), guest_token=_cart_token(request))
+    if cart is None:
+        raise Conflict(message="No active cart.", error_code="not_found", status_code=404)
+    return cart
+
+
+class CartView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        cart = services.get_active_cart(user=_user(request), guest_token=_cart_token(request))
+        if cart is None:
+            return Response(
+                {
+                    "id": None,
+                    "currency": "USD",
+                    "status": "active",
+                    "items": [],
+                    "subtotal_minor": 0,
+                    "item_count": 0,
+                }
+            )
+        return Response(CartSerializer(_with_items(cart)).data)
+
+
+class CartItemsView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        payload = AddItemSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        user = _user(request)
+        cart = services.get_active_cart(user=user, guest_token=_cart_token(request))
+        new_token = None
+        if cart is None:
+            cart, new_token = services.create_cart(user=user)
+        services.add_item(
+            cart,
+            product_code=payload.validated_data["product_code"],
+            quantity=payload.validated_data["quantity"],
+        )
+        response = Response(CartSerializer(_with_items(cart)).data, status=201)
+        if new_token:
+            response[CART_TOKEN_HEADER] = new_token
+        return response
+
+
+class CartItemDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def patch(self, request, item_id):
+        cart = _require_active_cart(request)
+        payload = UpdateItemSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        services.set_item_quantity(
+            cart, item_id=item_id, quantity=payload.validated_data["quantity"]
+        )
+        return Response(CartSerializer(_with_items(cart)).data)
+
+    def delete(self, request, item_id):
+        cart = _require_active_cart(request)
+        services.remove_item(cart, item_id=item_id)
+        return Response(CartSerializer(_with_items(cart)).data)
+
+
+class CartPromoView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "promo"
+
+    def post(self, request):
+        cart = _require_active_cart(request)
+        payload = PromoInputSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        user = _user(request)
+        email = payload.validated_data.get("customer_email") or (user.email if user else "")
+        preview = services.preview_promo(
+            cart, code=payload.validated_data["code"], customer_email=email
+        )
+        return Response(preview)
+
+    def delete(self, request):
+        return Response(status=204)
+
+
+class CheckoutView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "checkout"
+
+    def post(self, request):
+        user = _user(request)
+        cart = services.get_active_cart(user=user, guest_token=_cart_token(request))
+        if cart is None:
+            raise Conflict(message="There is no active cart to check out.")
+        payload = CheckoutSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        email = payload.validated_data.get("customer_email") or (user.email if user else None)
+        if not email:
+            raise ValidationError({"customer_email": ["This field is required for guest checkout."]})
+        order = services.checkout(
+            cart_id=cart.id,
+            customer_email=email,
+            promo_code=(payload.validated_data.get("promo_code") or None),
+            user=user,
+        )
+        return Response(OrderSerializer(order).data, status=201)
+
+
+class OrderListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        return (
+            Order.objects.filter(user=self.request.user)
+            .prefetch_related("items")
+            .order_by("-created_at")
+        )
+
+
+class OrderDetailView(RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderSerializer
+    lookup_field = "id"
+
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).prefetch_related("items")
+
+
+class OrderLookupView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        payload = OrderLookupSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        order = (
+            Order.objects.filter(
+                order_number=payload.validated_data["order_number"],
+                customer_email=payload.validated_data["email"],
+            )
+            .prefetch_related("items")
+            .first()
+        )
+        if order is None:
+            raise Conflict(
+                message="No matching order was found.", error_code="not_found", status_code=404
+            )
+
+        from apps.esims.models import EsimProfile
+        from apps.esims.services import decrypt_credentials
+
+        profiles = EsimProfile.objects.filter(order_item__order=order).select_related(
+            "order_item"
+        )
+        esims = [
+            {
+                "status": profile.status,
+                "product_name": profile.order_item.product_name,
+                "iccid_last4": profile.iccid_last4,
+                "credentials": decrypt_credentials(profile),
+            }
+            for profile in profiles
+        ]
+        return Response({"order": OrderSerializer(order).data, "esims": esims})
