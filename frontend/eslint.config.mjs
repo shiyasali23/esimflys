@@ -15,6 +15,10 @@ const eslintConfig = defineConfig([
     rules: {
       "react/no-unescaped-entities": "off",
       "react-hooks/set-state-in-effect": "off",
+      // Not enabled by the Next preset, which assumes TypeScript catches it. This is
+      // a plain-JS codebase, so a missing import stays silent until it throws in the
+      // browser — which is exactly how `toList` shipped undefined into orders.js.
+      "no-undef": "error",
     },
   },
 ]);

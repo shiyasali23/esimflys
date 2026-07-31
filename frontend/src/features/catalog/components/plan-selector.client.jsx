@@ -10,24 +10,29 @@ import { routes } from "@/config/routes";
 
 export function PlanSelector({ country, plans }) {
   const router = useRouter();
-  const setItem = useCart((s) => s.setItem);
+  const addToCart = useCart((s) => s.add);
   const defaultId =
     plans.find((p) => p.isDefaultSelected)?.product_id || plans[0]?.product_id;
   const [selectedId, setSelectedId] = useState(defaultId);
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState(null);
   const selected = plans.find((p) => p.product_id === selectedId) || plans[0];
 
-  function handleContinue() {
-    setItem({
-      planId: selected.product_id,
-      countrySlug: country.slug,
-      countryName: country.name,
-      dataLabel: selected.isUnlimited ? "Unlimited" : `${selected.data_gb} GB`,
-      validityDays: selected.validity_days,
-      usd: selected.retail_price_usd,
-      isUnlimited: selected.isUnlimited,
-      perDayGb: selected.perDayGb ?? null,
-    });
-    router.push(routes.checkout());
+  async function handleContinue() {
+    setAdding(true);
+    setError(null);
+    try {
+      await addToCart({ productCode: selected.product_id, quantity: 1 });
+      router.push(routes.checkout());
+    } catch (err) {
+      // plan_unavailable means the catalogue moved under us — a reload re-reads it.
+      setError(
+        err?.code === "plan_unavailable"
+          ? "That plan just became unavailable. Refresh to see current plans."
+          : err?.message || "We couldn't add that plan. Please try again.",
+      );
+      setAdding(false);
+    }
   }
 
   const label = (p) => (p.isUnlimited ? "Unlimited" : `${p.data_gb} GB`);
@@ -116,9 +121,10 @@ export function PlanSelector({ country, plans }) {
             <button
               type="button"
               onClick={handleContinue}
-              className="mt-2.5 flex w-full items-center justify-center rounded-full bg-cta px-6 py-3 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110"
+              disabled={adding}
+              className="mt-2.5 flex w-full items-center justify-center rounded-full bg-cta px-6 py-3 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110 disabled:opacity-60"
             >
-              Continue to checkout
+              {adding ? "Adding…" : "Continue to checkout"}
             </button>
             <p className="mt-1.5 text-center text-[10px] uppercase tracking-wider text-muted-foreground">
               Secure checkout
@@ -158,10 +164,16 @@ export function PlanSelector({ country, plans }) {
             <button
               type="button"
               onClick={handleContinue}
-              className="mt-5 flex w-full items-center justify-center rounded-full bg-cta px-6 py-3.5 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110"
+              disabled={adding}
+              className="mt-5 flex w-full items-center justify-center rounded-full bg-cta px-6 py-3.5 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110 disabled:opacity-60"
             >
-              Continue to checkout
+              {adding ? "Adding…" : "Continue to checkout"}
             </button>
+            {error ? (
+              <p role="alert" className="mt-3 text-center text-body-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
             <p className="mt-3 text-center text-label-caps uppercase text-muted-foreground">Secure checkout</p>
           </div>
         </div>

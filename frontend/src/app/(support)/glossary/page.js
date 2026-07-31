@@ -51,7 +51,13 @@ export default function GlossaryPage() {
                           {t.seeAlso.map((s, i) => (
                             <span key={s}>
                               {i > 0 ? ", " : ""}
-                              <a href={`#${s}`} className="text-primary hover:underline">
+                              {/* Underlined always, not just on hover: inside a sentence
+                                  the indigo sits at 1.06:1 against the grey around it, so
+                                  colour alone cannot mark it as a link (WCAG 1.4.1). */}
+                              <a
+                                href={`#${s}`}
+                                className="text-primary underline underline-offset-2"
+                              >
                                 {s.toUpperCase()}
                               </a>
                             </span>

@@ -20,7 +20,7 @@ export function Hero({ chips, countries }) {
               </span>
             ))}
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-white/80">{hero.subtitle}</p>
+          <p className="mt-6 max-w-xl text-lg text-white">{hero.subtitle}</p>
           <div className="mt-8 flex flex-col items-start gap-5">
             <HeroSearch countries={countries} />
             <div className="flex flex-wrap items-center gap-2">

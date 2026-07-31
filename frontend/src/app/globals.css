@@ -42,10 +42,17 @@
 
   --color-destructive: #e40014;
   --color-destructive-foreground: #ffffff;
+  /* Error text sits on a 10% tint of its own colour, not on white. #e40014 reads
+     4.87:1 on white but only 4.09:1 on that tint — below AA, on the message
+     someone reads when something has gone wrong. This reads 5.25:1 there. The
+     base token is unchanged: white on #e40014 is 4.87:1, fine for buttons. */
+  --color-destructive-text: #c40012;
   --color-error: #e40014;
   --color-on-error: #ffffff;
   --color-success: #c6f135;
-  --color-success-text: #1b7f3b;
+  /* #1b7f3b measured 4.42:1 as badge text on its own 10% tint — below AA. This
+     reads 5.76:1 there and 6.6:1 on white. */
+  --color-success-text: #166b32;
 
   --color-chart-1: #f05100;
   --color-chart-2: #009588;

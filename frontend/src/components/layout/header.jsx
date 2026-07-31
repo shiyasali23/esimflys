@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { CurrencySelector } from "@/components/currency/currency-selector.client";
+import { AccountNav } from "./account-nav.client";
+import { PortalLinks } from "./portal-links.client";
 import { MobileMenu } from "./mobile-menu.client";
 import nav from "@/content/nav.json";
 import { cn } from "@/lib/cn";
@@ -57,7 +58,7 @@ export function Header() {
                 href={item.href}
                 className={cn(
                   "font-body text-sm font-medium transition-colors",
-                  overHero ? "text-white/90 hover:text-white" : "text-foreground/80 hover:text-primary",
+                  overHero ? "text-white hover:underline" : "text-foreground/80 hover:text-primary",
                 )}
               >
                 {item.label}
@@ -67,17 +68,8 @@ export function Header() {
         </ul>
         <div className="flex items-center gap-2">
           <CurrencySelector overHero={overHero} className="hidden sm:inline-flex" />
-          <Button
-            href="/auth"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "hidden sm:inline-flex",
-              overHero && "border-white/40 bg-white/10 text-white hover:bg-white/20",
-            )}
-          >
-            Sign in
-          </Button>
+          <PortalLinks overHero={overHero} />
+          <AccountNav overHero={overHero} />
           <MobileMenu items={nav.header} overHero={overHero} />
         </div>
       </nav>

@@ -1,24 +1,59 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { login, register, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
+import { useSession } from "@/features/auth/use-session.client";
+import { fieldErrors } from "@/lib/api/errors";
 import { routes } from "@/config/routes";
 
 /**
- * Sign-in / sign-up card. The backend owns auth (blueprint §23) — these forms are
- * DEMO stubs that show the interaction; wire them to the Next BFF → :8000 auth
- * routes in production. Google is a redirect to the backend OAuth flow.
- * @param {{ mode: "signin" | "signup" }} props
+ * Sign-in / sign-up against the real session endpoints. On success the browser
+ * holds an HttpOnly session cookie — there is no token to store here.
+ *
+ * Google is a full-page navigation, not a fetch: the OAuth handshake needs real
+ * redirects, and allauth returns the browser to /account when it completes.
  */
 export function AuthCard({ mode = "signin" }) {
   const isSignup = mode === "signup";
-  const [showPw, setShowPw] = useState(false);
-  const [status, setStatus] = useState("idle"); // idle | loading | success
+  const router = useRouter();
+  const setUser = useSession((s) => s.setUser);
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    setStatus("loading");
-    setTimeout(() => setStatus("success"), 900);
+  const [showPw, setShowPw] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState(null);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setErrors({});
+    setFormError(null);
+    setSubmitting(true);
+
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email") || "").trim();
+    const password = String(data.get("password") || "");
+
+    try {
+      const user = isSignup
+        ? await register({ email, password })
+        : await login({ email, password });
+      setUser(user);
+      router.push(routes.account());
+      router.refresh();
+    } catch (error) {
+      const fields = fieldErrors(error);
+      if (Object.keys(fields).length) setErrors(fields);
+      else if (error?.code === "invalid_credentials") {
+        setFormError("That email and password don't match an account.");
+      } else if (error?.status === 429) {
+        setFormError("Too many attempts. Please wait a minute and try again.");
+      } else {
+        setFormError(error?.message || "We couldn't sign you in. Please try again.");
+      }
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -32,12 +67,12 @@ export function AuthCard({ mode = "signin" }) {
           : "Access your global data plans and trip history."}
       </p>
 
-      <button
-        type="button"
+      <a
+        href={GOOGLE_LOGIN_PATH}
         className="mb-6 flex w-full items-center justify-center gap-3 rounded-md border border-border bg-white py-3 font-semibold text-foreground hover:bg-muted"
       >
         Continue with Google
-      </button>
+      </a>
 
       <div className="mb-6 flex items-center gap-4">
         <span className="h-px flex-1 bg-border" />
@@ -45,20 +80,35 @@ export function AuthCard({ mode = "signin" }) {
         <span className="h-px flex-1 bg-border" />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <label className="block">
           <span className="mb-1 block text-label-bold text-foreground">Email address</span>
           <input
             required
             type="email"
             name="email"
+            autoComplete="email"
             placeholder="name@company.com"
+            aria-invalid={errors.email ? "true" : undefined}
+            aria-describedby={errors.email ? "auth-email-error" : undefined}
             className="w-full rounded-sm border border-border bg-muted px-4 py-3 text-body-md outline-none focus:border-primary"
           />
+          {errors.email ? (
+            <span id="auth-email-error" role="alert" className="mt-1 block text-body-sm text-destructive">
+              {errors.email}
+            </span>
+          ) : null}
         </label>
-        <label className="block">
+
+        {/* Associated by id rather than wrapping. A <label> around this field would
+            swallow the "Forgot password?" link and the reveal button into the
+            field's accessible name — it announced as "PasswordForgot password?" —
+            and nested interactive content makes clicking the label ambiguous. */}
+        <div className="block">
           <span className="mb-1 flex items-center justify-between">
-            <span className="text-label-bold text-foreground">Password</span>
+            <label htmlFor="auth-password" className="text-label-bold text-foreground">
+              Password
+            </label>
             {!isSignup ? (
               <Link href={routes.forgotPassword()} className="text-label-bold text-primary hover:underline">
                 Forgot password?
@@ -67,10 +117,14 @@ export function AuthCard({ mode = "signin" }) {
           </span>
           <span className="relative block">
             <input
+              id="auth-password"
               required
               type={showPw ? "text" : "password"}
               name="password"
+              autoComplete={isSignup ? "new-password" : "current-password"}
               placeholder="••••••••"
+              aria-invalid={errors.password ? "true" : undefined}
+              aria-describedby={errors.password ? "auth-password-error" : undefined}
               className="w-full rounded-sm border border-border bg-muted px-4 py-3 pr-11 text-body-md outline-none focus:border-primary"
             />
             <button
@@ -78,24 +132,31 @@ export function AuthCard({ mode = "signin" }) {
               aria-pressed={showPw}
               aria-label={showPw ? "Hide password" : "Show password"}
               onClick={() => setShowPw((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+              /* sized to meet the WCAG 2.2 minimum touch target, not just the icon */
+              className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:text-primary"
             >
               {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </span>
-        </label>
+          {errors.password ? (
+            <span id="auth-password-error" role="alert" className="mt-1 block text-body-sm text-destructive">
+              {errors.password}
+            </span>
+          ) : null}
+        </div>
+
         <button
           type="submit"
-          disabled={status === "loading"}
+          disabled={submitting}
           className="w-full rounded-sm bg-primary py-3.5 text-label-bold text-on-primary transition-all hover:bg-primary-container active:scale-[0.98] disabled:opacity-60"
         >
-          {status === "loading" ? "…" : isSignup ? "Create account" : "Sign in"}
+          {submitting ? "Please wait…" : isSignup ? "Create account" : "Sign in"}
         </button>
       </form>
 
-      {status === "success" ? (
-        <p role="status" className="mt-4 rounded-sm bg-success-text/10 p-3 text-body-sm text-success-text">
-          Demo — backend authentication is wired in production. You'd be signed in here.
+      {formError ? (
+        <p role="alert" className="mt-4 rounded-sm bg-destructive/10 p-3 text-body-sm text-destructive-text">
+          {formError}
         </p>
       ) : null}
 
@@ -109,7 +170,7 @@ export function AuthCard({ mode = "signin" }) {
           </>
         ) : (
           <>
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href={routes.signup()} className="font-semibold text-primary hover:underline">
               Create one
             </Link>

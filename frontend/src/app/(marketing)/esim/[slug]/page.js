@@ -13,8 +13,8 @@ import { RecentlyViewed } from "@/features/catalog/components/recently-viewed.cl
 import {
   getCountryBySlug,
   getCountrySlugs,
+  getCountryWithNetworks,
   getPerDayFrom,
-  getPlansForCountry,
   getPopularCountries,
 } from "@/server/catalog/repository";
 import { toClientPlans } from "@/features/catalog/lib/to-client-plan";
@@ -31,17 +31,17 @@ const CONFIDENCE = [
   "No contracts, no deposits",
 ];
 
-export function generateStaticParams() {
-  return getCountrySlugs().map((slug) => ({ slug }));
+export async function generateStaticParams() {
+  return (await getCountrySlugs()).map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const country = getCountryBySlug(slug);
+  const country = await getCountryBySlug(slug);
   if (!country) return {};
   const decision = countryIndexDecision(country);
   const content = getCountryContent(slug);
-  const perDay = getPerDayFrom(slug);
+  const perDay = await getPerDayFrom(slug);
   const priceLine = perDay ? ` from $${perDay.toFixed(2)}/day` : "";
   return buildMetadata({
     title: content?.metaTitle || `${country.name} eSIM — Travel Data Plans`,
@@ -55,14 +55,13 @@ export async function generateMetadata({ params }) {
 
 export default async function CountryPage({ params }) {
   const { slug } = await params;
-  const country = getCountryBySlug(slug);
+  const { country, plans } = await getCountryWithNetworks(slug);
   if (!country) notFound();
 
-  const plans = getPlansForCountry(slug);
   const clientPlans = toClientPlans(plans);
   const content = getCountryContent(slug);
-  const related = getPopularCountries(7).filter((c) => c.slug !== slug).slice(0, 6);
-  const perDay = getPerDayFrom(slug);
+  const related = (await getPopularCountries(7)).filter((c) => c.slug !== slug).slice(0, 6);
+  const perDay = country.priceFrom ?? (await getPerDayFrom(slug));
   const introText =
     content?.intro ||
     `Get online the moment you land in ${country.name} with a data-only travel eSIM. Buy it online, scan one QR code to install, and keep your usual number for calls and texts — no physical SIM and no roaming bills.`;

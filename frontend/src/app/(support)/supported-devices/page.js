@@ -20,10 +20,10 @@ export default function SupportedDevicesPage() {
             <h1 className="font-display text-4xl font-bold uppercase md:text-5xl">
               {devices.checker.title}
             </h1>
-            <p className="mt-4 max-w-lg text-lg text-white/80">{devices.checker.subtitle}</p>
+            <p className="mt-4 max-w-lg text-lg text-white">{devices.checker.subtitle}</p>
             <div className="mt-8 max-w-md">
               <DeviceChecker />
-              <p className="mt-4 text-sm text-white/80">{devices.manualCheck.body}</p>
+              <p className="mt-4 text-sm text-white">{devices.manualCheck.body}</p>
             </div>
           </div>
           <div className="flex justify-center">

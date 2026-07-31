@@ -9,8 +9,8 @@ export const metadata = buildMetadata({
   path: "/destinations",
 });
 
-export default function DestinationsPage() {
-  const countries = getAllDestinations();
+export default async function DestinationsPage() {
+  const countries = await getAllDestinations();
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">

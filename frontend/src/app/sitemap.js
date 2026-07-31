@@ -3,7 +3,7 @@ import { getAllCountries } from "@/server/catalog/repository";
 import { isCountryIndexable } from "@/config/indexing";
 import help from "@/content/help.json";
 
-export default function sitemap() {
+export default async function sitemap() {
   const base = SITE.baseUrl.replace(/\/$/, "");
 
   const staticPaths = [
@@ -25,7 +25,7 @@ export default function sitemap() {
     url: `${base}${p === "/" ? "" : p}` || base,
   }));
 
-  const countryEntries = getAllCountries()
+  const countryEntries = (await getAllCountries())
     .filter(isCountryIndexable)
     .map((c) => ({ url: `${base}/esim/${c.slug}` }));
 

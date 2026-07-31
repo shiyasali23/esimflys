@@ -3,8 +3,12 @@
  * we never ship fabricated data, and we surface real data blockers.
  */
 export const FLAGS = {
-  /** Backend at :8000 not up yet → use catalog.json + mock BFF responses. */
-  USE_MOCKS: (process.env.USE_MOCKS ?? "true") !== "false",
+  /**
+   * Force the static data/catalog.json instead of the live API. Off by default —
+   * the catalogue is read from the backend. Set USE_MOCKS=true to work offline;
+   * the repository also falls back on its own (loudly) if the API is unreachable.
+   */
+  USE_MOCKS: (process.env.USE_MOCKS ?? "false") === "true",
 
   /** No verified first-party reviews → NEVER render Review UI or Review/AggregateRating JSON-LD. */
   reviewsEnabled: false,

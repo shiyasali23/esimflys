@@ -19,10 +19,13 @@ import {
 
 export const metadata = { alternates: { canonical: "/" } };
 
-export default function HomePage() {
-  const destinations = getHomeDestinations(8);
-  const chips = getFeaturedCountries(4);
-  const searchCountries = getAllCountries().map((c) => ({
+export default async function HomePage() {
+  const [destinations, chips, allCountries] = await Promise.all([
+    getHomeDestinations(8),
+    getFeaturedCountries(4),
+    getAllCountries(),
+  ]);
+  const searchCountries = allCountries.map((c) => ({
     slug: c.slug,
     name: c.name,
     iso2: c.iso2,
