@@ -36,6 +36,7 @@ THIRD_PARTY_APPS = [
 ]
 LOCAL_APPS = [
     "apps.common",
+    "apps.administration",
     "apps.accounts",
     "apps.catalog",
     "apps.orders",
@@ -153,12 +154,18 @@ REST_FRAMEWORK = {
         "payment": env("THROTTLE_PAYMENT", default="30/min"),
         "promo": env("THROTTLE_PROMO", default="30/min"),
         "usage": env("THROTTLE_USAGE", default="20/min"),
+        # Guest order lookup returns decrypted eSIM credentials — keep it tight.
+        "lookup": env("THROTTLE_LOOKUP", default="10/min"),
+        "admin": env("THROTTLE_ADMIN", default="60/min"),
+        "agency": env("THROTTLE_AGENCY", default="120/min"),
+        "reveal": env("THROTTLE_REVEAL", default="10/hour"),
+        "export": env("THROTTLE_EXPORT", default="5/hour"),
     },
 }
 
-CACHES = {
-    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
-}
+# Throttle counters live in the cache. A per-process backend (locmem) multiplies every
+# limit by the worker count, so production must use a shared backend (enforced below).
+CACHES = {"default": env.cache("CACHE_URL", default="locmemcache://")}
 
 if "test" in sys.argv:
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
@@ -193,16 +200,31 @@ EMAIL_BACKEND = env(
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="eSIMFlys <no-reply@esimflys.com>")
 
 FIELD_ENCRYPTION_KEY_VERSION = env.int("FIELD_ENCRYPTION_KEY_VERSION", default=1)
-FIELD_ENCRYPTION_KEYS = {FIELD_ENCRYPTION_KEY_VERSION: env("FIELD_ENCRYPTION_KEY", default="")}
+# Retired keys stay in the ring as decrypt-only, so raising the active version never
+# orphans ciphertext written under an older one:
+#   FIELD_ENCRYPTION_KEYS_JSON={"1":"<old key>","2":"<new key>"}
+#   FIELD_ENCRYPTION_KEY_VERSION=2
+FIELD_ENCRYPTION_KEYS = {
+    int(version): key
+    for version, key in env.json("FIELD_ENCRYPTION_KEYS_JSON", default={}).items()
+}
+FIELD_ENCRYPTION_KEYS.setdefault(
+    FIELD_ENCRYPTION_KEY_VERSION, env("FIELD_ENCRYPTION_KEY", default="")
+)
 ICCID_HMAC_KEY = env("ICCID_HMAC_KEY", default="")
 
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 PAYMENTS_GATEWAY = env("PAYMENTS_GATEWAY", default=("stripe" if STRIPE_SECRET_KEY else "fake"))
 ESIM_SUPPLIER_BASE_URL = env("ESIM_SUPPLIER_BASE_URL", default="")
+# eSIM Access sends this as the `RT-AccessCode` header (not a Bearer token).
 ESIM_SUPPLIER_API_KEY = env("ESIM_SUPPLIER_API_KEY", default="")
+# Optional HMAC signing key for `RT-Signature`. Blank = plain access-code auth.
+ESIM_SUPPLIER_SECRET_KEY = env("ESIM_SUPPLIER_SECRET_KEY", default="")
 ESIM_SUPPLIER_TIMEOUT = env.float("ESIM_SUPPLIER_TIMEOUT", default=30.0)
-SUPPLIER_GATEWAY = env("SUPPLIER_GATEWAY", default=("esim_access" if ESIM_SUPPLIER_API_KEY else "fake"))
+# The supplier has no sandbox — every call spends real wallet money. Merely holding
+# credentials must therefore never arm it: going live is an explicit, deliberate act.
+SUPPLIER_GATEWAY = env("SUPPLIER_GATEWAY", default="fake")
 
 LOGGING = {
     "version": 1,
@@ -212,7 +234,39 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
 }
 
+VALID_PAYMENTS_GATEWAYS = {"stripe", "fake"}
+VALID_SUPPLIER_GATEWAYS = {"esim_access", "fake"}
+# Both factories pick the real provider by exact name, so an unrecognised value would
+# otherwise fall through to the fake one — a typo would silently sell fake eSIMs.
+if PAYMENTS_GATEWAY not in VALID_PAYMENTS_GATEWAYS:
+    raise ImproperlyConfigured(
+        f"PAYMENTS_GATEWAY={PAYMENTS_GATEWAY!r} is not one of {sorted(VALID_PAYMENTS_GATEWAYS)}."
+    )
+if SUPPLIER_GATEWAY not in VALID_SUPPLIER_GATEWAYS:
+    raise ImproperlyConfigured(
+        f"SUPPLIER_GATEWAY={SUPPLIER_GATEWAY!r} is not one of {sorted(VALID_SUPPLIER_GATEWAYS)}."
+    )
+
+# Demo deployments may serve fake providers; production must opt in loudly and explicitly.
+ALLOW_FAKE_GATEWAYS = env.bool("ALLOW_FAKE_GATEWAYS", default=False)
+
 if not DEBUG:
+    if not ALLOW_FAKE_GATEWAYS:
+        _fake = [
+            name
+            for name, value in (
+                ("PAYMENTS_GATEWAY", PAYMENTS_GATEWAY),
+                ("SUPPLIER_GATEWAY", SUPPLIER_GATEWAY),
+            )
+            if value == "fake"
+        ]
+        if _fake:
+            raise ImproperlyConfigured(
+                "Fake providers refuse to run in production: "
+                + ", ".join(_fake)
+                + ". Configure the real gateway, or set ALLOW_FAKE_GATEWAYS=true for a "
+                "deliberately non-selling demo deployment."
+            )
     _required_secrets = [
         "FIELD_ENCRYPTION_KEY",
         "ICCID_HMAC_KEY",
@@ -221,6 +275,12 @@ if not DEBUG:
         "ESIM_SUPPLIER_BASE_URL",
         "ESIM_SUPPLIER_API_KEY",
     ]
+    if "locmem" in CACHES["default"]["BACKEND"].lower():
+        raise ImproperlyConfigured(
+            "CACHE_URL must point at a shared cache backend in production. LocMemCache is "
+            "per-process, so rate limits would be multiplied by the worker count. Use e.g. "
+            "redis://host:6379/0 or dbcache://throttle_cache."
+        )
     _missing = [name for name in _required_secrets if not env(name, default="")]
     if _missing:
         raise ImproperlyConfigured(

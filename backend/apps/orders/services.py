@@ -20,6 +20,8 @@ from .models import Cart, CartItem, Order, OrderItem, PromoCode, PromoRedemption
 
 GUEST_TOKEN_BYTES = 32
 MAX_QUANTITY = 1000
+#: Cap on total eSIMs per cart/order. One unit becomes one OrderItem and one supplier job.
+MAX_CART_UNITS = 50
 
 
 def guest_token_hash(token):
@@ -57,10 +59,30 @@ def create_cart(*, user=None, currency="USD"):
     return cart, token
 
 
+def _assert_cart_units(cart, *, added_units, replacing_item_id=None):
+    """Bound the whole cart, not just one line.
+
+    Checkout expands every unit into its own OrderItem row and later into one supplier job,
+    so the per-line cap alone still permits a single request to create an unbounded amount
+    of work. Throttles limit how many requests arrive, never how much each one costs.
+    """
+    current = sum(
+        item.quantity
+        for item in cart.items.all()
+        if replacing_item_id is None or item.id != replacing_item_id
+    )
+    if current + added_units > MAX_CART_UNITS:
+        raise Conflict(
+            message=f"A cart may hold at most {MAX_CART_UNITS} eSIMs.",
+            error_code="cart_limit_exceeded",
+        )
+
+
 def add_item(cart, *, product_code, quantity):
     quantity = _validate_quantity(quantity)
     plan = _active_plan_or_error(product_code)
     item = cart.items.filter(catalog_plan=plan).first()
+    _assert_cart_units(cart, added_units=quantity)
     if item is None:
         return CartItem.objects.create(
             cart=cart, item_type="esim", catalog_plan=plan, quantity=quantity
@@ -75,6 +97,7 @@ def set_item_quantity(cart, *, item_id, quantity):
     item = cart.items.filter(pk=item_id).first()
     if item is None:
         raise Conflict(message="Cart item not found.", error_code="not_found", status_code=404)
+    _assert_cart_units(cart, added_units=quantity, replacing_item_id=item.id)
     item.quantity = quantity
     item.save(update_fields=["quantity", "updated_at"])
     return item
@@ -108,6 +131,13 @@ def checkout(*, cart_id, customer_email, promo_code=None, user=None):
         items = list(cart.items.all())
         if not items:
             raise Conflict(message="The cart is empty.")
+        # Backstop: carts built before the cap existed, or grown by any path that skipped it.
+        units = sum(item.quantity for item in items)
+        if units > MAX_CART_UNITS:
+            raise Conflict(
+                message=f"A cart may hold at most {MAX_CART_UNITS} eSIMs.",
+                error_code="cart_limit_exceeded",
+            )
 
         currency = cart.currency
         snapshots, subtotal = _price_cart(items, currency)
@@ -154,9 +184,12 @@ def checkout(*, cart_id, customer_email, promo_code=None, user=None):
 
 
 def consume_promo_for_order(order):
-    PromoRedemption.objects.filter(order=order, status="reserved").update(
-        status="consumed", consumed_at=timezone.now()
-    )
+    # A PaymentIntent may report a failed attempt and later succeed with another card, which
+    # releases the reservation before the order is paid. The order still carries the discount,
+    # so a released redemption must consume too or the code escapes its usage limits.
+    PromoRedemption.objects.filter(
+        order=order, status__in=["reserved", "released"]
+    ).update(status="consumed", consumed_at=timezone.now())
 
 
 def release_promo_for_order(order):

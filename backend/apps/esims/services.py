@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import timedelta
 
@@ -14,8 +15,16 @@ from apps.orders.notifications import queue_notification
 from . import supplier as supplier_module
 from .models import EsimProfile, SupplierEvent, TopupFulfillment
 
-MAX_ATTEMPTS = 5
+logger = logging.getLogger(__name__)
+
+# One attempt places the order; the rest poll for the profile, so the budget allows for
+# both phases. The supplier documents readiness within 3–10s.
+MAX_ATTEMPTS = 8
 BACKOFF_BASE_SECONDS = 30
+#: Delay between "ordered but not provisioned yet" polls.
+POLL_DELAY_SECONDS = 5
+#: How long a claimed job may stay ``processing`` before a worker is presumed dead.
+STALE_LEASE_SECONDS = 600
 
 
 def enqueue_provisioning_for_order(order):
@@ -110,6 +119,25 @@ def create_topup_order(*, user, esim_profile_id, topup_product_code):
         return order
 
 
+def reclaim_stale_events():
+    """Return jobs whose worker died mid-flight to the queue.
+
+    A job is marked ``processing`` and committed *before* the supplier is called, so a crash
+    anywhere after that leaves the row claimed forever — the claim query only looks at
+    pending/retrying. ``locked_at`` was recorded for exactly this purpose but never read.
+
+    The timeout is deliberately far longer than any real attempt: retrying a provision that
+    is merely slow is safe (the persisted supplier order number makes it a lookup, not a
+    second purchase), but the wide margin keeps that path rare.
+    """
+    cutoff = timezone.now() - timedelta(seconds=STALE_LEASE_SECONDS)
+    return (
+        SupplierEvent.objects.filter(status="processing", locked_at__lt=cutoff)
+        .exclude(attempt_count__gte=MAX_ATTEMPTS)
+        .update(status="retrying", next_attempt_at=timezone.now(), locked_at=None)
+    )
+
+
 def claim_and_process_one():
     now = timezone.now()
     with transaction.atomic():
@@ -139,27 +167,77 @@ def _process(event):
             _process_topup(event)
         else:
             _fail(event, "unsupported_event", f"Unsupported event type {event.event_type}")
+    except supplier_module.SupplierNotReady as exc:
+        # Expected, not a failure: the order exists and the profile is still being cut.
+        _retry_or_review(event, "awaiting_profile", str(exc), delay=POLL_DELAY_SECONDS)
     except supplier_module.SupplierTimeout as exc:
         _retry_or_review(event, "supplier_timeout", str(exc))
     except supplier_module.SupplierPermanentError as exc:
         _fail(event, "supplier_permanent", str(exc))
     except supplier_module.SupplierError as exc:
         _retry_or_review(event, "supplier_error", str(exc))
+    except Exception as exc:  # noqa: BLE001 — one poisoned job must not stop the queue
+        # Anything unexpected (encryption, data shape, a programming error) would otherwise
+        # propagate out of the worker's infinite loop and halt every remaining job, leaving
+        # paid orders unprovisioned. Contain it to this row and keep going.
+        logger.exception("Unhandled error processing supplier event %s", event.id)
+        _retry_or_review(event, "unexpected_error", f"{type(exc).__name__}: {exc}"[:500])
 
 
 def _process_provision(event):
+    """Provision one eSIM.
+
+    The supplier's flow is two-phase: ``/esim/order`` returns only an order number, and the
+    profile appears 3–10 s later via ``/esim/query``. Both phases run through this one job
+    row, with ``EsimProfile.supplier_order_no`` marking which phase we are in.
+
+    The critical safety property: **once an order number exists we never call order again.**
+    A retry after a timeout resumes at the poll phase, so a network failure cannot buy the
+    customer a second eSIM. If the order actually landed before the timeout, the supplier
+    rejects the repeat with a duplicate-transaction error and we recover by querying.
+    """
     gateway = supplier_module.get_supplier_gateway()
     item = event.order_item
-    result = gateway.provision(
-        package_code=item.supplier_package_code,
-        idempotency_key=event.idempotency_key,
-        order_item=item,
+    profile = EsimProfile.objects.get(pk=event.esim_profile_id)
+
+    # --- Phase 1: place the order (only once) ---------------------------------------
+    if not profile.supplier_order_no:
+        try:
+            placed = gateway.order_esim(
+                package_code=item.supplier_package_code,
+                transaction_id=event.idempotency_key,
+                count=1,
+                period_num=item.validity_days if item.plan_type == "daily" else None,
+            )
+            order_no = placed["order_no"]
+        except supplier_module.DuplicateTransaction:
+            # A previous attempt already placed this order — recover, do not re-order.
+            order_no = None
+
+        if order_no:
+            # Persist the order number *before* anything else can fail. This is what makes
+            # a later retry resume at the poll phase instead of ordering a second eSIM.
+            EsimProfile.objects.filter(pk=profile.pk).update(
+                supplier_order_no=order_no, status="provisioning"
+            )
+            profile.supplier_order_no = order_no
+            SupplierEvent.objects.filter(pk=event.pk).update(supplier_reference=order_no)
+        # Fall through and try the query immediately — if the profile is not cut yet the
+        # query raises SupplierNotReady and the job is re-polled a few seconds later.
+
+    # --- Phase 2: fetch the provisioned profile --------------------------------------
+    result = gateway.query_esim(
+        order_no=profile.supplier_order_no,
+        transaction_id=event.idempotency_key,
     )
+
     iccid = result["iccid"]
     iccid_ct, key_version = encryption.encrypt(iccid)
-    smdp_ct, _ = encryption.encrypt(result["smdp_address"])
-    activation_ct, _ = encryption.encrypt(result["activation_code"])
-    qr_ct, _ = encryption.encrypt(result["qr_payload"])
+    smdp_ct, _ = encryption.encrypt(result.get("smdp_address"))
+    activation_ct, _ = encryption.encrypt(result.get("activation_code"))
+    qr_ct, _ = encryption.encrypt(result.get("qr_payload"))
+    qr_url_ct, _ = encryption.encrypt(result.get("qr_code_url"))
+    short_url_ct, _ = encryption.encrypt(result.get("short_url"))
     redacted = _redact(result)
 
     with transaction.atomic():
@@ -171,6 +249,8 @@ def _process_provision(event):
         profile.smdp_address_encrypted = smdp_ct
         profile.activation_code_encrypted = activation_ct
         profile.qr_payload_encrypted = qr_ct
+        profile.qr_code_url_encrypted = qr_url_ct
+        profile.short_url_encrypted = short_url_ct
         profile.encryption_key_version = key_version
         profile.total_data_bytes = result.get("total_data_bytes")
         profile.remaining_data_bytes = result.get("remaining_data_bytes")
@@ -260,7 +340,7 @@ def _process_topup(event):
         )
 
 
-def _retry_or_review(event, code, message):
+def _retry_or_review(event, code, message, delay=None):
     with transaction.atomic():
         event = SupplierEvent.objects.select_for_update().get(pk=event.pk)
         event.error_code = code
@@ -269,7 +349,8 @@ def _retry_or_review(event, code, message):
             event.status = "manual_review"
         else:
             event.status = "retrying"
-            delay = BACKOFF_BASE_SECONDS * (2 ** (event.attempt_count - 1))
+            if delay is None:
+                delay = BACKOFF_BASE_SECONDS * (2 ** (event.attempt_count - 1))
             event.next_attempt_at = timezone.now() + timedelta(seconds=delay)
         event.save(
             update_fields=[
@@ -329,7 +410,11 @@ def decrypt_credentials(profile):
         "iccid": _decrypt(profile.iccid_encrypted, version),
         "smdp_address": _decrypt(profile.smdp_address_encrypted, version),
         "activation_code": _decrypt(profile.activation_code_encrypted, version),
+        # LPA string when the supplier provides one; eSIM Access returns a hosted QR image
+        # and a one-tap install link instead, so all three may be present.
         "qr_payload": _decrypt(profile.qr_payload_encrypted, version),
+        "qr_code_url": _decrypt(profile.qr_code_url_encrypted, version),
+        "short_url": _decrypt(profile.short_url_encrypted, version),
     }
 
 

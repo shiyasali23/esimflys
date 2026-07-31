@@ -1,4 +1,6 @@
-import secrets
+import hashlib
+import json
+import logging
 
 from django.db import transaction
 from django.db.models import Sum
@@ -13,6 +15,8 @@ from apps.orders.services import consume_promo_for_order, release_promo_for_orde
 
 from . import stripe as gateway_module
 from .models import Payment, Refund, RefundItem, WebhookEvent
+
+logger = logging.getLogger(__name__)
 
 
 def create_payment_intent_for_order(order):
@@ -61,14 +65,13 @@ def handle_webhook_event(payload_bytes, sig_header):
     try:
         event = gateway.construct_event(payload_bytes, sig_header)
     except gateway_module.SignatureVerificationError:
-        WebhookEvent.objects.create(
-            provider="stripe",
-            external_event_id="unverified-" + secrets.token_hex(12),
-            event_type="unknown",
-            payload_redacted={},
-            signature_valid=False,
-            status="rejected",
-            received_at=timezone.now(),
+        # Deliberately no database row. The endpoint is public and unauthenticated, so
+        # persisting one row per rejected request turns the cheapest possible failure into
+        # unbounded writes on the primary database. A log line carries the same forensic
+        # signal without letting anonymous traffic consume storage.
+        logger.warning(
+            "Rejected Stripe webhook with an invalid signature (%d bytes)",
+            len(payload_bytes or b""),
         )
         return {"ok": False, "status": 400}
 
@@ -211,6 +214,34 @@ def _redact(event):
     }
 
 
+REFUND_ATTEMPT_STATES = ["pending", "processing", "succeeded"]
+
+
+def _refund_idempotency_key(payment, allocations, attempt):
+    """A key that is stable across retries but distinct across deliberate refunds.
+
+    Stripe deduplicates by idempotency key, so a retry after "provider succeeded, local
+    write failed" must present the *same* key or it buys a second refund. A random key
+    never could. Hashing the allocation set alone would go too far the other way — it
+    would permanently block a legitimate second refund of the same item for the same
+    amount. ``attempt`` is the number of refunds already committed against this payment:
+    a rolled-back attempt leaves it unchanged (so the retry matches), while a committed
+    one moves it on (so the next refund is free to proceed).
+    """
+    canonical = json.dumps(
+        {
+            "payment": str(payment.id),
+            "attempt": attempt,
+            "allocations": sorted(
+                (str(a["order_item_id"]), int(a["amount_minor"])) for a in allocations
+            ),
+        },
+        sort_keys=True,
+    )
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:32]
+    return f"refund:{payment.id}:{digest}"
+
+
 def create_refund(*, payment, allocations, reason=None):
     with transaction.atomic():
         payment = Payment.objects.select_for_update().get(pk=payment.pk)
@@ -246,7 +277,14 @@ def create_refund(*, payment, allocations, reason=None):
             if item_prior + int(alloc["amount_minor"]) > item.unit_amount_minor:
                 raise RefundLimitExceeded()
 
-        idempotency_key = f"refund:{payment.id}:{secrets.token_hex(8)}"
+        attempt = Refund.objects.filter(
+            payment=payment, status__in=REFUND_ATTEMPT_STATES
+        ).count()
+        idempotency_key = _refund_idempotency_key(payment, allocations, attempt)
+        existing = Refund.objects.filter(idempotency_key=idempotency_key).first()
+        if existing is not None:
+            return existing
+
         refund = Refund.objects.create(
             payment=payment,
             provider="stripe",
