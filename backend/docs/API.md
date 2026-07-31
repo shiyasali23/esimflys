@@ -283,9 +283,11 @@ total is `0` (100% promo) you instead get `{"zero_total": true, "client_secret":
 
 **`POST /api/v1/webhooks/stripe/`** — server-to-server only. **Never call this from the frontend.**
 
-**Payment truth is the webhook, not the browser.** After confirming payment, poll
-`GET /orders/{id}/` until `payment_status === "paid"`, then until
-`fulfillment_status === "delivered"` for the eSIM.
+**Payment truth is the webhook, not the browser.** After confirming payment, poll until
+`payment_status === "paid"`, then until `fulfillment_status === "delivered"` for the eSIM.
+Poll `GET /orders/{id}/` when the buyer has a session; poll `POST /orders/lookup/`
+(`{order_number, email}`) for guests — `GET /orders/{id}/` returns **403** for guests, and the
+`X-Cart-Token` does not authorise it.
 
 ### 6.6 Orders
 
@@ -378,6 +380,7 @@ Non-members get 404.
 6. POST /payments/payment-intent/{order_id}     → client_secret   (skip if zero_total)
 7.      confirm payment  →  webhook marks it paid  (server-side)
 8. poll GET /orders/{id}/  until payment_status="paid", then fulfillment_status="delivered"
+        (guests poll POST /orders/lookup/ — /orders/{id}/ is 403 without a session)
 9. GET  /esims/{id}/   (or POST /orders/lookup/ for guests)  → render qr_payload
 ```
 

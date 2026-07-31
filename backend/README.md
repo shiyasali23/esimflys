@@ -3,7 +3,10 @@
 Django 5.2 + DRF + PostgreSQL monolith. Authoritative source of truth:
 [`../esim_backend_design.md`](../esim_backend_design.md).
 
-> **Frontend developers start here → [`API.md`](./API.md)** — full endpoint reference with real
+> **Building the admin panels? → [`ADMIN_API.md`](./docs/ADMIN_API.md)** — platform + agency
+> admin APIs, role matrix, tenancy rules.
+>
+> **Frontend developers start here → [`API.md`](./docs/API.md)** — full endpoint reference with real
 > request/response examples, the auth + guest-cart flows, error codes, and field conventions.
 
 ## Local development
@@ -100,11 +103,11 @@ python manage.py activate_demo_catalog     # DEMO ONLY: activate popular-country
 python manage.py runserver 8000            # web process
 python manage.py process_jobs              # worker process (separate shell) — provisioning + notifications
 ```
-Everything runs on **fake Stripe + fake eSIM-Access + console email** — 79 tests green.
+Everything runs on **fake Stripe + fake eSIM-Access + console email** — 311 tests green.
 
 **What remains is not code** — the §21 business decisions: real Stripe keys + PaymentIntents-vs-
 Checkout, the real eSIM Access API contract, tax policy, hosting, and a real email provider. The
 gateways auto-switch fake→real when the credentials are present. See `../esim_backend_design.md` §21.
 
-Launch blockers tracked in `../esim_backend_design.md` §21 (all 385 plans paused, tax policy,
+Launch blockers tracked in `../esim_backend_design.md` §21 (tax policy,
 supplier contract, Stripe flow, hosting, email provider).
