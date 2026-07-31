@@ -1,6 +1,6 @@
 import json
 
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Organization, PartnerCommission
@@ -139,6 +139,47 @@ class PaymentsTests(APITestCase):
         response = self._intent(order)
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["error"]["code"], "payment_already_completed")
+
+
+class StripeEventShapeTests(TestCase):
+    """The real SDK returns a StripeObject, not a dict.
+
+    ``StripeObject`` overrides ``__getattr__`` to resolve keys, so ``event.get(...)``
+    raises ``AttributeError: get`` instead of behaving like a dict. That divergence between
+    the fake (plain dict) and the real gateway caused every genuine Stripe webhook to 500
+    while the whole test suite stayed green. ``construct_event`` now normalises to a plain
+    dict; this test locks that in.
+    """
+
+    @override_settings(
+        PAYMENTS_GATEWAY="stripe", STRIPE_SECRET_KEY="sk_test_x",
+        STRIPE_WEBHOOK_SECRET="whsec_x",
+    )
+    def test_construct_event_returns_a_plain_dict(self):
+        from unittest.mock import patch
+
+        import stripe as stripe_sdk
+
+        from apps.payments.stripe import StripeGateway
+
+        payload = json.dumps({
+            "id": "evt_1", "type": "payment_intent.succeeded",
+            "data": {"object": {"id": "pi_1", "amount": 1699, "currency": "usd",
+                                "metadata": {"order_id": "abc"}}},
+        }).encode()
+
+        stripe_object = stripe_sdk.Event.construct_from(json.loads(payload), "sk_test_x")
+        # Sanity: the raw SDK object is exactly what broke us.
+        with self.assertRaises(AttributeError):
+            stripe_object.get("data")
+
+        with patch.object(stripe_sdk.Webhook, "construct_event", return_value=stripe_object):
+            event = StripeGateway().construct_event(payload, "sig")
+
+        self.assertIsInstance(event, dict)
+        self.assertEqual(event.get("id"), "evt_1")                       # .get() works
+        self.assertEqual(event["data"]["object"].get("metadata"), {"order_id": "abc"})
+        self.assertIsInstance(event["data"]["object"], dict)             # nested too
 
 
 @override_settings(PAYMENTS_GATEWAY="fake", STRIPE_WEBHOOK_SECRET="whsec_test")

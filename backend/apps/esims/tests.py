@@ -46,19 +46,29 @@ def _drain():
 
 
 class ProvisioningTimeout:
-    def provision(self, **kwargs):
+    """Fails at the order phase — nothing is ever placed upstream."""
+
+    def order_esim(self, **kwargs):
+        raise SupplierTimeout("supplier timed out")
+
+    def query_esim(self, **kwargs):
         raise SupplierTimeout("supplier timed out")
 
 
 class FlakySupplier:
-    def __init__(self):
-        self.calls = 0
+    """Times out on the first order, succeeds on the retry."""
 
-    def provision(self, **kwargs):
-        self.calls += 1
-        if self.calls == 1:
+    def __init__(self):
+        self.order_calls = 0
+
+    def order_esim(self, **kwargs):
+        self.order_calls += 1
+        if self.order_calls == 1:
             raise SupplierTimeout("supplier timed out")
-        return FakeSupplier().provision(**kwargs)
+        return FakeSupplier().order_esim(**kwargs)
+
+    def query_esim(self, **kwargs):
+        return FakeSupplier().query_esim(**kwargs)
 
 
 @override_settings(SUPPLIER_GATEWAY="fake")

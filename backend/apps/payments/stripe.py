@@ -3,6 +3,7 @@ import hmac
 import json
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 
 class PaymentGatewayError(Exception):
@@ -45,13 +46,22 @@ class StripeGateway:
         return {"id": refund.id, "status": refund.status}
 
     def construct_event(self, payload, sig_header):
+        """Verify the signature and return the event as a **plain dict**.
+
+        ``Webhook.construct_event`` returns a ``StripeObject``, which overrides
+        ``__getattr__`` to resolve keys — so ``event.get(...)`` raises ``AttributeError``
+        ("no key named 'get'") rather than behaving like a dict. Downstream code must not
+        have to care which provider shape it is holding, so the already-verified raw
+        payload is decoded into ordinary dicts here.
+        """
         try:
-            event = self._stripe.Webhook.construct_event(
+            self._stripe.Webhook.construct_event(
                 payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
             )
         except Exception as exc:
             raise SignatureVerificationError(str(exc)) from exc
-        return event
+        body = payload if isinstance(payload, bytes) else payload.encode()
+        return json.loads(body)
 
 
 class FakeGateway:
@@ -87,4 +97,10 @@ def get_gateway():
     name = getattr(settings, "PAYMENTS_GATEWAY", "") or (
         "stripe" if settings.STRIPE_SECRET_KEY else "fake"
     )
-    return StripeGateway() if name == "stripe" else FakeGateway()
+    if name == "stripe":
+        return StripeGateway()
+    if name == "fake":
+        return FakeGateway()
+    raise ImproperlyConfigured(
+        f"PAYMENTS_GATEWAY={name!r} is unknown. Refusing to fall back to the fake gateway."
+    )
