@@ -12,9 +12,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.administration.audit import record_audit
 from apps.common.exceptions import InvalidCredentials
 
 from .models import CommissionPayout, Organization, PartnerCommission
+from .services import is_agency_account
 from .serializers import (
     CommissionPayoutSerializer,
     LoginSerializer,
@@ -91,6 +93,20 @@ class PasswordResetView(APIView):
         user = User.objects.filter(
             email=payload.validated_data["email"], is_active=True
         ).first()
+
+        # Agency credentials are platform-issued and cannot be self-managed, so an agency
+        # account cannot reset its own password — the platform does it via
+        # /admin/organizations/{id}/members/{id}/set-password/. The response below is
+        # identical either way, so this does not reveal whether the address exists.
+        if user is not None and is_agency_account(user=user):
+            record_audit(
+                action="password_reset.blocked_agency_account",
+                actor_type="system",
+                context={"email": user.email},
+                request=request,
+            )
+            user = None
+
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)

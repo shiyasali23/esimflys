@@ -1,6 +1,11 @@
+import json
+
+from django.conf import settings
 from django.core import mail
 from django.test import TestCase, override_settings
 from rest_framework.test import APITestCase
+
+from apps.administration.models import AuditEvent
 
 from apps.accounts.models import User
 from apps.catalog.models import CatalogPlan, Country, Supplier
@@ -184,6 +189,7 @@ class CartCheckoutAPITests(APITestCase):
         self.assertEqual(response.data["count"], 0)
 
 
+@override_settings(SUPPLIER_GATEWAY="fake")
 class GuestLookupTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -219,6 +225,51 @@ class GuestLookupTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_lookup_is_throttled(self):
+        """Guest lookup returns decrypted credentials, so it must be rate limited."""
+        from apps.orders.views import OrderLookupView
+
+        self.assertEqual(OrderLookupView.throttle_scope, "lookup")
+        self.assertIn("lookup", settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"])
+
+    def test_successful_lookup_is_audited(self):
+        order = self._guest_order()
+        self.client.post(
+            "/api/v1/orders/lookup/",
+            {"order_number": order.order_number, "email": "guest@example.com"},
+            format="json",
+        )
+        event = AuditEvent.objects.get(action="order.credentials_viewed")
+        self.assertEqual(event.object_id, order.id)
+        self.assertEqual(event.context["order_number"], order.order_number)
+
+    def test_failed_lookup_is_audited(self):
+        self.client.post(
+            "/api/v1/orders/lookup/",
+            {"order_number": "ESF-DOESNOTEXIST", "email": "nobody@example.com"},
+            format="json",
+        )
+        self.assertTrue(AuditEvent.objects.filter(action="order.lookup_failed").exists())
+
+    def test_lookup_audit_contains_no_credentials(self):
+        order = self._guest_order()
+        esim_services.enqueue_provisioning_for_order(order)
+        while esim_services.claim_and_process_one():
+            pass
+        profile = EsimProfile.objects.get(order_item__order=order)
+        credentials = esim_services.decrypt_credentials(profile)
+
+        self.client.post(
+            "/api/v1/orders/lookup/",
+            {"order_number": order.order_number, "email": "guest@example.com"},
+            format="json",
+        )
+        blob = json.dumps(
+            list(AuditEvent.objects.values("changes", "context", "object_repr"))
+        )
+        for secret in credentials.values():
+            self.assertNotIn(secret, blob)
 
 
 @override_settings(SUPPLIER_GATEWAY="fake")

@@ -1,15 +1,34 @@
 from django.db import transaction
 from django.utils import timezone
 
-from .models import CommissionPayout, PartnerCommission
+from apps.administration.audit import record_audit
+from apps.common.exceptions import Conflict
+
+from .models import CommissionPayout, Organization, PartnerCommission
 
 
 def create_commission_for_order(order):
-    org = order.referring_organization
+    if order.referring_organization_id is None:
+        return None
+    # Read the organization fresh rather than trusting ``order.referring_organization``:
+    # that descriptor may be a cached relation loaded earlier in a long transaction, and a
+    # financial gate must not depend on how the caller happened to load the order.
+    org = Organization.objects.filter(pk=order.referring_organization_id).first()
     promo = order.promo_code
     if org is None or promo is None:
         return None
     if not promo.commission_type or promo.commission_value is None:
+        return None
+    if not org.is_operational:
+        # A suspended, pending or closed agency must not accrue commission. Recorded so the
+        # withheld amount is visible to finance rather than silently vanishing.
+        record_audit(
+            action="commission.withheld_inactive_organization",
+            organization=org,
+            obj=order,
+            actor_type="system",
+            context={"organization_status": org.status, "order_number": order.order_number},
+        )
         return None
 
     commissionable = max(order.subtotal_minor - order.discount_minor, 0)
@@ -38,6 +57,68 @@ def create_commission_for_order(order):
     return obj
 
 
+#: Default agency commission: 20% of the amount billed, in basis points.
+DEFAULT_COMMISSION_BPS = 2000
+
+
+def is_agency_account(*, user=None, email=None):
+    """Whether an account belongs to a travel agency.
+
+    Agency credentials are issued by the platform and cannot be self-managed, so these
+    accounts are excluded from social login and from self-service password reset.
+
+    Only an *active* membership counts. Counting every historical row would let one agency
+    permanently strip Google login and password reset from any email it had ever added —
+    a lock the customer could not undo even after being removed from the organisation.
+    """
+    from .models import OrganizationMember
+
+    queryset = OrganizationMember.objects.filter(status="active")
+    if user is not None and getattr(user, "pk", None):
+        return queryset.filter(user=user).exists()
+    if email:
+        return queryset.filter(user__email__iexact=email.strip()).exists()
+    return False
+
+
+def create_agency_tracking_code(
+    organization, *, code, commission_bps=DEFAULT_COMMISSION_BPS, actor=None,
+    usage_limit=None, ends_at=None,
+):
+    """Issue a referral tracking code to a travel agency.
+
+    The customer pays full price — the code exists purely to attribute the sale so the
+    agency earns commission. Creating codes through this helper (rather than by hand)
+    guarantees the zero-discount and organization invariants and records who issued it.
+    """
+    from apps.orders.models import PromoCode
+
+    if not 0 < commission_bps <= 10000:
+        raise ValueError("commission_bps must be between 1 and 10000 (100%).")
+
+    with transaction.atomic():
+        promo = PromoCode.objects.create(
+            kind="tracking",
+            code=code,
+            organization=organization,
+            discount_type="percentage_bps",
+            discount_value=0,
+            commission_type="percentage_bps",
+            commission_value=commission_bps,
+            usage_limit=usage_limit,
+            ends_at=ends_at,
+            is_active=True,
+        )
+        record_audit(
+            action="promo_code.tracking_issued",
+            actor=actor,
+            organization=organization,
+            obj=promo,
+            changes={"code": code, "commission_bps": commission_bps},
+        )
+        return promo
+
+
 def reverse_commission_for_order(order, refunded_minor):
     if order.subtotal_minor <= 0 or refunded_minor <= 0:
         return
@@ -54,15 +135,70 @@ def reverse_commission_for_order(order, refunded_minor):
     commission.save(update_fields=["reversed_minor", "status", "updated_at"])
 
 
-def approve_commission(commission):
-    if commission.status in ("pending", "available"):
+#: Commission states that may still be approved. A reversed or cancelled commission never
+#: becomes payable again — the refund already happened.
+APPROVABLE_COMMISSION_STATES = ("pending", "available")
+
+
+class CommissionNotApprovable(Conflict):
+    error_code = "commission_not_approvable"
+    default_message = "This commission can no longer be approved."
+
+
+class NothingToPayOut(Conflict):
+    error_code = "nothing_to_pay_out"
+    default_message = "There are no approved commissions for that period."
+
+
+class PayoutAlreadyPaid(Conflict):
+    error_code = "payout_already_paid"
+    default_message = "This payout has already been paid."
+
+
+def approve_commission(commission, *, actor=None, request=None):
+    """Approve one commission for payout.
+
+    Review-first by design: commissions accrue as ``pending`` and only a human approval
+    makes them payable, which gives a window to catch refunds and disputes first.
+    """
+    with transaction.atomic():
+        commission = PartnerCommission.objects.select_for_update().get(pk=commission.pk)
+        if commission.status not in APPROVABLE_COMMISSION_STATES:
+            raise CommissionNotApprovable(
+                message=f"A commission in state '{commission.status}' cannot be approved."
+            )
+        if commission.commission_minor - commission.reversed_minor <= 0:
+            raise CommissionNotApprovable(
+                message="This commission has been fully reversed by refunds."
+            )
+
+        previous = commission.status
         commission.status = "approved"
         commission.approved_at = timezone.now()
         commission.save(update_fields=["status", "approved_at", "updated_at"])
-    return commission
+        record_audit(
+            action="commission.approved",
+            actor=actor,
+            organization=commission.organization,
+            obj=commission,
+            changes={"status": [previous, "approved"]},
+            context={
+                "net_minor": commission.commission_minor - commission.reversed_minor,
+                "order_id": str(commission.order_id),
+            },
+            request=request,
+        )
+        return commission
 
 
-def create_payout(organization, *, period_start, period_end, currency="USD"):
+def create_payout(organization, *, period_start, period_end, currency="USD",
+                  actor=None, request=None):
+    """Group an agency's approved commissions **for one period** into a draft payout.
+
+    The period filter matters: without it a January payout would sweep up commissions
+    earned in February, paying an agency for work that belongs to the next cycle.
+    Commissions are matched on the date the commission was created.
+    """
     with transaction.atomic():
         commissions = list(
             PartnerCommission.objects.select_for_update().filter(
@@ -70,8 +206,13 @@ def create_payout(organization, *, period_start, period_end, currency="USD"):
                 status="approved",
                 payout__isnull=True,
                 currency=currency,
+                created_at__date__gte=period_start,
+                created_at__date__lte=period_end,
             )
         )
+        if not commissions:
+            raise NothingToPayOut()
+
         net = sum(c.commission_minor - c.reversed_minor for c in commissions)
         payout = CommissionPayout.objects.create(
             organization=organization,
@@ -84,14 +225,59 @@ def create_payout(organization, *, period_start, period_end, currency="USD"):
         PartnerCommission.objects.filter(id__in=[c.id for c in commissions]).update(
             payout=payout
         )
+        record_audit(
+            action="payout.created",
+            actor=actor,
+            organization=organization,
+            obj=payout,
+            changes={"amount_minor": [None, payout.amount_minor]},
+            context={
+                "period": f"{period_start}..{period_end}",
+                "commission_count": len(commissions),
+            },
+            request=request,
+        )
         return payout
 
 
-def mark_payout_paid(payout):
+def mark_payout_paid(payout, *, actor=None, reference=None, method=None, request=None):
+    """Record that an agency has actually been paid.
+
+    Guarded against double payment — money leaving twice is the expensive mistake here.
+    """
     with transaction.atomic():
         payout = CommissionPayout.objects.select_for_update().get(pk=payout.pk)
+        if payout.status == "paid":
+            raise PayoutAlreadyPaid()
+        if payout.status in ("cancelled", "failed"):
+            raise PayoutAlreadyPaid(
+                message=f"A payout in state '{payout.status}' cannot be paid."
+            )
+
+        previous = payout.status
         payout.status = "paid"
         payout.paid_at = timezone.now()
-        payout.save(update_fields=["status", "paid_at", "updated_at"])
+        if reference:
+            payout.external_reference = reference
+        if method:
+            payout.payment_method = method
+        payout.save(
+            update_fields=[
+                "status", "paid_at", "external_reference", "payment_method", "updated_at",
+            ]
+        )
         payout.commissions.update(status="paid", paid_at=timezone.now())
-    return payout
+        record_audit(
+            action="payout.paid",
+            actor=actor,
+            organization=payout.organization,
+            obj=payout,
+            changes={"status": [previous, "paid"]},
+            context={
+                "amount_minor": payout.amount_minor,
+                "reference": reference or "",
+                "commission_count": payout.commissions.count(),
+            },
+            request=request,
+        )
+        return payout

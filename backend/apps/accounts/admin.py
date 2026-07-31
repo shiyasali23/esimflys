@@ -52,8 +52,19 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.action(description="Approve selected commissions")
 def approve_commissions(modeladmin, request, queryset):
+    """Bulk-approve, skipping anything already settled or fully reversed by a refund."""
+    approved = skipped = 0
     for commission in queryset:
-        services.approve_commission(commission)
+        try:
+            services.approve_commission(commission, actor=request.user, request=request)
+            approved += 1
+        except services.CommissionNotApprovable:
+            skipped += 1
+    modeladmin.message_user(
+        request,
+        f"Approved {approved} commission(s). Skipped {skipped} "
+        "(already settled, or fully reversed by refunds).",
+    )
 
 
 class OrganizationMemberInline(admin.TabularInline):

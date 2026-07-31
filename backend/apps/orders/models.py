@@ -7,6 +7,7 @@ from apps.common.models import CIEmailField, CITextField, TimestampedModel, UUID
 CART_STATUSES = ("active", "converted", "expired", "abandoned")
 CART_ITEM_TYPES = ("esim", "topup")
 DISCOUNT_TYPES = ("fixed", "percentage_bps")
+PROMO_CODE_KINDS = ("discount", "tracking")
 COMMISSION_TYPES = ("percentage_bps", "fixed")
 REDEMPTION_STATUSES = ("reserved", "consumed", "released", "cancelled")
 ORDER_STATUSES = (
@@ -132,6 +133,20 @@ class CartItem(UUIDModel, TimestampedModel):
 
 
 class PromoCode(UUIDModel, TimestampedModel):
+    """A code entered at checkout.
+
+    Two distinct kinds, separated structurally rather than by convention:
+
+    * ``discount`` — reduces what the customer pays.
+    * ``tracking`` — an agency referral code. The customer pays **full price**; the code
+      exists only to attribute the sale to a travel agency so commission can be earned.
+
+    A tracking code is forced to ``discount_value=0`` by a database constraint, so it can
+    never be edited into a discount later, and must belong to an organization (an
+    unattributed tracking code would be meaningless).
+    """
+
+    kind = models.CharField(max_length=20, default="discount")
     code = CITextField(unique=True)
     organization = models.ForeignKey(
         "accounts.Organization", on_delete=models.PROTECT, null=True, blank=True,
@@ -185,10 +200,47 @@ class PromoCode(UUIDModel, TimestampedModel):
                 | Q(ends_at__isnull=True)
                 | Q(starts_at__lte=F("ends_at")),
             ),
+            models.CheckConstraint(
+                name="promo_kind_valid", condition=Q(kind__in=PROMO_CODE_KINDS)
+            ),
+            # A tracking code must never reduce the customer's price.
+            models.CheckConstraint(
+                name="promo_tracking_has_no_discount",
+                condition=~Q(kind="tracking") | Q(discount_value=0),
+            ),
+            # A tracking code with no agency attributes nothing.
+            models.CheckConstraint(
+                name="promo_tracking_requires_organization",
+                condition=~Q(kind="tracking") | Q(organization__isnull=False),
+            ),
         ]
 
 
+class OrderQuerySet(models.QuerySet):
+    """Tenant-scoping helpers.
+
+    There are deliberately **two** separate methods rather than one combined filter,
+    because the two agency relationships must not grant the same visibility:
+
+    * ``for_agency_buyer`` — the agency purchased on behalf of its own customer, so it may
+      see the customer and the eSIM credentials.
+    * ``for_agency_referral`` — a *platform* customer merely used the agency's coupon. The
+      agency may see commission-relevant figures and nothing else.
+
+    A single ``Q(buyer=org) | Q(referring=org)`` filter would inevitably be reused by a
+    detail serializer and leak retail customers' PII to any agency holding a coupon.
+    """
+
+    def for_agency_buyer(self, organization):
+        return self.filter(buyer_organization=organization)
+
+    def for_agency_referral(self, organization):
+        return self.filter(referring_organization=organization)
+
+
 class Order(UUIDModel, TimestampedModel):
+    objects = OrderQuerySet.as_manager()
+
     order_number = models.CharField(max_length=40, unique=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

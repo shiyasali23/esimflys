@@ -58,6 +58,16 @@ ORGANIZATION_TYPES = ("travel_agency", "business", "affiliate")
 COMMISSION_TYPES = ("percentage_bps", "fixed")
 MEMBER_ROLES = ("owner", "admin", "buyer", "viewer")
 MEMBER_STATUSES = ("invited", "active", "disabled")
+ORGANIZATION_STATUSES = ("pending", "active", "suspended", "rejected", "closed")
+
+#: Legal organization status transitions. Anything else is rejected by the service layer.
+ORGANIZATION_TRANSITIONS = {
+    "pending": {"active", "rejected", "closed"},
+    "active": {"suspended", "closed"},
+    "suspended": {"active", "closed"},
+    "rejected": {"pending", "closed"},
+    "closed": set(),
+}
 
 
 class Organization(UUIDModel, TimestampedModel):
@@ -65,10 +75,21 @@ class Organization(UUIDModel, TimestampedModel):
     organization_type = models.CharField(max_length=30)
     billing_email = CIEmailField()
     status = models.CharField(max_length=20, default="pending")
+    support_email = CIEmailField(null=True, blank=True)
+    country = models.CharField(max_length=2, null=True, blank=True)
     default_commission_type = models.CharField(max_length=20, null=True, blank=True)
     default_commission_value = models.BigIntegerField(null=True, blank=True)
     commission_currency = models.CharField(max_length=3, null=True, blank=True)
     metadata = models.JSONField(default=dict)
+
+    # Lifecycle audit trail (who let this agency trade, and when).
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="approved_organizations",
+    )
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspension_reason = models.TextField(null=True, blank=True)
 
     class Meta:
         db_table = "organizations"
@@ -82,10 +103,22 @@ class Organization(UUIDModel, TimestampedModel):
                 condition=models.Q(default_commission_type__isnull=True)
                 | models.Q(default_commission_type__in=COMMISSION_TYPES),
             ),
+            models.CheckConstraint(
+                name="organization_status_valid",
+                condition=models.Q(status__in=ORGANIZATION_STATUSES),
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "organization_type"]),
         ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_operational(self):
+        """Whether the organization may transact (earn commission, access agency scope)."""
+        return self.status == "active"
 
 
 class OrganizationMember(UUIDModel, TimestampedModel):

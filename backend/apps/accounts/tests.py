@@ -144,6 +144,115 @@ class GoogleOAuthLinkingTests(TestCase):
         self.assertFalse(User.objects.filter(pk=sociallogin.user.pk).exists())
 
 
+class AgencyCredentialPolicyTests(TestCase):
+    """Agency credentials are platform-issued: no social login, no self-service reset."""
+
+    def setUp(self):
+        self.agency = Organization.objects.create(
+            name="Sunrise", organization_type="travel_agency",
+            billing_email="s@s.com", status="active",
+        )
+        self.agent = User.objects.create_user(
+            email="agent@sunrise.com", password="AgencyPass!2345"
+        )
+        OrganizationMember.objects.create(
+            organization=self.agency, user=self.agent, role="owner", status="active"
+        )
+        self.customer = User.objects.create_user(
+            email="shopper@example.com", password="CustPass!2345"
+        )
+
+    def test_agency_account_is_detected(self):
+        self.assertTrue(services.is_agency_account(user=self.agent))
+        self.assertTrue(services.is_agency_account(email="AGENT@SUNRISE.COM"))
+        self.assertFalse(services.is_agency_account(user=self.customer))
+        self.assertFalse(services.is_agency_account(email="nobody@example.com"))
+
+    def test_disabled_member_is_no_longer_an_agency_account(self):
+        """Only an active membership brands an account.
+
+        Counting historical rows let any agency permanently strip Google login and password
+        reset from any email it had ever added — a lock the person could not undo even after
+        being removed from the organisation.
+        """
+        OrganizationMember.objects.filter(user=self.agent).update(status="disabled")
+        self.assertFalse(services.is_agency_account(user=self.agent))
+        self.assertFalse(services.is_agency_account(email="agent@sunrise.com"))
+
+    def test_google_login_is_blocked_for_agency_accounts(self):
+        from allauth.exceptions import ImmediateHttpResponse
+
+        sociallogin = self._sociallogin("agent@sunrise.com")
+        with self.assertRaises(ImmediateHttpResponse):
+            SocialAccountAdapter().pre_social_login(_oauth_request(), sociallogin)
+
+    def test_google_login_still_works_for_customers(self):
+        sociallogin = self._sociallogin("shopper@example.com")
+        SocialAccountAdapter().pre_social_login(_oauth_request(), sociallogin)
+        self.assertEqual(sociallogin.user.pk, self.customer.pk)
+
+    def _sociallogin(self, email, verified=True):
+        account = SocialAccount(provider="google", uid="uid-1", extra_data={"email": email})
+        sociallogin = SocialLogin(user=User(email=email), account=account)
+        sociallogin.email_addresses = [
+            EmailAddress(email=email, verified=verified, primary=True)
+        ]
+        return sociallogin
+
+
+class AgencyPasswordResetPolicyTests(APITestCase):
+    def setUp(self):
+        self.agency = Organization.objects.create(
+            name="Sunrise", organization_type="travel_agency",
+            billing_email="s@s.com", status="active",
+        )
+        self.agent = User.objects.create_user(
+            email="agent@sunrise.com", password="AgencyPass!2345"
+        )
+        OrganizationMember.objects.create(
+            organization=self.agency, user=self.agent, role="owner", status="active"
+        )
+        User.objects.create_user(email="shopper@example.com", password="CustPass!2345")
+
+    def test_agency_self_service_reset_sends_no_email(self):
+        from django.core import mail
+
+        response = self.client.post(
+            "/api/v1/auth/password-reset/", {"email": "agent@sunrise.com"}, format="json"
+        )
+        # Same 200 as any other address — no account enumeration.
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_blocked_reset_is_audited(self):
+        from apps.administration.models import AuditEvent
+
+        self.client.post(
+            "/api/v1/auth/password-reset/", {"email": "agent@sunrise.com"}, format="json"
+        )
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action="password_reset.blocked_agency_account"
+            ).exists()
+        )
+
+    def test_customer_reset_still_works(self):
+        from django.core import mail
+
+        response = self.client.post(
+            "/api/v1/auth/password-reset/", {"email": "shopper@example.com"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_agency_can_still_log_in_with_the_issued_password(self):
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"email": "agent@sunrise.com", "password": "AgencyPass!2345"}, format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+
 class CommissionServiceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -175,6 +284,122 @@ class CommissionServiceTests(TestCase):
         self.assertEqual(commission.commissionable_minor, 1800)
         self.assertEqual(commission.commission_minor, 270)  # floor(1800 * 1500 / 10000)
         self.assertEqual(commission.status, "pending")
+
+    def test_suspended_organization_earns_no_commission(self):
+        """A suspended agency must not accrue commission (audited, not silent)."""
+        from apps.administration.models import AuditEvent
+
+        order = self._agency_order(qty=1)
+        self.org.status = "suspended"
+        self.org.save(update_fields=["status"])
+
+        self.assertIsNone(services.create_commission_for_order(order))
+        self.assertFalse(PartnerCommission.objects.filter(order=order).exists())
+        event = AuditEvent.objects.get(action="commission.withheld_inactive_organization")
+        self.assertEqual(event.context["organization_status"], "suspended")
+
+    def test_pending_organization_earns_no_commission(self):
+        order = self._agency_order(qty=1)
+        self.org.status = "pending"
+        self.org.save(update_fields=["status"])
+        self.assertIsNone(services.create_commission_for_order(order))
+
+    def test_active_organization_still_earns_commission(self):
+        order = self._agency_order(qty=1)
+        self.assertEqual(self.org.status, "active")
+        self.assertIsNotNone(services.create_commission_for_order(order))
+
+    def test_invalid_organization_status_is_rejected_by_the_database(self):
+        from django.db import IntegrityError, transaction
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Organization.objects.create(
+                    name="Bad", organization_type="travel_agency",
+                    billing_email="b@b.com", status="not-a-real-status",
+                )
+
+    def test_tracking_code_gives_no_discount_and_commission_on_full_price(self):
+        """The agreed model: attribution only, customer pays full price."""
+        services.create_agency_tracking_code(self.org, code="TRACK-ME", commission_bps=2000)
+        cart, _ = order_services.create_cart(user=None)
+        order_services.add_item(cart, product_code="FR-5GB-30D", quantity=2)  # 2 x 2000
+        order = order_services.checkout(
+            cart_id=cart.id, customer_email="a@b.com", promo_code="TRACK-ME"
+        )
+        self.assertEqual(order.discount_minor, 0)
+        self.assertEqual(order.total_minor, order.subtotal_minor)
+        self.assertEqual(order.referring_organization_id, self.org.id)
+
+        commission = services.create_commission_for_order(order)
+        self.assertEqual(commission.commissionable_minor, order.subtotal_minor)
+        self.assertEqual(commission.commission_minor, order.subtotal_minor * 2000 // 10000)
+
+    def test_tracking_code_cannot_carry_a_discount(self):
+        from django.db import IntegrityError, transaction
+
+        from apps.orders.models import PromoCode
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                PromoCode.objects.create(
+                    kind="tracking", code="SNEAKY", organization=self.org,
+                    discount_type="percentage_bps", discount_value=5000,
+                    commission_type="percentage_bps", commission_value=2000,
+                )
+
+    def test_existing_tracking_code_cannot_be_edited_into_a_discount(self):
+        from django.db import IntegrityError, transaction
+
+        from apps.orders.models import PromoCode
+
+        promo = services.create_agency_tracking_code(self.org, code="TRACK-2")
+        promo.discount_value = 3000
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                promo.save(update_fields=["discount_value"])
+        self.assertEqual(PromoCode.objects.get(code="TRACK-2").discount_value, 0)
+
+    def test_tracking_code_requires_an_organization(self):
+        from django.db import IntegrityError, transaction
+
+        from apps.orders.models import PromoCode
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                PromoCode.objects.create(
+                    kind="tracking", code="ORPHAN", organization=None,
+                    discount_type="percentage_bps", discount_value=0,
+                )
+
+    def test_tracking_code_issue_is_audited(self):
+        from apps.administration.models import AuditEvent
+
+        services.create_agency_tracking_code(self.org, code="AUDITED-CODE")
+        event = AuditEvent.objects.get(action="promo_code.tracking_issued")
+        self.assertEqual(event.organization_id, self.org.id)
+        self.assertEqual(event.changes["commission_bps"], 2000)
+
+    def test_invalid_commission_rate_is_rejected(self):
+        for bad in (0, -100, 10001):
+            with self.assertRaises(ValueError):
+                services.create_agency_tracking_code(
+                    self.org, code=f"BAD-{bad}", commission_bps=bad
+                )
+
+    def test_discount_codes_are_still_supported(self):
+        """Tracking is additive — ordinary discount codes must keep working."""
+        from apps.orders.models import PromoCode
+
+        PromoCode.objects.create(
+            code="REAL10", discount_type="percentage_bps", discount_value=1000,
+        )
+        cart, _ = order_services.create_cart(user=None)
+        order_services.add_item(cart, product_code="FR-5GB-30D", quantity=1)
+        order = order_services.checkout(
+            cart_id=cart.id, customer_email="a@b.com", promo_code="REAL10"
+        )
+        self.assertEqual(order.discount_minor, 200)
 
     def test_no_commission_without_agency_promo(self):
         cart, _ = order_services.create_cart(user=None)

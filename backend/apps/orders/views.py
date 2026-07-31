@@ -4,7 +4,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.administration.audit import record_audit
 from apps.common.exceptions import Conflict
+from apps.esims.models import EsimProfile
+from apps.esims.services import decrypt_credentials
 
 from . import services
 from .models import Cart, Order
@@ -163,29 +166,48 @@ class OrderDetailView(RetrieveAPIView):
 
 
 class OrderLookupView(APIView):
+    """Guest retrieval of an order and its eSIM activation credentials.
+
+    This endpoint returns decrypted secrets to an unauthenticated caller who presents an
+    order number plus the matching email, so it is throttled (``lookup`` scope) and every
+    call — successful or not — is written to the audit trail.
+    """
+
     permission_classes = [AllowAny]
+    throttle_scope = "lookup"
 
     def post(self, request):
         payload = OrderLookupSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
+        order_number = payload.validated_data["order_number"]
+        email = payload.validated_data["email"]
+
         order = (
-            Order.objects.filter(
-                order_number=payload.validated_data["order_number"],
-                customer_email=payload.validated_data["email"],
-            )
+            Order.objects.filter(order_number=order_number, customer_email=email)
             .prefetch_related("items")
             .first()
         )
         if order is None:
+            record_audit(
+                action="order.lookup_failed",
+                actor_type="customer",
+                request=request,
+                context={"order_number": order_number},
+            )
             raise Conflict(
                 message="No matching order was found.", error_code="not_found", status_code=404
             )
 
-        from apps.esims.models import EsimProfile
-        from apps.esims.services import decrypt_credentials
-
-        profiles = EsimProfile.objects.filter(order_item__order=order).select_related(
-            "order_item"
+        profiles = list(
+            EsimProfile.objects.filter(order_item__order=order).select_related("order_item")
+        )
+        record_audit(
+            action="order.credentials_viewed",
+            obj=order,
+            actor=order.user,
+            actor_type="customer",
+            request=request,
+            context={"order_number": order.order_number, "esim_count": len(profiles)},
         )
         esims = [
             {
