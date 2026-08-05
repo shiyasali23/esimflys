@@ -72,3 +72,6 @@ tmp/
 # or deploy; keeping it out of history keeps clones fast.
 /support_docs/
 /support_docs
+.claude/
+claude/*
+/.claude/
