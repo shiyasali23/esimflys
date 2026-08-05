@@ -10,6 +10,71 @@ defaults:
     working-directory: frontend
 
 jobs:
+  backend:
+    runs-on: ubuntu-latest
+    # The workflow-level default is `frontend`; this job lives in `backend`.
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        # Matches production. The default superuser is required: the first migration of
+        # both `accounts` and `catalog` runs CREATE EXTENSION citext.
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: esimflys_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ci-secret-not-used-outside-ci
+      # Settings default DEBUG to False, which turns on the production guard: it demands
+      # every real secret, refuses LocMemCache, and refuses the fake gateways the suite
+      # runs on. Tests are not production, so DEBUG stays on here.
+      DJANGO_DEBUG: "True"
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/esimflys_test
+      ICCID_HMAC_KEY: ci-hmac-key-not-used-outside-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Generate a throwaway field-encryption key
+        # Fernet rejects anything that is not a 32-byte urlsafe-base64 key, so this cannot
+        # be a placeholder string. Generated per run: no key material lives in the repo.
+        run: |
+          echo "FIELD_ENCRYPTION_KEY=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_ENV"
+
+      - name: Django system checks
+        run: python manage.py check
+
+      - name: Fail if a migration was not generated
+        # Catches the classic "changed a model, forgot makemigrations" break, which would
+        # otherwise only surface as a column-does-not-exist error in production.
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run tests
+        run: python manage.py test --noinput
+
   build:
     runs-on: ubuntu-latest
     steps:

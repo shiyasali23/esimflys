@@ -71,3 +71,4 @@ tmp/
 # findings register that maps unpatched vulnerabilities. Not needed to build
 # or deploy; keeping it out of history keeps clones fast.
 /support_docs/
+/support_docs
