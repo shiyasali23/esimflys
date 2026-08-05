@@ -1,24 +1,26 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
-import { Building2, ShieldCheck } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { useSession } from "@/features/auth/use-session.client";
 import { usePortals } from "@/features/auth/use-portals.client";
 import { cn } from "@/lib/cn";
 import { routes } from "@/config/routes";
 
 /**
- * Links to the agency and admin portals, for the people who have them.
+ * A link back to the agency portal, for a partner who wandered onto the storefront.
  *
- * Without these the panels are reachable only by typing a URL. Both are probed
- * server-side rather than guessed from the account payload, so nothing appears
- * for a customer — and a link is never shown that would land on "no access".
+ * There is deliberately NO admin link. Advertising the admin panel in the public
+ * header buys nothing — staff know the URL — while putting its location in front of
+ * every customer who happens to be signed in.
  *
- * A user may hold both.
+ * Membership is probed server-side rather than guessed from the account payload, so
+ * nothing renders for a customer and no link is ever shown that would land on
+ * "no access".
  */
 export function PortalLinks({ overHero = false }) {
   const user = useSession((s) => s.user);
-  const { organizations, isAdmin, load } = usePortals();
+  const { organizations, load } = usePortals();
 
   useEffect(() => {
     if (user) load();
@@ -27,7 +29,7 @@ export function PortalLinks({ overHero = false }) {
   if (!user || organizations === undefined) return null;
 
   const agency = organizations?.[0];
-  if (!agency && !isAdmin) return null;
+  if (!agency) return null;
 
   const style = cn(
     "hidden items-center gap-1.5 rounded-full border px-3 py-2 text-sm font-semibold transition-colors lg:inline-flex",
@@ -37,19 +39,9 @@ export function PortalLinks({ overHero = false }) {
   );
 
   return (
-    <>
-      {agency ? (
-        <Link href={routes.agency(agency.id)} className={style} title={agency.name}>
-          <Building2 size={16} aria-hidden />
-          Agency
-        </Link>
-      ) : null}
-      {isAdmin ? (
-        <Link href={routes.admin()} className={style}>
-          <ShieldCheck size={16} aria-hidden />
-          Admin
-        </Link>
-      ) : null}
-    </>
+    <Link href={routes.agency(agency.id)} className={style} title={agency.name}>
+      <Building2 size={16} aria-hidden />
+      Agency
+    </Link>
   );
 }

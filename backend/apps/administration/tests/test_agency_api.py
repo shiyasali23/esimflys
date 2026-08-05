@@ -158,39 +158,33 @@ class AgencyRoleTests(AgencyScenario):
                 self.client.get(agency_url(self.alpha, suffix)).status_code, 200, suffix
             )
 
-    def test_viewer_cannot_edit_the_profile(self):
-        self.client.force_authenticate(self.alpha_viewer)
-        response = self.client.patch(
-            agency_url(self.alpha, "profile/"), {"name": "Hacked"}, format="json"
-        )
-        self.assertEqual(response.status_code, 403)
-        self.alpha.refresh_from_db()
-        self.assertEqual(self.alpha.name, "Alpha")
-
-    def test_viewer_cannot_manage_staff(self):
-        self.client.force_authenticate(self.alpha_viewer)
-        response = self.client.post(
-            agency_url(self.alpha, "members/"),
-            {"email": "alpha-buyer@example.com", "role": "viewer"}, format="json",
-        )
-        self.assertEqual(response.status_code, 403)
-
     def test_viewer_cannot_reach_the_activity_log(self):
         self.client.force_authenticate(self.alpha_viewer)
         self.assertEqual(
             self.client.get(agency_url(self.alpha, "activity/")).status_code, 403
         )
 
-    def test_owner_can_edit_the_profile(self):
+
+class AgencyIsReadOnlyTests(AgencyScenario):
+    """The portal reports; it never writes.
+
+    An agency sees what its referral code sold and what it earned. Everything about
+    the agency itself — its name, its commission terms, and every one of its logins —
+    is issued and changed by the platform. Removing the screens is not enough: these
+    assert the API refuses the writes, because anyone holding an agency password could
+    otherwise call it directly.
+    """
+
+    def test_even_an_owner_cannot_edit_the_profile(self):
         self.client.force_authenticate(self.alpha_owner)
         response = self.client.patch(
             agency_url(self.alpha, "profile/"),
             {"name": "Alpha Travel", "support_email": "help@alpha.com"}, format="json",
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 405)
         self.alpha.refresh_from_db()
-        self.assertEqual(self.alpha.name, "Alpha Travel")
-        self.assertTrue(
+        self.assertEqual(self.alpha.name, "Alpha")
+        self.assertFalse(
             AuditEvent.objects.filter(action="organization.profile_updated").exists()
         )
 
@@ -210,44 +204,39 @@ class AgencyRoleTests(AgencyScenario):
             agency_url(self.alpha, "profile/"), {"status": "active"}, format="json"
         )
         self.alpha.refresh_from_db()
-        self.assertEqual(self.alpha.status, "active")  # unchanged, not settable
+        self.assertEqual(self.alpha.status, "active")
 
-    def test_admin_cannot_promote_anyone_to_owner(self):
+    def test_no_role_can_add_a_login(self):
+        for actor in (self.alpha_owner, self.alpha_admin, self.alpha_viewer):
+            self.client.force_authenticate(actor)
+            response = self.client.post(
+                agency_url(self.alpha, "members/"),
+                {"email": "alpha-buyer@example.com", "role": "viewer"}, format="json",
+            )
+            self.assertEqual(response.status_code, 405, actor.email)
+
+    def test_the_member_detail_route_does_not_exist(self):
+        # Role changes, disabling and removal are platform operations only, so there is
+        # no tenant-facing endpoint to reach at all.
         membership = OrganizationMember.objects.get(user=self.alpha_buyer)
-        self.client.force_authenticate(self.alpha_admin)
-        response = self.client.patch(
-            agency_url(self.alpha, f"members/{membership.id}/"),
-            {"role": "owner"}, format="json",
-        )
-        self.assertEqual(response.status_code, 403)
-
-    def test_admin_can_manage_a_buyer(self):
-        membership = OrganizationMember.objects.get(user=self.alpha_buyer)
-        self.client.force_authenticate(self.alpha_admin)
-        response = self.client.patch(
-            agency_url(self.alpha, f"members/{membership.id}/"),
-            {"role": "viewer"}, format="json",
-        )
-        self.assertEqual(response.status_code, 200)
-
-    def test_admin_cannot_modify_an_owner(self):
-        owner_membership = OrganizationMember.objects.get(user=self.alpha_owner)
-        self.client.force_authenticate(self.alpha_admin)
-        response = self.client.patch(
-            agency_url(self.alpha, f"members/{owner_membership.id}/"),
-            {"status": "disabled"}, format="json",
-        )
-        self.assertEqual(response.status_code, 403)
-
-    def test_last_owner_is_protected_in_agency_scope(self):
-        owner_membership = OrganizationMember.objects.get(user=self.alpha_owner)
         self.client.force_authenticate(self.alpha_owner)
-        response = self.client.patch(
-            agency_url(self.alpha, f"members/{owner_membership.id}/"),
-            {"role": "viewer"}, format="json",
-        )
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.data["error"]["code"], "last_owner_protected")
+        for method in ("patch", "delete"):
+            response = getattr(self.client, method)(
+                agency_url(self.alpha, f"members/{membership.id}/")
+            )
+            self.assertEqual(response.status_code, 404, method)
+
+    def test_membership_is_unchanged_after_every_attempt(self):
+        membership = OrganizationMember.objects.get(user=self.alpha_buyer)
+        self.assertEqual(membership.role, "buyer")
+        self.assertEqual(membership.status, "active")
+
+    def test_reading_still_works(self):
+        self.client.force_authenticate(self.alpha_owner)
+        for suffix in ("profile/", "members/", "sales/", "commissions/", "payouts/"):
+            self.assertEqual(
+                self.client.get(agency_url(self.alpha, suffix)).status_code, 200, suffix
+            )
 
 
 class AgencyDashboardTests(AgencyScenario):

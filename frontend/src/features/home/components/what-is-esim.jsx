@@ -8,7 +8,7 @@ export function WhatIsEsim() {
     <section className="bg-[#f5f5fb]">
       <div className="relative mx-auto hidden max-w-6xl lg:block">
         <Image
-          src="/images/what-is-esim.png"
+          src="/images/what-is-esim.webp"
           alt="Travel eSIM journey — a suitcase and phone at departure linked by a flight path to a city skyline and a connected phone on arrival."
           width={1600}
           height={746}
@@ -37,7 +37,7 @@ export function WhatIsEsim() {
           Learn more about eSIMs →
         </Link>
         <Image
-          src="/images/what-is-esim-mobile.png"
+          src="/images/what-is-esim-mobile.webp"
           alt="A smartphone showing a Wi-Fi signal in front of a city skyline with an airplane overhead — travel eSIM data on arrival."
           width={640}
           height={576}

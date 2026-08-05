@@ -95,6 +95,16 @@ def handle_webhook_event(payload_bytes, sig_header):
         with transaction.atomic():
             _dispatch(event_type, event)
     except PaymentMismatch as exc:
+        # Reached only after the transaction above has rolled back, so these writes are
+        # in autocommit and actually survive. Quarantining the payment here is the point:
+        # a signed event that does not reconcile must leave the payment visibly failed,
+        # not sitting at "processing" forever with the failure recorded only on the
+        # webhook row that operators do not watch.
+        payment_id = getattr(exc, "payment_id", None)
+        if payment_id is not None:
+            Payment.objects.filter(pk=payment_id, status="processing").update(
+                status="failed", failure_code="reconciliation_mismatch"
+            )
         webhook.status = "failed"
         webhook.last_error = str(exc.message)
         webhook.attempt_count += 1
@@ -107,12 +117,80 @@ def handle_webhook_event(payload_bytes, sig_header):
     return {"ok": True, "status": 200}
 
 
+#: Event types we deliberately ignore. Anything outside this set and the handled set is
+#: logged loudly rather than silently absorbed — a 200 tells Stripe "dealt with", and it
+#: never retries. Absorbing a dispute that way loses the only notification we get.
+_IGNORED_EVENT_TYPES = frozenset({
+    "payment_intent.created",
+    "payment_intent.processing",
+    "payment_intent.requires_action",
+    "charge.succeeded",
+    "charge.updated",
+    "charge.pending",
+})
+
+
 def _dispatch(event_type, event):
     obj = event["data"]["object"]
     if event_type == "payment_intent.succeeded":
         _handle_succeeded(obj)
     elif event_type == "payment_intent.payment_failed":
         _handle_failed(obj)
+    elif event_type in ("refund.updated", "refund.failed", "charge.refund.updated"):
+        _handle_refund_update(obj)
+    elif event_type in _IGNORED_EVENT_TYPES:
+        return
+    else:
+        # Disputes and chargebacks land here. We have no automated handling yet, so the
+        # only safe behaviour is to make them impossible to miss: money may be leaving.
+        logger.error(
+            "Unhandled Stripe event %s (object %s) — needs manual review",
+            event_type, obj.get("id"),
+        )
+
+
+def _handle_refund_update(refund_obj):
+    """Finalise a refund that the gateway completed asynchronously.
+
+    ``create_refund`` stores anything other than an immediate success as ``processing``.
+    Without this, Stripe returns the customer's money and nothing changes locally — for
+    ever. The order stays paid, commission stays payable, and no refund email is sent,
+    while the admin UI shows the refund as successful.
+    """
+    provider_refund_id = refund_obj.get("id")
+    if not provider_refund_id:
+        raise PaymentMismatch(message="Refund event carried no refund id.")
+
+    refund = (
+        Refund.objects.select_for_update()
+        .filter(provider="stripe", provider_refund_id=provider_refund_id)
+        .first()
+    )
+    if refund is None:
+        raise PaymentMismatch(message="No local refund matches this event.")
+    if refund.status == "succeeded":
+        return  # already finalised; Stripe retries are expected
+
+    status = str(refund_obj.get("status") or "").lower()
+    if status == "succeeded":
+        payment = Payment.objects.select_for_update().get(pk=refund.payment_id)
+        order = Order.objects.select_for_update().get(pk=payment.order_id)
+        refund.status = "succeeded"
+        refund.completed_at = timezone.now()
+        refund.save(update_fields=["status", "completed_at", "updated_at"])
+        _apply_successful_refund(payment, order, refund.amount_minor)
+        queue_notification(
+            template_code="refund-confirmation",
+            recipient=order.customer_email,
+            idempotency_key=f"notify:refund-confirmation:{refund.id}",
+            user=order.user,
+            order=order,
+        )
+    elif status in ("failed", "canceled", "cancelled"):
+        # The money did not move. Releasing the reservation lets the balance be refunded
+        # again rather than staying locked against a refund that never happened.
+        refund.status = "failed" if status == "failed" else "cancelled"
+        refund.save(update_fields=["status", "updated_at"])
 
 
 def _handle_succeeded(intent):
@@ -133,10 +211,14 @@ def _handle_succeeded(intent):
         and metadata.get("order_id") == str(order.id)
     )
     if not reconciled:
-        payment.status = "failed"
-        payment.failure_code = "reconciliation_mismatch"
-        payment.save(update_fields=["status", "failure_code", "updated_at"])
-        raise PaymentMismatch()
+        # Deliberately no write here. Raising aborts the surrounding transaction, so
+        # anything saved on this path is rolled back with it — the payment would be
+        # left stale at "processing" while only the webhook row recorded the failure.
+        # The id travels on the exception and the caller records the failure once the
+        # rollback is complete.
+        mismatch = PaymentMismatch()
+        mismatch.payment_id = payment.pk
+        raise mismatch
 
     if order.payment_status == "paid":
         if payment.status != "succeeded":

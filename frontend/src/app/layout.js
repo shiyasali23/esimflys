@@ -3,6 +3,9 @@ import { Oswald, Poppins } from "next/font/google";
 import { SITE } from "@/config/site";
 import { SkipLink } from "@/components/layout/skip-link";
 import { NoFlashCurrencyScript } from "@/components/currency/no-flash-script";
+import { RatesProvider } from "@/components/currency/rates-provider.client";
+import { AccountCurrencySync } from "@/components/currency/account-currency-sync.client";
+import { getRates } from "@/server/rates";
 import { ConsentBanner } from "@/components/layout/consent-banner.client";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
@@ -44,7 +47,17 @@ export const viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({ children }) {
+/**
+ * The FX table is fetched here, once, and shared with every `<Price>` on the page.
+ *
+ * This is a plain ISR fetch — no `cookies()` and no header sniffing — so the layout
+ * stays statically generated and the emitted HTML is identical for every visitor.
+ * Which currency a person sees is decided in the browser from their cookie, which is
+ * what keeps the page safe to sit behind a CDN.
+ */
+export default async function RootLayout({ children }) {
+  const fx = await getRates();
+
   return (
     <html
       lang="en"
@@ -52,10 +65,13 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body>
-        <NoFlashCurrencyScript />
+        <NoFlashCurrencyScript offered={Object.keys(fx.rates)} />
         <SkipLink />
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
-        {children}
+        <RatesProvider value={fx}>
+          <AccountCurrencySync />
+          {children}
+        </RatesProvider>
         <ConsentBanner />
       </body>
     </html>

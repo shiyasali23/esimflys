@@ -28,6 +28,15 @@ export function removeCartItem(itemId) {
  * Preview only — the server does NOT persist the code. It must be sent again to
  * /checkout/ or the discount is silently lost. Rate limited to 30/min.
  */
+/**
+ * Clears an applied code. The preview does not attach anything to the cart, so
+ * this exists for the case where the code IS attached — and so a shopper who
+ * applied the wrong one is not stuck with it.
+ */
+export function removePromoCode() {
+  return api.delete("/cart/promo-code/");
+}
+
 export function previewPromoCode({ code, customerEmail }) {
   return api.post("/cart/promo-code/", {
     code,

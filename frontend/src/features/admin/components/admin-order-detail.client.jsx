@@ -6,7 +6,7 @@ import { fetchAdminOrder } from "@/lib/api/admin";
 import { AdminRefundPanel } from "@/features/admin/components/admin-refund-panel.client";
 import { fromMinor, formatBytes, planAllowance, usageRatio } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { routes } from "@/config/routes";
@@ -96,28 +96,28 @@ export function AdminOrderDetail({ orderId }) {
         <dl className="mt-6 grid gap-3 border-t border-border pt-4 text-body-md sm:grid-cols-2">
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Subtotal</dt>
-            <dd><Price usd={fromMinor(order.subtotal_minor)} /></dd>
+            <dd><Money minor={order.subtotal_minor} currency={order.currency} /></dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Discount</dt>
             <dd>
               {order.discount_minor > 0 ? (
                 <span className="text-success-text">
-                  −<Price usd={fromMinor(order.discount_minor)} />
+                  −<Money minor={order.discount_minor} currency={order.currency} />
                 </span>
               ) : (
-                <Price usd={0} />
+                <Money minor={0} currency={order.currency} />
               )}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Tax</dt>
-            <dd><Price usd={fromMinor(order.tax_minor)} /></dd>
+            <dd><Money minor={order.tax_minor} currency={order.currency} /></dd>
           </div>
           <div className="flex justify-between gap-4 border-t border-border pt-3 sm:border-0 sm:pt-0">
             <dt className="font-semibold text-foreground">Total</dt>
             <dd className="font-display text-headline-md text-primary">
-              <Price usd={fromMinor(order.total_minor)} />
+              <Money minor={order.total_minor} currency={order.currency} />
             </dd>
           </div>
         </dl>
@@ -141,7 +141,7 @@ export function AdminOrderDetail({ orderId }) {
               <div className="flex shrink-0 items-center gap-3">
                 <StatusBadge status={item.status} />
                 <span className="font-medium text-foreground">
-                  <Price usd={fromMinor(item.unit_amount_minor)} />
+                  <Money minor={item.unit_amount_minor} currency={order.currency} />
                 </span>
               </div>
             </li>
@@ -169,7 +169,7 @@ export function AdminOrderDetail({ orderId }) {
                 <div className="flex shrink-0 items-center gap-3">
                   <StatusBadge status={payment.status} />
                   <span className="font-medium text-foreground">
-                    <Price usd={fromMinor(payment.amount_minor)} />
+                    <Money minor={payment.amount_minor} currency={payment.currency || order.currency} />
                   </span>
                 </div>
               </li>

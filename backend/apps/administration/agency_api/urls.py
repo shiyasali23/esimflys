@@ -4,7 +4,6 @@ from .views import (
     AgencyActivityView,
     AgencyCommissionListView,
     AgencyDashboardView,
-    AgencyMemberDetailView,
     AgencyMemberListView,
     AgencyPayoutListView,
     AgencyProfileView,
@@ -20,11 +19,6 @@ urlpatterns = [
     path("<uuid:organization_id>/dashboard/", AgencyDashboardView.as_view(), name="dashboard"),
     path("<uuid:organization_id>/profile/", AgencyProfileView.as_view(), name="profile"),
     path("<uuid:organization_id>/members/", AgencyMemberListView.as_view(), name="members"),
-    path(
-        "<uuid:organization_id>/members/<uuid:member_id>/",
-        AgencyMemberDetailView.as_view(),
-        name="member-detail",
-    ),
     path("<uuid:organization_id>/sales/", AgencySalesView.as_view(), name="sales"),
     path(
         "<uuid:organization_id>/commissions/",

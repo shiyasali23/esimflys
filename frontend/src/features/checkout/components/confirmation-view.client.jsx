@@ -6,9 +6,8 @@ import { pollOrderUntilDelivered, isPaid, isDelivered, isTerminalFailure } from 
 import { listEsims, getEsim } from "@/lib/api/esims";
 import { readOrderContext } from "@/features/checkout/order-context";
 import { forgetCart } from "@/lib/api/cart";
-import { fromMinor } from "@/lib/format/units";
 import { QrCode } from "@/components/media/qr-code.client";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { routes } from "@/config/routes";
@@ -155,7 +154,7 @@ export function ConfirmationView() {
           {order?.total_minor != null ? (
             <>
               {" · "}
-              <Price usd={fromMinor(order.total_minor)} />
+              <Money minor={order.total_minor} currency={order.currency} />
             </>
           ) : null}
         </p>

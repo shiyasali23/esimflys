@@ -15,6 +15,8 @@ import { readCartToken, writeCartToken } from "./cart-token";
 const API_PREFIX = "/api/v1";
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const CSRF_COOKIE = "csrftoken";
+/** Long enough for a cold Railway container, short enough that a hang is not forever. */
+const REQUEST_TIMEOUT_MS = 20_000;
 
 const isServer = typeof window === "undefined";
 
@@ -104,7 +106,9 @@ export async function apiFetch(path, options = {}) {
       method,
       headers,
       credentials: "include",
-      signal: options.signal,
+      // Without a deadline a hung backend hangs the tab forever: every spinner in the
+      // app waits on this one function. A caller-supplied signal still wins.
+      signal: options.signal || AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       // Authenticated and cart traffic must never be cached; the public catalogue
       // opts back in explicitly so country pages can stay statically generated.
       cache: options.cache || (options.next ? undefined : "no-store"),

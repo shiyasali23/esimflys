@@ -1,15 +1,17 @@
 "use client";
 import { create } from "zustand";
 import { fetchMyOrganizations } from "@/lib/api/agency";
-import { fetchAdminDashboard } from "@/lib/api/admin";
 
 /**
- * Which internal portals the signed-in user can actually reach.
+ * Whether the signed-in user has an agency portal to return to.
  *
- * Neither can be inferred from the account payload: agency access depends on a
- * membership, and `is_staff` alone grants nothing on the admin API — that needs a
- * platform role group. So both are probed, and a link is only ever shown once the
- * server has said yes. A 403 here is a normal answer, not an error.
+ * Membership cannot be inferred from the account payload, so it is probed and the
+ * link only appears once the server has said yes. A 403 here is a normal answer for
+ * a customer, not an error.
+ *
+ * There is no admin probe: the header shows no admin link, so asking the admin API
+ * on every signed-in page load would be an authenticated round-trip spent deciding
+ * something nobody renders.
  *
  * Probed once per session and shared, so the header doesn't re-ask on every
  * navigation.
@@ -18,19 +20,14 @@ let inFlight = null;
 
 export const usePortals = create((set, get) => ({
   organizations: undefined,
-  isAdmin: undefined,
 
   async load() {
     if (get().organizations !== undefined) return;
     if (inFlight) return inFlight;
 
-    inFlight = Promise.allSettled([fetchMyOrganizations(), fetchAdminDashboard()])
-      .then(([orgs, admin]) => {
-        set({
-          organizations: orgs.status === "fulfilled" ? orgs.value : [],
-          isAdmin: admin.status === "fulfilled",
-        });
-      })
+    inFlight = fetchMyOrganizations()
+      .then((orgs) => set({ organizations: orgs }))
+      .catch(() => set({ organizations: [] }))
       .finally(() => {
         inFlight = null;
       });
@@ -38,6 +35,6 @@ export const usePortals = create((set, get) => ({
   },
 
   reset() {
-    set({ organizations: undefined, isAdmin: undefined });
+    set({ organizations: undefined });
   },
 }));

@@ -7,6 +7,7 @@ import { fetchAdminDashboard } from "@/lib/api/admin";
 import { useSession } from "@/features/auth/use-session.client";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { AdminSignIn } from "@/features/admin/components/admin-sign-in.client";
 import { ErrorState } from "@/components/feedback/error-state";
 import { routes } from "@/config/routes";
 import { cn } from "@/lib/cn";
@@ -18,6 +19,7 @@ const SECTIONS = [
   { slug: "esims", label: "eSIMs" },
   { slug: "agencies", label: "Agencies" },
   { slug: "commissions", label: "Commissions" },
+  { slug: "payouts", label: "Payouts" },
   { slug: "catalogue", label: "Catalogue" },
   { slug: "payments", label: "Payments" },
   { slug: "operations", label: "Operations" },
@@ -79,15 +81,17 @@ export function AdminShell({ title, children }) {
     );
   }
 
+  /**
+   * Staff sign in HERE, not on the storefront page. Bouncing an admin to
+   * /auth/signin offered them Google, a sign-up link and a password reset — three
+   * routes that cannot create or recover a staff account — and lost whichever
+   * admin page they were trying to reach.
+   */
   if (user === null) {
     return (
       <Container className="py-16">
-        <EmptyState
-          icon={ShieldAlert}
-          title="Sign in to continue"
-          body="The admin panel is available to platform staff."
-          action={{ label: "Sign in", href: routes.signin() }}
-        />
+        {/* setUser flips `user`, which re-runs the access probe below. */}
+        <AdminSignIn />
       </Container>
     );
   }

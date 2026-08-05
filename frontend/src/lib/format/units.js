@@ -1,19 +1,36 @@
+// Relative, not aliased, for the same reason as `server/catalog/adapters.js`: the
+// build-time catalogue generator imports this file from plain Node, where `@/` does
+// not resolve.
+import { currencyMeta } from "../../config/currencies.js";
+import { fromMinorUnits } from "./money.js";
+
 /**
  * Backend unit conventions (API.md §8). Two of these are silent footguns:
  * payable money is an integer in minor units, and data allowances are MB while
  * eSIM usage is bytes. Convert here, never inline at a call site.
  */
 
-/** 1699 → 16.99. Feed the result to <Price usd={…} />, which owns display. */
-export function fromMinor(minor) {
-  const value = Number(minor);
-  return Number.isFinite(value) ? value / 100 : 0;
+/**
+ * 1699 -> 16.99, using the currency's own decimal count.
+ *
+ * The currency defaults to USD because almost every amount on this site is USD:
+ * the catalogue is priced in it, and commissions and payouts are denominated in it
+ * on purpose so an agency's cut does not move with someone else's exchange rate.
+ *
+ * Pass the currency for anything that arrives already denominated — a PaymentIntent,
+ * an order total. JPY has no minor unit, so Y700 is `700`, and the USD assumption
+ * would render it as Y7: a 100x error that is invisible in every other currency.
+ */
+export function fromMinor(minor, currency = "USD") {
+  return fromMinorUnits(minor, currency);
 }
 
-/** 16.99 → 1699, for request bodies that take minor units (e.g. refund allocations). */
-export function toMinor(amount) {
+/** 16.99 -> 1699, for request bodies that take minor units (e.g. refund allocations). */
+export function toMinor(amount, currency = "USD") {
   const value = Number(amount);
-  return Number.isFinite(value) ? Math.round(value * 100) : 0;
+  if (!Number.isFinite(value)) return 0;
+  const { decimals } = currencyMeta(currency);
+  return Math.round(value * 10 ** decimals);
 }
 
 /**

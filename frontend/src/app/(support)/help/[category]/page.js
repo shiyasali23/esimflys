@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/accordion";
 import help from "@/content/help.json";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/components/seo/json-ld";
+import { faqPageJsonLd } from "@/lib/seo/jsonld";
 
 export function generateStaticParams() {
   return help.categories.map((c) => ({ category: c.slug }));
@@ -31,6 +33,7 @@ export default async function HelpCategoryPage({ params }) {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
+      <JsonLd data={faqPageJsonLd(cat.articles)} />
       <Link href="/help" className="text-sm text-cta hover:underline">
         ← Help center
       </Link>

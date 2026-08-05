@@ -320,3 +320,67 @@ class TwoPhaseProvisioningTests(TestCase):
         self.assertNotIn(
             credentials["activation_code"], str(profile.supplier_payload_redacted)
         )
+
+
+@override_settings(**SUPPLIER_SETTINGS)
+class VendorResponseShapeTests(TestCase):
+    """Parse the profile exactly as eSIM Access documents it publicly.
+
+    Their response carries the whole LPA activation string in a single ``ac`` field. There
+    is no ``smdpAddress`` and no QR-payload field. An earlier version read ``smdpAddress``
+    and never set ``qr_payload`` at all, so on a real order both were stored NULL — and the
+    storefront renders the QR from ``qr_payload``. Every test passed regardless, because the
+    fake supplier returns those keys itself. This pins the real shape.
+    """
+
+    #: Field names and value shapes taken from the vendor's own published example.
+    VENDOR_PROFILE = {
+        "orderNo": "B23051616050537",
+        "esimTranNo": "ESIM230516160505",
+        "iccid": "89852245280001113019",
+        "ac": "LPA:1$rsp.redtea.io$CDB21D069D3B452F98B3426578A5FD11",
+        "qrCodeUrl": "https://p.qrsim.net/888cc893fe1140cd9d2a2286520a6be6.png",
+        "smdpStatus": "RELEASED",
+        "esimStatus": "GOT_RESOURCE",
+        "expiredTime": "2023-06-15T16:56:16+0000",
+        "totalVolume": 104857600,
+        "orderUsage": 0,
+        "durationUnit": "DAY",
+    }
+
+    def _query(self):
+        def handler(request):
+            return ok({"esimList": [self.VENDOR_PROFILE]})
+
+        return gateway_with(handler).query_esim(order_no="B23051616050537")
+
+    def test_qr_payload_is_the_activation_string(self):
+        result = self._query()
+        self.assertEqual(
+            result["qr_payload"], "LPA:1$rsp.redtea.io$CDB21D069D3B452F98B3426578A5FD11"
+        )
+        self.assertEqual(result["activation_code"], result["qr_payload"])
+
+    def test_smdp_address_is_derived_from_the_activation_string(self):
+        self.assertEqual(self._query()["smdp_address"], "rsp.redtea.io")
+
+    def test_the_rest_of_the_documented_fields_map(self):
+        result = self._query()
+        self.assertEqual(result["iccid"], "89852245280001113019")
+        self.assertEqual(result["supplier_reference"], "ESIM230516160505")
+        self.assertEqual(result["total_data_bytes"], 104857600)
+        self.assertEqual(result["remaining_data_bytes"], 104857600)
+        self.assertEqual(result["smdp_status"], "RELEASED")
+        self.assertTrue(result["qr_code_url"].startswith("https://"))
+
+    def test_a_malformed_activation_string_yields_nothing_rather_than_a_guess(self):
+        """A wrong SM-DP+ address points the phone at the wrong server."""
+        for bad in ("", None, "not-an-lpa", "LPA:1$", "LPA:1$$id"):
+            profile = dict(self.VENDOR_PROFILE, ac=bad)
+
+            def handler(request, profile=profile):
+                return ok({"esimList": [profile]})
+
+            result = gateway_with(handler).query_esim(order_no="X")
+            self.assertIsNone(result["smdp_address"], bad)
+            self.assertIsNone(result["qr_payload"], bad)

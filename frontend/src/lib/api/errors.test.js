@@ -80,3 +80,36 @@ describe("networkError", () => {
     expect(error.status).toBe(0);
   });
 });
+
+/**
+ * A 500 carries `correlation_id` instead of `fields` (contract §3.2, §11). It is
+ * the key to the server log — discarding it turns a five-minute lookup into an
+ * unreproducible ticket.
+ */
+describe("correlation id on a 500", () => {
+  it("is captured off the error envelope", () => {
+    const error = toApiError(
+      { error: { code: "internal_error", message: "Something failed.", correlation_id: "abc-123" } },
+      500,
+      "Internal Server Error",
+    );
+    expect(error.correlationId).toBe("abc-123");
+    expect(error.code).toBe("internal_error");
+  });
+
+  it("is null when the server did not send one", () => {
+    const error = toApiError(
+      { error: { code: "validation_error", message: "Bad input.", fields: { email: ["required"] } } },
+      400,
+    );
+    expect(error.correlationId).toBeNull();
+  });
+
+  it("is null for a non-envelope body", () => {
+    expect(toApiError({ detail: "Nope." }, 404).correlationId).toBeNull();
+  });
+
+  it("survives a network error without throwing", () => {
+    expect(networkError(new Error("offline")).correlationId).toBeNull();
+  });
+});

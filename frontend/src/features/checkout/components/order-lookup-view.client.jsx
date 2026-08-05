@@ -3,9 +3,8 @@ import { useState } from "react";
 import { Search, AlertCircle, Mail } from "lucide-react";
 import { lookupOrder, isDelivered } from "@/lib/api/orders";
 import { fieldErrors } from "@/lib/api/errors";
-import { fromMinor } from "@/lib/format/units";
 import { QrCode } from "@/components/media/qr-code.client";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -131,7 +130,7 @@ export function OrderLookupView() {
         <div className="mt-8 rounded-lg border border-border bg-white p-8">
           <h2 className="font-display text-headline-md text-foreground">{order.order_number}</h2>
           <p className="mt-1 text-body-sm text-muted-foreground">
-            <Price usd={fromMinor(order.total_minor)} /> · {order.payment_status} ·{" "}
+            <Money minor={order.total_minor} currency={order.currency} /> · {order.payment_status} ·{" "}
             {order.fulfillment_status}
           </p>
 

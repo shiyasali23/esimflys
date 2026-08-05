@@ -208,3 +208,93 @@ describe("continuing to checkout", () => {
     release();
   });
 });
+
+/**
+ * The 50-unit cart ceiling (contract §5.1), enforced on add AND again at checkout.
+ * Retrying cannot clear it — the message has to name the remedy.
+ */
+describe("the cart ceiling", () => {
+  it("names the limit and the way out", async () => {
+    mockApi(() =>
+      jsonResponse(
+        { error: { code: "cart_limit_exceeded", message: "Cart limit exceeded." } },
+        409,
+      ),
+    );
+    render(<PlanSelector country={COUNTRY} plans={PLANS} />);
+
+    await userEvent.click(checkoutButtons()[0]);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/maximum of 50 eSIMs/i);
+    expect(alert.textContent).toMatch(/remove one/i);
+  });
+
+  it("does not send the shopper to checkout with a rejected cart", async () => {
+    mockApi(() =>
+      jsonResponse({ error: { code: "cart_limit_exceeded", message: "Cart limit exceeded." } }, 409),
+    );
+    render(<PlanSelector country={COUNTRY} plans={PLANS} />);
+
+    await userEvent.click(checkoutButtons()[0]);
+
+    await screen.findByRole("alert");
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("does not offer a bare retry, which cannot help", async () => {
+    mockApi(() =>
+      jsonResponse({ error: { code: "cart_limit_exceeded", message: "Cart limit exceeded." } }, 409),
+    );
+    render(<PlanSelector country={COUNTRY} plans={PLANS} />);
+
+    await userEvent.click(checkoutButtons()[0]);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).not.toMatch(/try again/i);
+  });
+});
+
+/**
+ * `hotspot_supported` is null for every plan today, and null means UNKNOWN
+ * (contract §4, §14.9). Rendering it as "No" denies a feature the plan may have;
+ * rendering "Yes" promises one we cannot verify.
+ */
+describe("hotspot support", () => {
+  const hotspotRow = () => within(summary()).getByText(/^hotspot$/i).closest("div");
+
+  it("says unknown when the supplier has not told us", () => {
+    mockApi();
+    render(<PlanSelector country={COUNTRY} plans={[{ ...PLAN, hotspotSupported: null }]} />);
+
+    const row = hotspotRow();
+    expect(within(row).getByText(/unknown/i)).toBeTruthy();
+    expect(row.textContent).not.toMatch(/^Hotspot(No|Not supported)$/);
+  });
+
+  it("never renders a null as No", () => {
+    mockApi();
+    render(<PlanSelector country={COUNTRY} plans={[{ ...PLAN, hotspotSupported: null }]} />);
+    expect(hotspotRow().textContent).not.toMatch(/\bnot supported\b/i);
+  });
+
+  it("states support plainly when the supplier confirms it", () => {
+    mockApi();
+    render(<PlanSelector country={COUNTRY} plans={[{ ...PLAN, hotspotSupported: true }]} />);
+    expect(within(hotspotRow()).getByText("Supported")).toBeTruthy();
+  });
+
+  it("states the absence plainly when the supplier denies it", () => {
+    mockApi();
+    render(<PlanSelector country={COUNTRY} plans={[{ ...PLAN, hotspotSupported: false }]} />);
+    expect(within(hotspotRow()).getByText("Not supported")).toBeTruthy();
+  });
+
+  /** undefined is not the same as false — an absent key is still unknown. */
+  it("treats an absent key as unknown too", () => {
+    mockApi();
+    const { hotspotSupported, ...noKey } = PLAN;
+    render(<PlanSelector country={COUNTRY} plans={[noKey]} />);
+    expect(within(hotspotRow()).getByText(/unknown/i)).toBeTruthy();
+  });
+});

@@ -17,7 +17,10 @@ export function buildMetadata({
   return {
     title,
     description,
-    alternates: { canonical: path },
+    // A noindex page must not also declare a canonical: the two are contradictory
+    // signals, and the private surfaces (admin, agency, account detail) all shared a
+    // single group path, so every one of them pointed at a URL that was not itself.
+    alternates: index ? { canonical: path } : undefined,
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: {
       type,

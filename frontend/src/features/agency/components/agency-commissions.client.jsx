@@ -1,10 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchAgencyCommissions } from "@/lib/api/agency";
-import { fromMinor } from "@/lib/format/units";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 
 const STATUSES = ["", "pending", "available", "approved", "paid", "reversed", "cancelled"];
 
@@ -64,7 +63,7 @@ export function AgencyCommissions({ orgId }) {
       key: "commissionable_minor",
       header: "Order value",
       align: "right",
-      render: (row) => <Price usd={fromMinor(row.commissionable_minor)} />,
+      render: (row) => <Money minor={row.commissionable_minor} currency={row.currency || "USD"} />,
     },
     {
       key: "reversed_minor",
@@ -73,7 +72,7 @@ export function AgencyCommissions({ orgId }) {
       render: (row) =>
         row.reversed_minor > 0 ? (
           <span className="text-destructive">
-            −<Price usd={fromMinor(row.reversed_minor)} />
+            −<Money minor={row.reversed_minor} currency={row.currency || "USD"} />
           </span>
         ) : (
           "—"
@@ -85,7 +84,7 @@ export function AgencyCommissions({ orgId }) {
       align: "right",
       render: (row) => (
         <span className="font-semibold text-foreground">
-          <Price usd={fromMinor(row.net_minor)} />
+          <Money minor={row.net_minor} currency={row.currency || "USD"} />
         </span>
       ),
     },

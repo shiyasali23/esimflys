@@ -7,11 +7,16 @@ import { AlertCircle, RefreshCw } from "lucide-react";
  * Renders the backend's own `error.message` — never a raw object or stack. The
  * fallback string exists because a network failure has no server message, and
  * "[object Object]" on screen is the exact outcome this component prevents.
+ *
+ * A 500 also carries a `correlation_id`, which is the key to the server log
+ * (contract §3.2). It is shown verbatim and selectable: a user who can quote it
+ * turns an unreproducible report into a single log lookup.
  */
 export function ErrorState({ error, title = "Something went wrong", onRetry }) {
   const message =
     (typeof error === "string" ? error : error?.message) ||
     "Please try again in a moment.";
+  const correlationId = typeof error === "string" ? null : error?.correlationId;
 
   return (
     <div
@@ -23,6 +28,12 @@ export function ErrorState({ error, title = "Something went wrong", onRetry }) {
       </div>
       <h2 className="mb-2 font-display text-headline-md text-foreground">{title}</h2>
       <p className="mb-6 max-w-md text-body-md text-muted-foreground">{message}</p>
+      {correlationId ? (
+        <p className="mb-6 text-body-sm text-muted-foreground">
+          Quote this to support:{" "}
+          <code className="select-all font-mono text-foreground">{correlationId}</code>
+        </p>
+      ) : null}
       {onRetry ? (
         <button
           type="button"

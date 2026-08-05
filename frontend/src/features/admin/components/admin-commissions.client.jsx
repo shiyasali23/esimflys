@@ -7,10 +7,9 @@ import {
   bulkApproveCommissions,
   readBulkResult,
 } from "@/lib/api/admin";
-import { fromMinor } from "@/lib/format/units";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 
 const STATUSES = ["", "pending", "available", "approved", "paid", "reversed", "cancelled"];
 
@@ -112,7 +111,7 @@ export function AdminCommissions() {
       key: "commissionable_minor",
       header: "Order value",
       align: "right",
-      render: (row) => <Price usd={fromMinor(row.commissionable_minor)} />,
+      render: (row) => <Money minor={row.commissionable_minor} currency={row.currency || "USD"} />,
     },
     {
       key: "reversed_minor",
@@ -121,7 +120,7 @@ export function AdminCommissions() {
       render: (row) =>
         row.reversed_minor > 0 ? (
           <span className="text-destructive">
-            −<Price usd={fromMinor(row.reversed_minor)} />
+            −<Money minor={row.reversed_minor} currency={row.currency || "USD"} />
           </span>
         ) : (
           "—"
@@ -133,7 +132,7 @@ export function AdminCommissions() {
       align: "right",
       render: (row) => (
         <span className="font-semibold text-foreground">
-          <Price usd={fromMinor(row.net_minor)} />
+          <Money minor={row.net_minor} currency={row.currency || "USD"} />
         </span>
       ),
     },

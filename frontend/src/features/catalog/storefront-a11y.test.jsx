@@ -8,7 +8,6 @@ import { Hero } from "@/features/home/components/hero";
 import { HeroSearch } from "@/features/home/components/hero-search.client";
 import { WhereTravelersGo } from "@/features/home/components/where-travelers-go.client";
 import { TripQuiz } from "@/features/home/components/trip-quiz.client";
-import { Testimonials } from "@/features/home/components/testimonials.client";
 import { HowItWorks } from "@/features/home/components/how-it-works";
 import { WhatIsEsim } from "@/features/home/components/what-is-esim";
 import { WhyPick } from "@/features/home/components/why-pick";
@@ -78,7 +77,6 @@ describe("home", () => {
     ["hero search", () => <HeroSearch countries={COUNTRIES} />],
     ["where travellers go", () => <WhereTravelersGo destinations={COUNTRIES} />],
     ["trip quiz", () => <TripQuiz />],
-    ["testimonials", () => <Testimonials />],
     ["how it works", () => <HowItWorks />],
     ["what is an eSIM", () => <WhatIsEsim />],
     ["why pick us", () => <WhyPick />],

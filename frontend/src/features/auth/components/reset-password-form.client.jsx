@@ -36,8 +36,14 @@ export function ResetPasswordForm() {
       setDone(true);
     } catch (error) {
       const fields = fieldErrors(error);
-      if (Object.keys(fields).length) setErrors(fields);
-      else {
+      // An expired or spent link comes back as `fields.token`, which no input on this
+      // form renders — so taking the field branch for it left the page completely
+      // silent. Surface it as the form-level error instead, which is what it is.
+      const { token: tokenError, ...inputErrors } = fields;
+      if (Object.keys(inputErrors).length) setErrors(inputErrors);
+      if (tokenError) {
+        setFormError(tokenError);
+      } else if (!Object.keys(inputErrors).length) {
         // `toApiError` always yields SOME message, so `error.message || fallback`
         // never reached the fallback — a failure here showed the generic "Something
         // went wrong" when the overwhelmingly likely cause is a spent link. Prefer

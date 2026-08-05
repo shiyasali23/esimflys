@@ -4,7 +4,6 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HeroSearch } from "./hero-search.client";
 import { TripQuiz } from "./trip-quiz.client";
-import { Testimonials } from "./testimonials.client";
 import { WhereTravelersGo } from "./where-travelers-go.client";
 import { COUNTRIES } from "@/features/catalog/storefront-fixtures";
 import { routerMock } from "../../../../vitest.setup";
@@ -178,47 +177,6 @@ describe("trip quiz", () => {
     expect(screen.getByRole("link", { name: /browse destinations/i }).getAttribute("href")).toBe(
       "/destinations",
     );
-  });
-});
-
-/**
- * These reviews are placeholders for layout. The project's standing rule is that
- * no fabricated or borrowed trust signal may be presented as real, so each of
- * these guards a way that could quietly stop being true.
- */
-describe("testimonials stay honest placeholders", () => {
-  it("says on the page that they are samples to be replaced", () => {
-    render(<Testimonials />);
-    expect(screen.getByText(/sample reviews shown for layout/i)).toBeTruthy();
-  });
-
-  it("marks none of them verified", () => {
-    render(<Testimonials />);
-    expect(screen.queryByText(/^verified$/i)).toBeNull();
-  });
-
-  it("claims no aggregate rating or review count", () => {
-    const { container } = render(<Testimonials />);
-    // e.g. "4.3 out of 5", "109 reviews", "250K+ travelers"
-    expect(container.textContent).not.toMatch(/\d[.,]\d\s*(\/|out of)\s*5/i);
-    expect(container.textContent).not.toMatch(/\d+\s*(reviews|ratings)\b/i);
-    expect(container.textContent).not.toMatch(/\d[\d,.]*\s*[k+]\s*(travel|customer|user)/i);
-  });
-
-  /** Review/AggregateRating markup would put the placeholder into search results. */
-  it("emits no review structured data", () => {
-    const { container } = render(<Testimonials />);
-    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
-    for (const script of scripts) {
-      expect(script.textContent).not.toMatch(/AggregateRating|"@type"\s*:\s*"Review"/);
-    }
-    expect(scripts.length).toBe(0);
-  });
-
-  it("renders the quotes as quotations, not as bare claims", () => {
-    const { container } = render(<Testimonials />);
-    expect(container.querySelectorAll("blockquote").length).toBeGreaterThan(0);
-    expect(container.querySelectorAll("figcaption").length).toBeGreaterThan(0);
   });
 });
 

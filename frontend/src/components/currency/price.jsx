@@ -1,22 +1,34 @@
-import { SUPPORTED_CURRENCIES, BASE_CURRENCY } from "@/config/currencies";
-import { getRates } from "@/config/rates";
+"use client";
+import { BASE_CURRENCY } from "@/config/currencies";
 import { formatUsd } from "@/lib/format/money";
+import { useRates, useOfferedCurrencies } from "./rates-provider.client";
 
 /**
- * USD-canonical multi-currency price (blueprint §28.8).
- * Renders every supported currency as a sibling span (USD first = canonical);
- * CSS reveals only the one matching <html data-currency>, which the no-flash
- * script sets before first paint. No JS re-formats after paint → no flicker.
- * The USD value is the price used in structured data and what we charge (Phase 1).
+ * A USD-canonical price, rendered in every offered currency at once.
+ *
+ * Every currency is emitted as a sibling span and CSS reveals only the one matching
+ * `<html data-currency>`, which the no-flash script sets before first paint. Two
+ * things fall out of that, both deliberate:
+ *
+ * - **No flicker and no hydration mismatch.** Nothing re-formats after paint.
+ * - **The HTML is currency-agnostic**, so a CDN can cache one copy for everyone and
+ *   Googlebot cannot be served a page in a currency it did not ask for. This is why
+ *   currency is never resolved server-side or put in a URL.
+ *
+ * The USD span is marked canonical: it is the price in the structured data and, until
+ * the backend denominates orders locally, the price actually charged.
+ *
  * @param {{ usd: number, className?: string }} props
  */
 export function Price({ usd, className }) {
-  const rates = getRates();
+  const fx = useRates();
+  const codes = useOfferedCurrencies();
+
   return (
     <span className={`price tabular-nums ${className || ""}`}>
-      {SUPPORTED_CURRENCIES.map((c) => (
-        <span key={c.code} data-c={c.code} data-canonical={c.code === BASE_CURRENCY || undefined}>
-          {formatUsd(usd, c.code, rates)}
+      {codes.map((code) => (
+        <span key={code} data-c={code} data-canonical={code === BASE_CURRENCY || undefined}>
+          {formatUsd(usd, code, fx)}
         </span>
       ))}
     </span>

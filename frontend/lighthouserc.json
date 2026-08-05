@@ -6,7 +6,7 @@
       "url": [
         "http://localhost:3000/",
         "http://localhost:3000/destinations",
-        "http://localhost:3000/esim/japan",
+        "http://localhost:3000/esim/thailand",
         "http://localhost:3000/supported-devices"
       ],
       "numberOfRuns": 1

@@ -1,24 +1,31 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ChevronDown, Globe } from "lucide-react";
-import { CURRENCY_CODES } from "@/config/currencies";
 import { cn } from "@/lib/cn";
+import { useCurrency } from "./use-currency.client";
+import { useOfferedCurrencies } from "./rates-provider.client";
 
+/**
+ * The currency picker.
+ *
+ * Only lists currencies the backend is currently quoting. A currency whose rate has
+ * gone stale is withdrawn upstream rather than charged on an old number, so offering
+ * it here would let someone select a currency that has no price to show.
+ *
+ * The picker hides itself when USD is the only option — a one-item dropdown is noise,
+ * and it happens whenever the FX feed is unavailable.
+ */
 export function CurrencySelector({ className, overHero = false }) {
-  const [cur, setCur] = useState("USD");
+  const currency = useCurrency((s) => s.currency);
+  const init = useCurrency((s) => s.init);
+  const select = useCurrency((s) => s.select);
+  const offered = useOfferedCurrencies();
 
   useEffect(() => {
-    const m = document.cookie.match(/(?:^|;)\s*cur=([A-Z]{3})/);
-    const active = m ? m[1] : document.documentElement.getAttribute("data-currency");
-    if (active) setCur(active);
-  }, []);
+    init();
+  }, [init]);
 
-  function handleChange(e) {
-    const next = e.target.value;
-    setCur(next);
-    document.documentElement.setAttribute("data-currency", next);
-    document.cookie = `cur=${next};path=/;max-age=31536000;samesite=lax`;
-  }
+  if (offered.length < 2) return null;
 
   return (
     <div
@@ -32,12 +39,12 @@ export function CurrencySelector({ className, overHero = false }) {
     >
       <Globe className="pointer-events-none absolute left-3 h-4 w-4 opacity-80" aria-hidden />
       <select
-        value={cur}
-        onChange={handleChange}
+        value={currency}
+        onChange={(event) => select(event.target.value, offered)}
         aria-label="Display currency"
         className="h-full cursor-pointer appearance-none bg-transparent pl-9 pr-9 text-inherit focus:outline-none focus-visible:outline-none"
       >
-        {CURRENCY_CODES.map((code) => (
+        {offered.map((code) => (
           <option key={code} value={code} className="bg-white font-medium text-foreground">
             {code}
           </option>

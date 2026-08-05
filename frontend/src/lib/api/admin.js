@@ -90,6 +90,31 @@ export function fetchAdminOrganization(id) {
   return api.get(`/admin/organizations/${encodeURIComponent(id)}/`);
 }
 
+/**
+ * Agencies cannot sign themselves up — no registration, no Google login, no
+ * self-service password reset. The platform creates them, so this is the only way
+ * one comes into existence.
+ */
+export function createOrganization({ name, billingEmail, supportEmail, country, organizationType }) {
+  return api.post("/admin/organizations/", {
+    name,
+    billing_email: billingEmail,
+    ...(supportEmail ? { support_email: supportEmail } : {}),
+    ...(country ? { country } : {}),
+    organization_type: organizationType || "travel_agency",
+  });
+}
+
+/** `status` is read-only here — lifecycle moves go through transitionOrganization. */
+export function updateOrganization(id, { name, billingEmail, supportEmail, country }) {
+  return api.patch(`/admin/organizations/${encodeURIComponent(id)}/`, {
+    ...(name !== undefined ? { name } : {}),
+    ...(billingEmail !== undefined ? { billing_email: billingEmail } : {}),
+    ...(supportEmail !== undefined ? { support_email: supportEmail } : {}),
+    ...(country !== undefined ? { country } : {}),
+  });
+}
+
 const ORG_TRANSITIONS = {
   pending: ["active", "rejected", "closed"],
   active: ["suspended", "closed"],
@@ -127,8 +152,27 @@ export async function fetchOrganizationMembers(id) {
   return toList(await api.get(`/admin/organizations/${encodeURIComponent(id)}/members/`)).results;
 }
 
-export function addOrganizationMember(id, { email, role }) {
-  return api.post(`/admin/organizations/${encodeURIComponent(id)}/members/`, { email, role });
+/**
+ * Creates the agency login. `password` is optional but is the only way to give a
+ * brand-new member credentials at creation time — they cannot reset their own,
+ * and password-reset mail for an agency address silently does nothing.
+ */
+export function addOrganizationMember(id, { email, role, password, firstName, lastName }) {
+  return api.post(`/admin/organizations/${encodeURIComponent(id)}/members/`, {
+    email,
+    role,
+    ...(password ? { password } : {}),
+    ...(firstName ? { first_name: firstName } : {}),
+    ...(lastName ? { last_name: lastName } : {}),
+  });
+}
+
+/** Re-issues credentials for an existing member — the platform's only route in. */
+export function setMemberPassword(id, memberId, password) {
+  return api.post(
+    `/admin/organizations/${encodeURIComponent(id)}/members/${encodeURIComponent(memberId)}/set-password/`,
+    { password },
+  );
 }
 
 export function updateOrganizationMember(id, memberId, payload) {
@@ -252,6 +296,38 @@ export function approveCommission(id) {
 
 export function bulkApproveCommissions(commissionIds) {
   return api.post("/admin/commissions/bulk-approve/", { commission_ids: commissionIds });
+}
+
+/**
+ * Payouts complete the commission flow: review → approve → group into a payout →
+ * mark paid. There is no bank integration; "paid" records an out-of-band transfer.
+ *
+ * This list is a PLAIN ARRAY, not a paginated envelope — verified live, and one of
+ * the two endpoints the contract calls out as inconsistent.
+ */
+export async function fetchAdminPayouts(params) {
+  return toList(await api.get(`/admin/payouts/${query(params)}`)).results;
+}
+
+/**
+ * Groups every APPROVED commission for the organization inside the period into one
+ * payout. The server computes the amount — never send a total.
+ */
+export function createPayout({ organization, periodStart, periodEnd, currency }) {
+  return api.post("/admin/payouts/", {
+    organization,
+    period_start: periodStart,
+    period_end: periodEnd,
+    ...(currency ? { currency } : {}),
+  });
+}
+
+/** Records a transfer that already happened elsewhere; it moves no money itself. */
+export function markPayoutPaid(id, { reference, method } = {}) {
+  return api.post(`/admin/payouts/${encodeURIComponent(id)}/pay/`, {
+    ...(reference ? { reference } : {}),
+    ...(method ? { method } : {}),
+  });
 }
 
 /**

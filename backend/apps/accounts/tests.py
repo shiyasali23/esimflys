@@ -1,5 +1,7 @@
 from datetime import date
 
+from django.utils import timezone
+
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount, SocialLogin
 from django.contrib.auth.models import AnonymousUser
@@ -416,20 +418,43 @@ class CommissionServiceTests(TestCase):
         self.assertEqual(commission.status, "reversed")
 
     def test_partial_refund_reverses_proportionally(self):
-        order = self._agency_order(qty=2)  # subtotal 4000, commissionable 3600, commission 540
+        """Proportional to what was PAID, not to the pre-discount list price.
+
+        subtotal 4000, 10% off, so the customer paid 3600 and commission accrued on that
+        (15% = 540). Refunding 2000 is 55.6% of what they paid, so 55.6% of the commission
+        reverses — 300, not 270. Dividing by the 4000 subtotal instead understates every
+        reversal by the discount ratio, and at the full-refund boundary leaves 54 payable
+        on an order the customer got back in full.
+        """
+        order = self._agency_order(qty=2)
         commission = services.create_commission_for_order(order)
         self.assertEqual(commission.commission_minor, 540)
-        services.reverse_commission_for_order(order, 2000)  # half of subtotal
+        self.assertEqual(order.total_minor, 3600)
+
+        services.reverse_commission_for_order(order, 2000)
         commission.refresh_from_db()
-        self.assertEqual(commission.reversed_minor, 270)
+        self.assertEqual(commission.reversed_minor, 300)
         self.assertEqual(commission.status, "pending")
+
+    def test_full_refund_leaves_nothing_payable(self):
+        """The boundary the old divisor got wrong: a full refund must fully reverse."""
+        order = self._agency_order(qty=2)
+        commission = services.create_commission_for_order(order)
+        services.reverse_commission_for_order(order, order.total_minor)
+        commission.refresh_from_db()
+        self.assertEqual(commission.reversed_minor, commission.commission_minor)
+        self.assertEqual(commission.status, "reversed")
 
     def test_approve_and_payout(self):
         order = self._agency_order(qty=1)
         commission = services.approve_commission(services.create_commission_for_order(order))
         self.assertEqual(commission.status, "approved")
+        # The period must contain the commission, which is created "now". Hard-coding a
+        # month made this pass only during that month and fail every day after it — the
+        # suite broke by itself when the calendar rolled over, with no code change.
+        today = timezone.localdate()
         payout = services.create_payout(
-            self.org, period_start=date(2026, 7, 1), period_end=date(2026, 7, 31)
+            self.org, period_start=today.replace(day=1), period_end=today
         )
         commission.refresh_from_db()
         self.assertEqual(commission.payout_id, payout.id)

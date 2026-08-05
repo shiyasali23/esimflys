@@ -1,10 +1,19 @@
 import { describe, it, expect } from "vitest";
 import catalog from "./catalog.json";
 
+/**
+ * The baked catalogue contract.
+ *
+ * `catalog.json` is generated from the LIVE API by `scripts/generate-catalog.mjs`
+ * and is the storefront's only source of catalogue data — there is no runtime
+ * fetch. If the generator regresses, every country page ships wrong, so the shape
+ * and the merchandising invariants are pinned here.
+ */
+
 const { countries, plans, meta } = catalog;
 const active = countries.filter((c) => c.isActive).slice().sort((a, b) => a.sortOrder - b.sortOrder);
 
-describe("catalog data (Excel → JSON contract)", () => {
+describe("catalog data (API → JSON contract)", () => {
   it("has 68 countries, all active, 18 popular", () => {
     expect(countries.length).toBe(68);
     expect(active.length).toBe(68);
@@ -32,13 +41,14 @@ describe("catalog data (Excel → JSON contract)", () => {
     expect(au.networks.join(", ")).toBe("Optus 5G, Telstra 5G");
   });
 
-  it("has no orphan plans and no TUR / 3-letter codes", () => {
+  it("has no orphan plans", () => {
     const slugs = new Set(countries.map((c) => c.slug));
-    for (const p of plans) {
-      expect(slugs.has(p.countrySlug)).toBe(true);
-      expect(p.country_code).not.toBe("TUR");
-      expect(p.country_code.length).toBe(2);
-    }
+    for (const p of plans) expect(slugs.has(p.countrySlug)).toBe(true);
+  });
+
+  it("uses 2-letter ISO codes, never 3-letter ones", () => {
+    for (const c of countries) expect(c.iso2).toMatch(/^[A-Z]{2}$/);
+    expect(countries.find((c) => c.iso2 === "TUR")).toBeUndefined();
   });
 
   it("Turkey is TR with a slug and plans", () => {
@@ -56,10 +66,32 @@ describe("catalog data (Excel → JSON contract)", () => {
     for (const c of countries) expect(c.timezone).toBeNull();
   });
 
-  it("retains server-only fields on raw plans for toClientPlan to strip", () => {
-    for (const f of meta.serverOnlyFields) {
-      expect(plans.some((p) => f in p)).toBe(true);
+  /**
+   * The inverse of the old assertion, and a stronger guarantee.
+   *
+   * The previous Excel-derived file CARRIED wholesale prices and margin, relying on
+   * `toClientPlan` to strip them before render — one missed call site away from
+   * leaking commercially sensitive data into a public bundle. The generator now
+   * reads the PUBLIC API, which never returns them, and refuses to write the file
+   * if it finds any. They cannot leak because they are not there.
+   */
+  it("contains no wholesale or margin data at all", () => {
+    const serialised = JSON.stringify(catalog);
+    for (const field of [
+      "wholesale_amount_minor",
+      "margin_minor",
+      "wholesale_price_usd",
+      "competitor_ref_price",
+      "competitor_ref_brand",
+      "supplier_package_code",
+    ]) {
+      expect(serialised).not.toContain(field);
     }
+  });
+
+  /** Only active plans are published, so a paused row must never appear. */
+  it("holds active plans only", () => {
+    for (const p of plans) expect(p.status).toBe("active");
   });
 
   it("has consistent meta counts and no duplicate slugs/iso2", () => {
@@ -67,5 +99,10 @@ describe("catalog data (Excel → JSON contract)", () => {
     expect(meta.planCount).toBe(plans.length);
     expect(new Set(countries.map((c) => c.slug)).size).toBe(countries.length);
     expect(new Set(countries.map((c) => c.iso2)).size).toBe(countries.length);
+  });
+
+  it("records where it came from, so a stale file is diagnosable", () => {
+    expect(meta.generatedBy).toBe("scripts/generate-catalog.mjs");
+    expect(meta.source).toMatch(/\/api\/v1\/catalog\//);
   });
 });

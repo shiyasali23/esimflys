@@ -86,11 +86,18 @@ describe("the customer", () => {
     expect(await screen.findByRole("heading", { name: "traveller@example.com" })).toBeTruthy();
   });
 
-  it("says an unverified email is unverified rather than showing a blank", async () => {
+  /**
+   * `email_verified_at` is null even for Google sign-ins — Google's verification
+   * links the account but is never written here, and nothing gates on it
+   * (contract §9). "Not verified" would report a perfectly good account as
+   * suspect, so the absence is described as unrecorded, not as a failure.
+   */
+  it("describes a missing timestamp as unrecorded, never as unverified", async () => {
     mockApi({ customer: { ...CUSTOMER, email_verified_at: null }, orders: [] });
     render(<AdminCustomerDetail customerId="cust-1" />);
 
-    expect(await screen.findByText(/not verified/i)).toBeTruthy();
+    expect(await screen.findByText(/not recorded/i)).toBeTruthy();
+    expect(screen.queryByText(/not verified|unverified/i)).toBeNull();
   });
 
   /** Only settled money counts — a pending order is not revenue. */

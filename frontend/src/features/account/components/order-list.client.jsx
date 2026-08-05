@@ -4,10 +4,9 @@ import Link from "next/link";
 import { Receipt } from "lucide-react";
 import { listOrders } from "@/lib/api/orders";
 import { useSession } from "@/features/auth/use-session.client";
-import { fromMinor } from "@/lib/format/units";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { routes } from "@/config/routes";
@@ -115,7 +114,7 @@ export function OrderList() {
       align: "right",
       render: (order) => (
         <span className="font-medium text-foreground">
-          <Price usd={fromMinor(order.total_minor)} />
+          <Money minor={order.total_minor} currency={order.currency} />
         </span>
       ),
     },

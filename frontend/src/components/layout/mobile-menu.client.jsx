@@ -28,10 +28,11 @@ export function MobileMenu({ items, overHero }) {
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2.5">
               <Image
-                src="/images/logo-mark.png"
+                src="/images/logo-mark.webp"
                 alt=""
                 width={128}
                 height={96}
+                sizes="43px"
                 className="h-8 w-auto"
               />
               <span className="font-display text-xl font-bold uppercase text-primary">eSIMFlys</span>

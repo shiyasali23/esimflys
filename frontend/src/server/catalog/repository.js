@@ -1,51 +1,37 @@
 import "server-only";
 import catalog from "@/data/catalog.json";
-import { FLAGS } from "@/config/flags";
-import { fetchCountries, fetchCountryPlans } from "@/lib/api/catalog";
-import { adaptCountries, adaptPlans, withNetworks } from "./adapters";
+import { withNetworks } from "./adapters";
 
 /**
- * The catalogue, read from the live API and rendered on the server so country
- * pages stay statically generated and indexable.
+ * The catalogue, read from `src/data/catalog.json` — baked at build time by
+ * `scripts/generate-catalog.mjs`, which pulls it from the live API.
  *
- * `data/catalog.json` survives as an offline fallback only: a build (or CI run)
- * without a reachable backend still produces pages instead of failing, and the
- * fallback announces itself in the log rather than silently serving stale prices.
- * `FLAGS.USE_MOCKS` forces it on for local work without a backend.
+ * There is deliberately NO runtime API call here. Country pages are fully static:
+ * no per-request fetch, nothing to time out, and the storefront keeps serving even
+ * when the backend is down — which has already happened once, when a connection
+ * leak took the API out and the build fell back mid-run.
+ *
+ * The cost is staleness. Prices and availability are as fresh as the last build,
+ * so **rebuild whenever the catalogue changes.** Money is still safe either way:
+ * checkout re-reads live prices server-side and returns 409 `plan_unavailable` for
+ * a plan paused since the build, which the plan selector surfaces as "refresh to
+ * see current plans". A customer can be surprised; they cannot be mischarged.
+ *
+ * The generator writes ALREADY-ADAPTED objects, so nothing is transformed here.
  */
 
-const REVALIDATE_SECONDS = 300;
+const COUNTRIES = catalog.countries
+  .filter((c) => c.isActive)
+  .slice()
+  .sort((a, b) => a.sortOrder - b.sortOrder);
 
-let warned = false;
+const PLANS_BY_SLUG = catalog.plans.reduce((acc, plan) => {
+  (acc[plan.countrySlug] ||= []).push(plan);
+  return acc;
+}, {});
 
-function fallbackCountries() {
-  return catalog.countries
-    .filter((c) => c.isActive)
-    .slice()
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-}
-
-function noteFallback(reason) {
-  if (warned) return;
-  warned = true;
-  console.warn(
-    `[catalog] live API unavailable (${reason}) — serving data/catalog.json. ` +
-      "Prices and availability may be stale.",
-  );
-}
-
-async function loadCountries() {
-  if (FLAGS.USE_MOCKS) return fallbackCountries();
-  try {
-    return adaptCountries(await fetchCountries({ next: { revalidate: REVALIDATE_SECONDS } }));
-  } catch (error) {
-    noteFallback(error?.code || error?.message || "unknown");
-    return fallbackCountries();
-  }
-}
-
-function sortPlans(plans) {
-  return plans.sort(
+for (const slug of Object.keys(PLANS_BY_SLUG)) {
+  PLANS_BY_SLUG[slug].sort(
     (a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99) || (a.data_gb ?? 0) - (b.data_gb ?? 0),
   );
 }
@@ -55,52 +41,35 @@ export function getMeta() {
 }
 
 export async function getAllCountries() {
-  return loadCountries();
+  return COUNTRIES;
 }
 
 export async function getCountrySlugs() {
-  return (await loadCountries()).map((c) => c.slug);
+  return COUNTRIES.map((c) => c.slug);
 }
 
-/** Resolved from the list rather than the detail endpoint — same fields, one request. */
 export async function getCountryBySlug(slug) {
-  return (await loadCountries()).find((c) => c.slug === slug) || null;
+  return COUNTRIES.find((c) => c.slug === slug) || null;
 }
 
 export async function getFeaturedCountries(limit = 8) {
-  return (await loadCountries()).slice(0, limit);
+  return COUNTRIES.slice(0, limit);
 }
 
 export async function getPopularCountries(limit = 8) {
-  return (await loadCountries()).filter((c) => c.isPopular).slice(0, limit);
+  return COUNTRIES.filter((c) => c.isPopular).slice(0, limit);
 }
 
 /**
- * The API returns active plans only, so an empty array is the real production
- * state, not an error. With no backend, showPausedPlans keeps the store
- * reviewable in dev by rendering paused rows from the JSON.
+ * The generator only ever writes active plans, because the public API only returns
+ * active ones. An empty array is therefore the real production state for a country
+ * whose plans are paused — not an error, and not something to paper over.
  */
 export async function getPlansForCountry(slug) {
-  if (!FLAGS.USE_MOCKS) {
-    try {
-      const raw = await fetchCountryPlans(slug, { next: { revalidate: REVALIDATE_SECONDS } });
-      return sortPlans(adaptPlans(raw, slug));
-    } catch (error) {
-      if (error?.status === 404) return [];
-      noteFallback(error?.code || error?.message || "unknown");
-    }
-  }
-
-  const forCountry = catalog.plans.filter((p) => p.countrySlug === slug);
-  const active = forCountry.filter((p) => p.status === "active");
-  const visible = active.length ? active : FLAGS.showPausedPlans ? forCountry : [];
-  return sortPlans(visible.slice());
+  return PLANS_BY_SLUG[slug] || [];
 }
 
-/**
- * The API's `price_from` is already the cheapest per-day rate, so reading it costs
- * no extra request — and avoids an N+1 across the destinations grid.
- */
+/** `priceFrom` is already the cheapest per-day rate, so no plan scan is needed. */
 export async function getPerDayFrom(slug) {
   const country = await getCountryBySlug(slug);
   if (country?.priceFrom != null) return country.priceFrom;
@@ -111,7 +80,7 @@ export async function getPerDayFrom(slug) {
   return rates.length ? Math.min(...rates) : null;
 }
 
-/** Country plus the network union derived from its plans — one page, one pair of calls. */
+/** Country plus the network union derived from its plans. */
 export async function getCountryWithNetworks(slug) {
   const country = await getCountryBySlug(slug);
   if (!country) return { country: null, plans: [] };
@@ -124,15 +93,14 @@ export async function getHomeDestinations(limit = 8) {
 }
 
 export async function getAllDestinations() {
-  return (await loadCountries())
-    .slice()
+  return COUNTRIES.slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((c) => ({ ...c, perDayFrom: c.priceFrom ?? null }));
 }
 
 export async function getCountriesByRegion() {
   const byRegion = {};
-  for (const c of await loadCountries()) {
+  for (const c of COUNTRIES) {
     (byRegion[c.region] ||= []).push(c);
   }
   for (const region of Object.keys(byRegion)) {

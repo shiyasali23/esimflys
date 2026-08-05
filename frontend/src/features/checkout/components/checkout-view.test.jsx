@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { CheckoutView } from "@/features/checkout/components/checkout-view.client";
 import { useCart } from "@/features/cart/use-cart.client";
 
@@ -132,5 +133,119 @@ describe("promo codes", () => {
     await screen.findByText("Saudi Arabia 10 GB — 30 Days");
     // The code must still be sent at checkout, so the field stays available.
     expect(screen.getByRole("button", { name: /apply/i })).toBeTruthy();
+  });
+});
+
+/**
+ * The 50-unit ceiling is re-checked AT CHECKOUT (contract §5.1), not only on add,
+ * so a cart can be over the line by the time someone reaches this button. Neither
+ * of these refusals can be cleared by pressing the button again.
+ */
+describe("refusals that a retry cannot fix", () => {
+  const failCheckout = (code, message) => {
+    globalThis.fetch = vi.fn((url, init) => {
+      const u = String(url);
+      if (u.includes("/account/me/")) {
+        return Promise.resolve(jsonResponse({ error: { code: "permission_denied", message: "No." } }, 403));
+      }
+      if (init?.method === "POST" && u.includes("/checkout/")) {
+        return Promise.resolve(jsonResponse({ error: { code, message } }, 409));
+      }
+      return Promise.resolve(jsonResponse(CART));
+    });
+  };
+
+  const submit = async () => {
+    await screen.findByText("Saudi Arabia 10 GB — 30 Days");
+    const email = screen.getByLabelText(/email/i);
+    await userEvent.type(email, "traveller@example.com");
+    await userEvent.click(screen.getByRole("button", { name: /place order|pay|continue/i }));
+  };
+
+  it("names the cart ceiling and the remedy", async () => {
+    failCheckout("cart_limit_exceeded", "Cart limit exceeded.");
+    render(<CheckoutView />);
+    await submit();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/maximum of 50 eSIMs/i);
+    expect(alert.textContent).toMatch(/remove some/i);
+    expect(alert.textContent).not.toMatch(/try again/i);
+  });
+
+  it("explains a plan withdrawn between browsing and buying", async () => {
+    failCheckout("plan_unavailable", "Plan is not available.");
+    render(<CheckoutView />);
+    await submit();
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/no longer available/i);
+  });
+});
+
+/**
+ * A `tracking` code is an agency referral: the customer pays FULL price and the
+ * agency earns commission. Contract §5.2 forbids promising a saving for one.
+ *
+ * The preview returns no `kind` field — verified live, it is only
+ * `{code, discount_minor, subtotal_minor, total_minor, currency}` — so the copy is
+ * driven off the amount, which is truthful whichever kind it is.
+ */
+describe("promo codes never promise a saving that is not there", () => {
+  const withPromo = (discountMinor) => {
+    globalThis.fetch = vi.fn((url, init) => {
+      const u = String(url);
+      if (u.includes("/account/me/")) {
+        return Promise.resolve(jsonResponse({ error: { code: "permission_denied", message: "No." } }, 403));
+      }
+      if (init?.method === "POST" && u.includes("/promo-code/")) {
+        return Promise.resolve(
+          jsonResponse({
+            code: "SUNRISE20",
+            discount_minor: discountMinor,
+            subtotal_minor: 2998,
+            total_minor: 2998 - discountMinor,
+            currency: "USD",
+          }),
+        );
+      }
+      return Promise.resolve(jsonResponse(CART));
+    });
+  };
+
+  const applyCode = async () => {
+    await screen.findByText("Saudi Arabia 10 GB — 30 Days");
+    await userEvent.type(screen.getByLabelText(/promo|code/i), "SUNRISE20");
+    await userEvent.click(screen.getByRole("button", { name: /apply/i }));
+  };
+
+  it("states plainly that a zero-discount code changes nothing", async () => {
+    withPromo(0);
+    render(<CheckoutView />);
+    await applyCode();
+
+    const note = await screen.findByText(/code accepted/i);
+    expect(note.textContent).toMatch(/doesn.t reduce this order.s total/i);
+    expect(note.textContent).not.toMatch(/off at checkout|you save|discount applied/i);
+  });
+
+  /** Green + "off at checkout" reads as a win; a referral code is not one. */
+  it("does not dress a zero discount as a success", async () => {
+    withPromo(0);
+    render(<CheckoutView />);
+    await applyCode();
+
+    const note = await screen.findByText(/code accepted/i);
+    expect(note.className).not.toMatch(/success/);
+    expect(document.body.textContent).not.toContain("$0.00 off");
+  });
+
+  it("still celebrates a real discount", async () => {
+    withPromo(300);
+    render(<CheckoutView />);
+    await applyCode();
+
+    const note = await screen.findByText(/code applied/i);
+    expect(note.textContent).toMatch(/off at checkout/i);
+    expect(note.className).toMatch(/success/);
   });
 });

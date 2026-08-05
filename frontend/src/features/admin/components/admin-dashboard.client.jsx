@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 import { Lock } from "lucide-react";
 import { fetchAdminDashboard, hasPricingVisibility } from "@/lib/api/admin";
-import { fromMinor } from "@/lib/format/units";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { ErrorState } from "@/components/feedback/error-state";
 
 /**
@@ -42,7 +41,7 @@ export function AdminDashboard() {
 
   const showPricing = hasPricingVisibility(data);
 
-  const money = (minor) => <Price usd={fromMinor(minor)} />;
+  const money = (minor) => <Money minor={minor} currency="USD" />;
 
   const groups = [
     {

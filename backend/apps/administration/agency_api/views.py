@@ -9,9 +9,7 @@ The panel is **reporting-only** (plan §0). Agencies do not create orders, do no
 customers, and never see eSIM credentials.
 """
 
-from django.contrib.auth import get_user_model
 from django.db.models import Count, Prefetch, Q
-from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,24 +17,18 @@ from rest_framework.views import APIView
 from apps.accounts.models import OrganizationMember, PartnerCommission
 from apps.administration import roles, tenancy
 from apps.administration.permissions import HasAgencyCapability, IsAgencyMember
-from apps.administration.services import members as member_services
 from apps.administration.services import reports as report_services
-from apps.common.exceptions import Conflict
 from apps.orders.models import PromoCode
 
 from .serializers import (
     AgencyActivitySerializer,
-    AgencyAddMemberSerializer,
     AgencyCommissionSerializer,
     AgencyMemberSerializer,
     AgencyPayoutSerializer,
     AgencyProfileSerializer,
     AgencyReferralSaleSerializer,
     AgencyTrackingCodeSerializer,
-    AgencyUpdateMemberSerializer,
 )
-
-User = get_user_model()
 
 
 class AgencyAPIView(APIView):
@@ -72,38 +64,30 @@ class AgencyRevenueReportView(AgencyAPIView):
 # --- Profile -------------------------------------------------------------------------
 
 class AgencyProfileView(AgencyAPIView):
+    """Read-only. The platform owns every agency record.
+
+    An agency exists to see what its referral code sold; it changes nothing about
+    itself. Name, billing address and commission terms are commercial terms set by
+    the platform, so they are edited from the platform admin API only.
+    """
+
     required_capability = roles.VIEW_DASHBOARD
 
     def get(self, request, organization_id):
         return Response(AgencyProfileSerializer(request.tenant).data)
 
-    def patch(self, request, organization_id):
-        # Editing requires a stronger capability than viewing.
-        if not roles.has_agency_capability(request.membership.role, roles.MANAGE_PROFILE):
-            raise Conflict(
-                message="Your role does not permit editing the profile.",
-                error_code="permission_denied", status_code=403,
-            )
-        from apps.administration.audit import diff as audit_diff
-        from apps.administration.audit import model_snapshot, record_audit
-
-        before = model_snapshot(request.tenant)
-        serializer = AgencyProfileSerializer(
-            request.tenant, data=request.data, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        organization = serializer.save()
-        record_audit(
-            action="organization.profile_updated",
-            actor=request.user, organization=organization, obj=organization,
-            changes=audit_diff(before, model_snapshot(organization)), request=request,
-        )
-        return Response(AgencyProfileSerializer(organization).data)
-
 
 # --- Staff ---------------------------------------------------------------------------
 
 class AgencyMemberListView(AgencyAPIView):
+    """Read-only. Every agency login is issued by the platform.
+
+    An agency cannot create, change or remove its own logins. Allowing it would mean
+    credentials existed that the platform never issued, and the previous write path
+    could attach *any* existing customer email to the organisation without that
+    person's consent — which also silently changed how they were allowed to log in.
+    """
+
     required_capability = roles.VIEW_DASHBOARD
 
     def get(self, request, organization_id):
@@ -113,61 +97,6 @@ class AgencyMemberListView(AgencyAPIView):
             .order_by("created_at")
         )
         return Response(AgencyMemberSerializer(memberships, many=True).data)
-
-    def post(self, request, organization_id):
-        if not roles.has_agency_capability(request.membership.role, roles.MANAGE_STAFF):
-            raise Conflict(
-                message="Your role does not permit managing staff.",
-                error_code="permission_denied", status_code=403,
-            )
-        payload = AgencyAddMemberSerializer(data=request.data)
-        payload.is_valid(raise_exception=True)
-        user = User.objects.filter(email=payload.validated_data["email"]).first()
-        if user is None:
-            raise Conflict(
-                message="No account exists for that email address.",
-                error_code="not_found", status_code=404,
-            )
-        membership = member_services.add_member(
-            request.tenant, user, role=payload.validated_data["role"],
-            actor=request.user, actor_role=request.membership.role, request=request,
-        )
-        return Response(AgencyMemberSerializer(membership).data, status=201)
-
-
-class AgencyMemberDetailView(AgencyAPIView):
-    required_capability = roles.MANAGE_STAFF
-
-    def _membership(self, request, member_id):
-        # Scoped to the resolved tenant, so another agency's member is simply absent.
-        return get_object_or_404(
-            OrganizationMember.objects.select_related("user", "organization"),
-            pk=member_id, organization=request.tenant,
-        )
-
-    def patch(self, request, organization_id, member_id):
-        membership = self._membership(request, member_id)
-        payload = AgencyUpdateMemberSerializer(data=request.data)
-        payload.is_valid(raise_exception=True)
-        if "role" in payload.validated_data:
-            membership = member_services.set_member_role(
-                membership, role=payload.validated_data["role"], actor=request.user,
-                actor_role=request.membership.role, request=request,
-            )
-        if "status" in payload.validated_data:
-            membership = member_services.set_member_status(
-                membership, status=payload.validated_data["status"], actor=request.user,
-                actor_role=request.membership.role, request=request,
-            )
-        return Response(AgencyMemberSerializer(membership).data)
-
-    def delete(self, request, organization_id, member_id):
-        membership = self._membership(request, member_id)
-        member_services.remove_member(
-            membership, actor=request.user, actor_role=request.membership.role,
-            request=request,
-        )
-        return Response(status=204)
 
 
 # --- Sales, commissions, payouts -----------------------------------------------------

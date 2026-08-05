@@ -115,12 +115,6 @@
   to { transform: translateX(-50%); }
 }
 
-[data-reveal] { transition: opacity 0.55s ease, transform 0.55s ease; }
-[data-reveal]:not([data-revealed]) { opacity: 0; transform: translateY(20px); }
-@media (prefers-reduced-motion: reduce) {
-  [data-reveal] { opacity: 1 !important; transform: none !important; }
-}
-
 @layer base {
   :root { color-scheme: light; }
   body {

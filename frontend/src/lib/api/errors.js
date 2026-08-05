@@ -8,12 +8,19 @@ export const GENERIC_MESSAGE = "Something went wrong. Please try again.";
 const NETWORK_MESSAGE = "We couldn't reach the server. Check your connection and try again.";
 
 export class ApiError extends Error {
-  constructor({ code, message, fields, status }) {
+  constructor({ code, message, fields, status, correlationId }) {
     super(message || GENERIC_MESSAGE);
     this.name = "ApiError";
     this.code = code || "unknown_error";
     this.fields = fields && typeof fields === "object" ? fields : {};
     this.status = typeof status === "number" ? status : 0;
+    /**
+     * Present on a 500 instead of `fields` (API contract §3.2, §11). It is the key
+     * to the server log, so it has to reach the screen — a user reporting "it
+     * broke" with this id is the difference between a five-minute lookup and an
+     * unreproducible ticket.
+     */
+    this.correlationId = typeof correlationId === "string" ? correlationId : null;
   }
 
   get isNetwork() {
@@ -35,6 +42,8 @@ export function toApiError(body, status, statusText) {
       message: typeof envelope.message === "string" ? envelope.message : GENERIC_MESSAGE,
       fields: envelope.fields,
       status,
+      // A 500 carries this INSTEAD of `fields`.
+      correlationId: envelope.correlation_id,
     });
   }
 
@@ -72,7 +81,7 @@ function codeForStatus(status) {
  * `authentication_required` code that API.md §5 documents. Verified against the
  * running server on `GET /esims/` and `GET /orders/{id}/`.
  *
- * @returns {"form"|"login"|"not-found"|"refresh-catalogue"|"new-cart"|"go-confirmation"|"back-off"|"retry"|"message"}
+ * @returns {"form"|"login"|"not-found"|"refresh-catalogue"|"new-cart"|"cart-limit"|"go-confirmation"|"back-off"|"retry"|"message"}
  */
 export function actionForError(error) {
   switch (error?.code) {
@@ -88,6 +97,10 @@ export function actionForError(error) {
       return "refresh-catalogue";
     case "cart_expired":
       return "new-cart";
+    // Retrying cannot help — the cart is already at the 50-unit ceiling and the
+    // only way forward is to remove something.
+    case "cart_limit_exceeded":
+      return "cart-limit";
     case "payment_already_completed":
       return "go-confirmation";
     case "rate_limited":

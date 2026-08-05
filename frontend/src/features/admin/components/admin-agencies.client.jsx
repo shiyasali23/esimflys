@@ -1,7 +1,13 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchAdminOrganizations, allowedTransitions, transitionOrganization } from "@/lib/api/admin";
+import {
+  fetchAdminOrganizations,
+  allowedTransitions,
+  transitionOrganization,
+  createOrganization,
+} from "@/lib/api/admin";
+import { fieldErrors } from "@/lib/api/errors";
 import { DataTable } from "@/components/data/data-table";
 import { routes } from "@/config/routes";
 import { useFocusOnReveal } from "@/lib/a11y/use-focus-on-reveal.client";
@@ -31,6 +37,9 @@ export function AdminAgencies() {
   const [reasonFor, setReasonFor] = useState(null);
   const [reason, setReason] = useState("");
   const focusReason = useFocusOnReveal();
+  const focusNewAgency = useFocusOnReveal();
+  const [creating, setCreating] = useState(false);
+  const [createErrors, setCreateErrors] = useState({});
 
   const load = useCallback((nextPage, nextStatus) => {
     setLoading(true);
@@ -65,6 +74,30 @@ export function AdminAgencies() {
       setNotice(err?.message || "That change wasn't accepted.");
     } finally {
       setPending(null);
+    }
+  }
+
+  async function create(event) {
+    event.preventDefault();
+    // Captured before the first await — React nulls currentTarget once we yield.
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
+    setCreateErrors({});
+    setNotice(null);
+    try {
+      const org = await createOrganization({
+        name: String(form.get("name") || "").trim(),
+        billingEmail: String(form.get("billing_email") || "").trim(),
+        country: String(form.get("country") || "").trim() || undefined,
+      });
+      formEl.reset();
+      setCreating(false);
+      setNotice(`Created ${org.name}. Add a member to issue their login.`);
+      load(1, status);
+    } catch (err) {
+      const fields = fieldErrors(err);
+      if (Object.keys(fields).length) setCreateErrors(fields);
+      else setNotice(err?.message || "We couldn't create that agency.");
     }
   }
 
@@ -148,10 +181,73 @@ export function AdminAgencies() {
         </select>
       </label>
 
+      <button
+        type="button"
+        onClick={() => setCreating((v) => !v)}
+        className="mb-4 ml-3 rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
+      >
+        {creating ? "Cancel" : "New agency"}
+      </button>
+
       {notice ? (
         <p role="alert" className="mb-4 rounded-md bg-destructive/10 p-3 text-body-sm text-destructive-text">
           {notice}
         </p>
+      ) : null}
+
+      {/* Agencies cannot sign themselves up — no registration, no Google login, no
+          self-service reset (contract §7). This form is the only way one exists. */}
+      {creating ? (
+        <form onSubmit={create} className="mb-4 rounded-card border border-border bg-white p-5" noValidate>
+          <p className="mb-3 text-body-sm text-muted-foreground">
+            Creates the agency in <strong className="text-foreground">pending</strong>. Approve it,
+            then add a member to issue their login — they cannot register themselves.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-56 flex-1">
+              <span className="mb-1 block text-label-bold text-foreground">Agency name</span>
+              <input
+                ref={focusNewAgency}
+                name="name"
+                type="text"
+                required
+                aria-invalid={createErrors.name ? "true" : undefined}
+                className="w-full rounded-md border border-border bg-muted px-4 py-2.5 text-body-sm outline-none focus:border-primary"
+              />
+            </label>
+            <label className="min-w-56 flex-1">
+              <span className="mb-1 block text-label-bold text-foreground">Billing email</span>
+              <input
+                name="billing_email"
+                type="email"
+                required
+                aria-invalid={createErrors.billing_email ? "true" : undefined}
+                className="w-full rounded-md border border-border bg-muted px-4 py-2.5 text-body-sm outline-none focus:border-primary"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-label-bold text-foreground">Country</span>
+              <input
+                name="country"
+                type="text"
+                maxLength={2}
+                placeholder="AE"
+                className="w-24 rounded-md border border-border bg-muted px-4 py-2.5 text-body-sm uppercase outline-none focus:border-primary"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-full bg-cta px-5 py-2.5 text-label-bold text-cta-foreground hover:brightness-110"
+            >
+              Create agency
+            </button>
+          </div>
+          {Object.entries(createErrors).map(([field, message]) => (
+            <p key={field} role="alert" className="mt-2 text-body-sm text-destructive-text">
+              {field}: {message}
+            </p>
+          ))}
+        </form>
       ) : null}
 
       {reasonFor ? (

@@ -37,6 +37,13 @@ export const useAgency = create((set, get) => ({
       });
     return inFlight;
   },
+
+  // Sign-in and sign-out both change who "my organizations" means, so the cached
+  // list has to be dropped rather than reused for the next account.
+  reset() {
+    inFlight = null;
+    set({ organizations: undefined, error: null });
+  },
 }));
 
 export function findOrganization(organizations, orgId) {

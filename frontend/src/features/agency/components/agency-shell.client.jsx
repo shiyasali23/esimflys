@@ -12,16 +12,16 @@ import { StatusBadge } from "@/components/data/status-badge";
 import { routes } from "@/config/routes";
 import { cn } from "@/lib/cn";
 
+/**
+ * The portal is read-only by design: an agency sees what its referral code sold and
+ * what it earned, nothing else. Staff, profile and referral codes are all issued and
+ * changed by the platform, so there are no screens for them here.
+ */
 const TABS = [
   { slug: "", label: "Dashboard" },
   { slug: "sales", label: "Sales" },
   { slug: "commissions", label: "Commissions" },
   { slug: "payouts", label: "Payouts" },
-  { slug: "tracking-codes", label: "Tracking codes" },
-  { slug: "reports", label: "Reports" },
-  { slug: "staff", label: "Staff" },
-  { slug: "profile", label: "Profile" },
-  { slug: "activity", label: "Activity" },
 ];
 
 /**

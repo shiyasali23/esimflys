@@ -1,28 +1,21 @@
 /**
  * Feature flags (blueprint §5.4, §26, §37). Keep behaviour honest:
  * we never ship fabricated data, and we surface real data blockers.
+ *
+ * There is no USE_MOCKS any more. The catalogue is ALWAYS the baked
+ * `src/data/catalog.json`, generated from the live API by
+ * `scripts/generate-catalog.mjs`, so there is no second source to switch between
+ * and nothing to fall back to. Rebuild to refresh it.
+ *
+ * `showPausedPlans` is gone with it: the generator only ever writes active plans,
+ * so there are no paused rows left to reveal.
  */
 export const FLAGS = {
-  /**
-   * Force the static data/catalog.json instead of the live API. Off by default —
-   * the catalogue is read from the backend. Set USE_MOCKS=true to work offline;
-   * the repository also falls back on its own (loudly) if the API is unreachable.
-   */
-  USE_MOCKS: (process.env.USE_MOCKS ?? "false") === "true",
-
   /** No verified first-party reviews → NEVER render Review UI or Review/AggregateRating JSON-LD. */
   reviewsEnabled: false,
 
   /** No regional bundles exist in the catalogue → regional pages off. */
   regionsEnabled: false,
-
-  /**
-   * DATA BLOCKER R13: every plan is `status="paused"` in the launch catalogue.
-   * With a correct live filter the store shows 0 plans. This DEV flag renders
-   * paused plans so the UI is buildable/reviewable. MUST be false for real launch,
-   * once the business activates plans.
-   */
-  showPausedPlans: (process.env.SHOW_PAUSED_PLANS ?? "true") !== "false",
 
   /** DATA BLOCKER R14: hotspot is "Unknown" for all plans → never claim hotspot support. */
   showHotspotClaim: false,

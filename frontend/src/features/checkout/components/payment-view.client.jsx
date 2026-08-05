@@ -1,26 +1,38 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Info } from "lucide-react";
-import { createPaymentIntent, isStubSecret, isZeroTotal } from "@/lib/api/payments";
+import { Info } from "lucide-react";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import { createPaymentIntent, isZeroTotal } from "@/lib/api/payments";
+import { StripePaymentForm } from "./stripe-payment-form.client";
 import { readOrderContext } from "@/features/checkout/order-context";
-import { fromMinor } from "@/lib/format/units";
-import { Price } from "@/components/currency/price";
+import { formatMinor } from "@/lib/format/money";
+import { useCurrency } from "@/components/currency/use-currency.client";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { routes } from "@/config/routes";
 
 /**
- * Creates the PaymentIntent for the placed order.
+ * Creates the PaymentIntent for the placed order and mounts Stripe Elements.
  *
- * The gateway is a stand-in today: `client_secret` arrives as `pi_fake_…`, which
- * must not be given to Stripe.js. Crucially, nothing here may mark the order paid
- * — settlement is the server's webhook. The confirmation screen polls for the
- * real state, so an unsettled order shows as unsettled instead of a false success.
+ * Stripe is real (test mode) — `client_secret` comes back as a genuine
+ * `pi_…_secret_…` and must reach Stripe.js, or the intent is created and
+ * abandoned and the order can never be paid.
+ *
+ * `loadStripe` is called at MODULE scope, once, per Stripe's documented
+ * requirement. Calling it per render re-initialises the SDK on every state change.
+ *
+ * Nothing here marks the order paid — settlement is the server's signed webhook.
+ * The confirmation screen polls for the real state, so an unsettled order shows as
+ * unsettled rather than a false success.
  */
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 export function PaymentView() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const displayCurrency = useCurrency((s) => s.currency);
   const [intent, setIntent] = useState(null);
   const [orderId, setOrderId] = useState(null);
   const [error, setError] = useState(null);
@@ -92,7 +104,18 @@ export function PaymentView() {
     );
   }
 
-  const usesStubGateway = isStubSecret(intent);
+  /**
+   * The intent's amount is ALREADY denominated in `intent.currency` — it is what
+   * Stripe will debit. It must not go through `<Price usd={…} />`, which treats its
+   * input as USD and converts it into every display currency: an INR amount would
+   * be multiplied by the INR rate a second time.
+   *
+   * `formatMinor` also reads the decimal count from the currency rather than
+   * assuming two, so a zero-decimal currency is not shown at 1/100th of its value.
+   */
+  const chargeCurrency = intent?.currency?.toUpperCase() || "USD";
+  const amount = formatMinor(intent?.amount_minor, chargeCurrency);
+  const showsDifferentCurrency = displayCurrency !== chargeCurrency;
 
   return (
     <Container className="max-w-2xl py-12">
@@ -106,34 +129,48 @@ export function PaymentView() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="font-display text-headline-md text-foreground">Amount due</p>
-            <p className="text-body-sm text-muted-foreground">Charged in {intent?.currency || "USD"}</p>
+            <p className="text-body-sm text-muted-foreground">Charged in {chargeCurrency}</p>
           </div>
-          <div className="font-display text-headline-md text-primary">
-            <Price usd={fromMinor(intent?.amount_minor)} />
-          </div>
+          <div className="font-display text-headline-md text-primary">{amount}</div>
         </div>
 
-        {usesStubGateway ? (
-          <div className="mb-6 flex gap-3 rounded-md border border-border bg-muted p-4">
-            <Info size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden />
-            <p className="text-body-sm text-muted-foreground">
-              The live card gateway isn&apos;t connected yet, so no card can be charged here. Continue
-              to see your order&apos;s real status — it will stay unpaid until the payment provider
-              confirms it.
-            </p>
-          </div>
+        {/**
+          * The charge currency can differ from the one being browsed in: a rate can
+          * go stale, or the converted total can fall under Stripe's minimum, and the
+          * server falls back to USD rather than fail at the payment step.
+          *
+          * Said plainly rather than dressed up as an error, because nothing has gone
+          * wrong — but it must not be silent either. Seeing one currency all the way
+          * through checkout and a different one on the card statement is how a
+          * legitimate charge gets reported as fraud.
+          */}
+        {showsDifferentCurrency ? (
+          <p className="mb-6 rounded-md border border-border bg-muted p-3 text-body-sm text-muted-foreground">
+            Prices are shown in {displayCurrency}, but this order is charged in{" "}
+            <strong className="text-foreground">{chargeCurrency}</strong>. Your bank may apply its
+            own conversion rate.
+          </p>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => router.push(routes.confirmation())}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-cta px-6 py-4 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110"
-        >
-          <Lock size={18} aria-hidden /> Continue
-        </button>
-        <p className="mt-3 text-center text-body-sm text-muted-foreground">
-          Charged in USD · SSL secured
-        </p>
+        {/* No publishable key means Stripe.js cannot mount. Say so rather than
+            rendering a card form that silently cannot take money. */}
+        {!stripePromise ? (
+          <div role="alert" className="flex gap-3 rounded-md border border-border bg-muted p-4">
+            <Info size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+            <p className="text-body-sm text-muted-foreground">
+              Card payments aren&apos;t configured on this deployment, so this order can&apos;t be
+              paid here yet. Your order is saved — contact support with{" "}
+              <strong className="text-foreground">{orderId}</strong> to complete it.
+            </p>
+          </div>
+        ) : (
+          <Elements
+            stripe={stripePromise}
+            options={{ clientSecret: intent.client_secret, appearance: { theme: "stripe" } }}
+          >
+            <StripePaymentForm amount={amount} />
+          </Elements>
+        )}
       </div>
     </Container>
   );

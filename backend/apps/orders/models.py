@@ -259,11 +259,29 @@ class Order(UUIDModel, TimestampedModel):
     )
     promo_code_snapshot = models.CharField(max_length=120, null=True, blank=True)
     customer_email = CIEmailField()
+    # The currency the customer is charged in. Every *_minor field below is denominated in
+    # it, which is what keeps the order_total_balances constraint meaningful.
     currency = models.CharField(max_length=3)
     subtotal_minor = models.BigIntegerField()
     discount_minor = models.BigIntegerField(default=0)
     tax_minor = models.BigIntegerField(default=0)
     total_minor = models.BigIntegerField()
+
+    # The same order expressed in USD, plus the rate it was priced with.
+    #
+    # Commissions and every report aggregate on these, never on the local amounts: an
+    # agency's 20% must not move because a traveller happened to pay in rupees, and totals
+    # across mixed currencies are otherwise unsummable.
+    #
+    # `fx_rate_used` is snapshotted rather than looked up later. A refund weeks afterwards
+    # has to reverse the amount actually taken, and re-deriving the rate from whatever is
+    # configured today is the classic multi-currency accounting bug.
+    base_currency = models.CharField(max_length=3, default="USD")
+    base_subtotal_minor = models.BigIntegerField(null=True, blank=True)
+    base_total_minor = models.BigIntegerField(null=True, blank=True)
+    fx_rate_used = models.DecimalField(
+        max_digits=18, decimal_places=8, null=True, blank=True
+    )
     status = models.CharField(max_length=30)
     payment_status = models.CharField(max_length=30)
     fulfillment_status = models.CharField(max_length=30)
@@ -365,6 +383,10 @@ class OrderItem(UUIDModel, TimestampedModel):
     traffic_policy = models.TextField(null=True, blank=True)
     network_names = models.JSONField(default=list)
     unit_amount_minor = models.BigIntegerField()
+    # What the item sold for in USD. Refund allocations and commission arithmetic use this,
+    # so they stay in one currency however the customer paid.
+    base_unit_amount_minor = models.BigIntegerField(null=True, blank=True)
+    # Always USD: this is what the supplier charges us, and has nothing to do with the buyer.
     wholesale_amount_minor = models.BigIntegerField(null=True, blank=True)
     currency = models.CharField(max_length=3)
     status = models.CharField(max_length=30, default="pending")

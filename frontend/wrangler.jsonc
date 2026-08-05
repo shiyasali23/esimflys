@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "esimflys-web",
+  "main": ".open-next/worker.js",
+
+  // nodejs_compat is required: the Next server bundle expects Node built-ins.
+  // The date must be >= 2024-09-23 for the v2 implementation of that flag.
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Everything under .next/static and public/ is served straight from the edge
+  // rather than through the Worker, and does not count toward the bundle limit.
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Backs `next/image`. The Node image optimizer does not run on Workers, so without
+  // this binding /_next/image has nothing to serve. Only five source images exist, so
+  // the number of unique transformations stays far inside the free allowance.
+  "images": {
+    "binding": "IMAGES"
+  },
+
+  // A public hostname, not a secret. Set here so a deploy cannot silently inherit a
+  // stale dashboard value. NOTE: the same value must ALSO be set as a *build*
+  // variable in Cloudflare, because next.config.mjs bakes it into the rewrites.
+  "vars": {
+    "BACKEND_ORIGIN": "https://api.esimflys.com"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

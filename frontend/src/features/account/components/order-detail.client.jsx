@@ -6,7 +6,7 @@ import { getOrder } from "@/lib/api/orders";
 import { useSession } from "@/features/auth/use-session.client";
 import { fromMinor, formatDataMb } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -129,7 +129,7 @@ export function OrderDetail({ orderId }) {
               <div className="flex shrink-0 items-center gap-3">
                 <StatusBadge status={item.status} />
                 <span className="font-medium text-foreground">
-                  <Price usd={fromMinor(item.unit_amount_minor)} />
+                  <Money minor={item.unit_amount_minor} currency={order.currency} />
                 </span>
               </div>
             </li>
@@ -142,24 +142,24 @@ export function OrderDetail({ orderId }) {
         <dl className="space-y-3 text-body-md">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Subtotal</dt>
-            <dd><Price usd={fromMinor(order.subtotal_minor)} /></dd>
+            <dd><Money minor={order.subtotal_minor} currency={order.currency} /></dd>
           </div>
           {order.discount_minor > 0 ? (
             <div className="flex justify-between">
               <dt className="text-muted-foreground">
                 Discount{order.promo_code_snapshot ? ` (${order.promo_code_snapshot})` : ""}
               </dt>
-              <dd className="text-success-text">−<Price usd={fromMinor(order.discount_minor)} /></dd>
+              <dd className="text-success-text">−<Money minor={order.discount_minor} currency={order.currency} /></dd>
             </div>
           ) : null}
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Tax</dt>
-            <dd><Price usd={fromMinor(order.tax_minor)} /></dd>
+            <dd><Money minor={order.tax_minor} currency={order.currency} /></dd>
           </div>
           <div className="flex items-end justify-between border-t border-border pt-4">
             <dt className="font-display text-headline-md text-foreground">Total</dt>
             <dd className="font-display text-headline-md text-primary">
-              <Price usd={fromMinor(order.total_minor)} />
+              <Money minor={order.total_minor} currency={order.currency} />
             </dd>
           </div>
         </dl>

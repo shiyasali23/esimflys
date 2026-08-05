@@ -2,10 +2,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchAdminOrders } from "@/lib/api/admin";
-import { fromMinor } from "@/lib/format/units";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { routes } from "@/config/routes";
 
 const PAYMENT_STATUSES = ["", "pending", "processing", "paid", "failed", "refunded"];
@@ -77,7 +76,7 @@ export function AdminOrders() {
       align: "right",
       render: (row) => (
         <span className="font-medium text-foreground">
-          <Price usd={fromMinor(row.total_minor)} />
+          <Money minor={row.total_minor} currency={row.currency} />
         </span>
       ),
     },

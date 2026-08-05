@@ -11,7 +11,7 @@ import {
 import { fromMinor, formatDataMb, planAllowance } from "@/lib/format/units";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { ErrorState } from "@/components/feedback/error-state";
 
 const PLAN_STATUSES = ["", "draft", "paused", "active", "retired"];
@@ -179,7 +179,7 @@ function PlansTab() {
       key: "retail_amount_minor",
       header: "Retail",
       align: "right",
-      render: (row) => <Price usd={fromMinor(row.retail_amount_minor)} />,
+      render: (row) => <Money minor={row.retail_amount_minor} currency={row.currency || "USD"} />,
     },
     ...(showPricing
       ? [
@@ -189,7 +189,7 @@ function PlansTab() {
             align: "right",
             render: (row) => (
               <span className="text-muted-foreground">
-                <Price usd={fromMinor(row.margin_minor)} />
+                <Money minor={row.margin_minor} currency={row.currency || "USD"} />
               </span>
             ),
           },

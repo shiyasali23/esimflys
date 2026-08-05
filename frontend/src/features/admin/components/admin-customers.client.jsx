@@ -60,9 +60,20 @@ export function AdminCustomers() {
     { key: "order_count", header: "Orders" },
     { key: "preferred_currency", header: "Currency" },
     {
+      /**
+       * Deliberately NOT a Yes/No. `email_verified_at` stays null even for Google
+       * sign-ins — Google's verification links the account but is never written
+       * here, and nothing in the backend gates on it (contract §9). "No" would tell
+       * an operator an account is unverified when it is simply unrecorded.
+       */
       key: "email_verified_at",
-      header: "Verified",
-      render: (row) => (row.email_verified_at ? "Yes" : "No"),
+      header: "Email confirmed",
+      render: (row) =>
+        row.email_verified_at ? (
+          new Date(row.email_verified_at).toLocaleDateString()
+        ) : (
+          <span className="text-muted-foreground">Not recorded</span>
+        ),
     },
     {
       key: "is_active",

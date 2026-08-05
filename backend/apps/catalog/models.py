@@ -200,3 +200,37 @@ class TopupProduct(UUIDModel, TimestampedModel):
 
     def __str__(self):
         return f"{self.product_code} ({self.status})"
+
+
+class FxRate(models.Model):
+    """A mid-market FX quote, append-only.
+
+    Rates are never updated in place. An order snapshots the rate it was priced with, and
+    that historical row must stay readable to explain the charge months later — a refund
+    has to reverse the amount that was actually taken, not whatever the rate is today.
+    """
+
+    base_currency = models.CharField(max_length=3, default="USD")
+    quote_currency = models.CharField(max_length=3)
+    rate = models.DecimalField(max_digits=18, decimal_places=8)
+    source = models.CharField(max_length=60)
+    fetched_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "fx_rates"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["base_currency", "quote_currency", "fetched_at"],
+                name="fx_rate_unique_per_fetch",
+            ),
+            models.CheckConstraint(name="fx_rate_positive", condition=Q(rate__gt=0)),
+        ]
+        indexes = [
+            models.Index(
+                fields=["base_currency", "quote_currency", "-fetched_at"],
+                name="fx_rate_latest_idx",
+            )
+        ]
+
+    def __str__(self):
+        return f"1 {self.base_currency} = {self.rate} {self.quote_currency}"

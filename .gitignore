@@ -63,3 +63,11 @@ tmp/
 /stitch_esimflys_travel_platform/
 /eSIM_DB_Catalogue_Launch.xlsx
 /eSIM_DB_Catalogue_Launch*.xlsx
+
+# Local agent config
+.claude/settings.local.json
+
+# Design scratch + audit output: 42 MB of generated images/mockups, plus a
+# findings register that maps unpatched vulnerabilities. Not needed to build
+# or deploy; keeping it out of history keeps clones fast.
+/support_docs/

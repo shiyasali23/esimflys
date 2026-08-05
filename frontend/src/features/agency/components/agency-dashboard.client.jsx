@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { fetchAgencyDashboard } from "@/lib/api/agency";
-import { fromMinor } from "@/lib/format/units";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { ErrorState } from "@/components/feedback/error-state";
 
 /**
@@ -41,26 +40,26 @@ export function AgencyDashboard({ orgId }) {
   const tiles = [
     {
       label: "Commission outstanding",
-      value: <Price usd={fromMinor(data.commissions?.outstanding_minor)} />,
+      value: <Money minor={data.commissions?.outstanding_minor} currency="USD" />,
       note: "Approved and awaiting payout",
       accent: true,
     },
     {
       label: "Attributed sales",
-      value: <Price usd={fromMinor(data.attributed_sales?.total_minor)} />,
+      value: <Money minor={data.attributed_sales?.total_minor} currency="USD" />,
       note: `${data.attributed_sales?.order_count ?? 0} order${
         data.attributed_sales?.order_count === 1 ? "" : "s"
       }`,
     },
     {
       label: "Commission earned",
-      value: <Price usd={fromMinor(data.commissions?.earned_minor)} />,
+      value: <Money minor={data.commissions?.earned_minor} currency="USD" />,
       note: "No reversals",
       reversed: data.commissions?.reversed_minor,
     },
     {
       label: "Paid out",
-      value: <Price usd={fromMinor(data.payouts?.paid_out_minor)} />,
+      value: <Money minor={data.payouts?.paid_out_minor} currency="USD" />,
       note: `${data.payouts?.payout_count ?? 0} payout${
         data.payouts?.payout_count === 1 ? "" : "s"
       }`,
@@ -87,7 +86,7 @@ export function AgencyDashboard({ orgId }) {
           <p className="mt-1 text-body-sm text-muted-foreground">
             {tile.reversed > 0 ? (
               <>
-                Less reversals of <Price usd={fromMinor(tile.reversed)} />
+                Less reversals of <Money minor={tile.reversed} currency="USD" />
               </>
             ) : (
               tile.note

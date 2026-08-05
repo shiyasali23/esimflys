@@ -1,4 +1,7 @@
-import { fromDisplayPrice, fromMinor } from "@/lib/format/units";
+// Relative, not aliased: the build-time catalogue generator imports this file
+// directly from plain Node, where the `@/` alias does not resolve. Keeping one
+// adapter for both the app and the generator is what stops them drifting.
+import { fromDisplayPrice, fromMinor } from "../../lib/format/units.js";
 
 /**
  * Translate API payloads into the shape the existing components already consume.

@@ -1,13 +1,14 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, UserPlus, Trash2, Plus, Info } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, Plus, Info, KeyRound } from "lucide-react";
 import {
   fetchAdminOrganization,
   fetchOrganizationMembers,
   addOrganizationMember,
   updateOrganizationMember,
   removeOrganizationMember,
+  setMemberPassword,
   fetchOrganizationTrackingCodes,
   issueTrackingCode,
   allowedTransitions,
@@ -200,6 +201,31 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
   const [role, setRole] = useState("viewer");
   const [busyId, setBusyId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [pwFor, setPwFor] = useState(null);
+
+  /**
+   * The platform issues agency credentials and nothing else can: agencies have no
+   * signup, no Google login, and a password-reset request for an agency address
+   * returns the normal success message while silently doing nothing (contract §7).
+   * Without this, a member who forgets their password is simply locked out.
+   */
+  async function resetPassword(event, member) {
+    event.preventDefault();
+    const formEl = event.currentTarget;
+    const password = String(new FormData(formEl).get("password") || "");
+    setBusyId(member.id);
+    setNotice(null);
+    try {
+      await setMemberPassword(orgId, member.id, password);
+      setPwFor(null);
+      setNotice(`Password set for ${member.email}. Send it to them over a channel you trust.`);
+    } catch (err) {
+      const fields = fieldErrors(err);
+      setNotice(fields.password || err?.message || "We couldn't set that password.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function add(event) {
     event.preventDefault();
@@ -323,6 +349,15 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
                   </select>
                   <button
                     type="button"
+                    onClick={() => setPwFor(pwFor === member.id ? null : member.id)}
+                    disabled={busyId === member.id}
+                    aria-label={`Set password for ${member.email}`}
+                    className="text-muted-foreground hover:text-primary disabled:opacity-50"
+                  >
+                    <KeyRound size={16} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => remove(member)}
                     disabled={busyId === member.id}
                     aria-label={`Remove ${member.email}`}
@@ -331,6 +366,48 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
                     <Trash2 size={16} aria-hidden />
                   </button>
                 </div>
+
+                {pwFor === member.id ? (
+                  <form
+                    onSubmit={(e) => resetPassword(e, member)}
+                    className="mt-3 w-full rounded-md border border-border bg-muted p-4"
+                    noValidate
+                  >
+                    <p id={`pw-note-${member.id}`} className="mb-3 text-body-sm text-foreground">
+                      This is the only way {member.email} gets a password — agencies cannot reset
+                      their own. Nothing is emailed; send it over a channel you trust.
+                    </p>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <label className="min-w-56 flex-1">
+                        <span className="mb-1 block text-label-bold text-foreground">
+                          New password
+                        </span>
+                        <input
+                          name="password"
+                          type="text"
+                          required
+                          autoComplete="off"
+                          aria-describedby={`pw-note-${member.id}`}
+                          className="w-full rounded-md border border-border bg-white px-4 py-2.5 font-mono text-body-sm outline-none focus:border-primary"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        disabled={busyId === member.id}
+                        className="rounded-full bg-cta px-5 py-2.5 text-label-bold text-cta-foreground hover:brightness-110 disabled:opacity-60"
+                      >
+                        {busyId === member.id ? "Setting…" : "Set password"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPwFor(null)}
+                        className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
               </li>
             );
           })}

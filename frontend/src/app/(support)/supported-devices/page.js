@@ -28,12 +28,12 @@ export default function SupportedDevicesPage() {
           </div>
           <div className="flex justify-center">
             <Image
-              src="/images/devices-network.png"
+              src="/images/devices-network.webp"
               alt="A laptop, smartphone, tablet, smartwatch and Wi-Fi router linked together — devices that support eSIM."
               width={1500}
               height={1000}
               priority
-              sizes="(min-width: 1024px) 520px, 90vw"
+              sizes="(min-width: 1024px) 560px, 90vw"
               className="h-auto w-full max-w-[560px] drop-shadow-2xl"
             />
           </div>

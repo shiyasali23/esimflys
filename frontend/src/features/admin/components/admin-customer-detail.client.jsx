@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { fetchAdminCustomer } from "@/lib/api/admin";
-import { fromMinor } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { routes } from "@/config/routes";
@@ -57,9 +56,26 @@ export function AdminCustomerDetail({ customerId }) {
   const customer = data.customer || {};
   const orders = Array.isArray(data.orders) ? data.orders : [];
   const name = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
-  const spend = orders
+  /**
+   * Lifetime spend, kept per currency rather than summed.
+   *
+   * `total_minor` is denominated in whatever the customer paid in, so adding an INR
+   * order to a USD one produces a number that is not money in any currency —
+   * Rs 63,900 + 1699 cents = "65,599" of nothing. A single figure would need
+   * `base_total_minor` (the USD equivalent the backend snapshots for exactly this
+   * reason), and the admin order serializer does not expose it yet.
+   *
+   * Showing each currency on its own line is correct with what is available, and
+   * reads normally in the common case where a customer has only ever used one.
+   */
+  const spendByCurrency = orders
     .filter((order) => order.payment_status === "paid")
-    .reduce((sum, order) => sum + (order.total_minor || 0), 0);
+    .reduce((totals, order) => {
+      const code = order.currency || "USD";
+      totals[code] = (totals[code] || 0) + (order.total_minor || 0);
+      return totals;
+    }, {});
+  const spendEntries = Object.entries(spendByCurrency);
 
   return (
     <div className="space-y-6">
@@ -91,15 +107,26 @@ export function AdminCustomerDetail({ customerId }) {
           <div>
             <dt className="text-label-caps uppercase text-muted-foreground">Paid to date</dt>
             <dd className="mt-1 text-body-md text-foreground">
-              <Price usd={fromMinor(spend)} />
+              {spendEntries.length ? (
+                spendEntries.map(([code, minor], index) => (
+                  <span key={code}>
+                    {index > 0 ? <span className="text-muted-foreground"> · </span> : null}
+                    <Money minor={minor} currency={code} />
+                  </span>
+                ))
+              ) : (
+                <Money minor={0} currency="USD" />
+              )}
             </dd>
           </div>
           <div>
-            <dt className="text-label-caps uppercase text-muted-foreground">Email verified</dt>
+            <dt className="text-label-caps uppercase text-muted-foreground">Email confirmed</dt>
             <dd className="mt-1 text-body-md text-foreground">
+              {/* Null even for Google sign-ins — see contract §9. "Not verified"
+                  would misreport a perfectly good account. */}
               {customer.email_verified_at
                 ? new Date(customer.email_verified_at).toLocaleDateString()
-                : "Not verified"}
+                : "Not recorded"}
             </dd>
           </div>
           <div>
@@ -143,7 +170,7 @@ export function AdminCustomerDetail({ customerId }) {
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-3">
                   <span className="text-body-md font-medium text-foreground">
-                    <Price usd={fromMinor(order.total_minor)} />
+                    <Money minor={order.total_minor} currency={order.currency} />
                   </span>
                   <StatusBadge status={order.payment_status} />
                   <StatusBadge status={order.fulfillment_status} />

@@ -317,3 +317,77 @@ describe("tracking codes", () => {
     expect(screen.getByText(/7 uses/i)).toBeTruthy();
   });
 });
+
+/**
+ * Issuing agency credentials.
+ *
+ * Agencies have no signup, no Google login, and a password-reset request for an
+ * agency address returns the normal success message while silently doing nothing
+ * (contract §7). This form is the only route in — without it a member who forgets
+ * their password is permanently locked out.
+ */
+describe("setting a member's password", () => {
+  const openFor = async (email) => {
+    mockApi();
+    render(<AdminAgencyDetail orgId="org-1" />);
+    await screen.findByText("Sunrise Travel");
+    await userEvent.click(screen.getByRole("button", { name: new RegExp(`set password for ${email}`, "i") }));
+  };
+
+  it("posts to that member's set-password action", async () => {
+    await openFor("agent@sunrise\\.test");
+    await userEvent.type(await screen.findByLabelText(/new password/i), "Correct-Horse-9");
+    await userEvent.click(screen.getByRole("button", { name: /^set password$/i }));
+
+    await waitFor(() => expect(writes().length).toBeGreaterThan(0));
+    const [href, init] = writes()[0];
+    expect(String(href)).toContain("/organizations/org-1/members/m2/set-password/");
+    expect(JSON.parse(init.body)).toEqual({ password: "Correct-Horse-9" });
+  });
+
+  /** Nothing is emailed — console-only mail. Saying otherwise strands the member. */
+  it("says the password is not emailed and must be sent by hand", async () => {
+    await openFor("agent@sunrise\\.test");
+    expect(await screen.findByText(/nothing is emailed/i)).toBeTruthy();
+    expect(screen.getByText(/cannot reset their own/i)).toBeTruthy();
+  });
+
+  it("confirms which member it applied to", async () => {
+    await openFor("agent@sunrise\\.test");
+    await userEvent.type(await screen.findByLabelText(/new password/i), "Correct-Horse-9");
+    await userEvent.click(screen.getByRole("button", { name: /^set password$/i }));
+
+    expect(await screen.findByText(/password set for agent@sunrise\.test/i)).toBeTruthy();
+  });
+
+  it("surfaces a rejected password against the form", async () => {
+    mockApi({
+      write: () =>
+        jsonResponse(
+          {
+            error: {
+              code: "validation_error",
+              message: "Invalid.",
+              fields: { password: ["This password is too common."] },
+            },
+          },
+          400,
+        ),
+    });
+    render(<AdminAgencyDetail orgId="org-1" />);
+    await screen.findByText("Sunrise Travel");
+    await userEvent.click(screen.getByRole("button", { name: /set password for agent@sunrise\.test/i }));
+    await userEvent.type(await screen.findByLabelText(/new password/i), "password");
+    await userEvent.click(screen.getByRole("button", { name: /^set password$/i }));
+
+    expect(await screen.findByText(/too common/i)).toBeTruthy();
+  });
+
+  it("can be abandoned without setting anything", async () => {
+    await openFor("agent@sunrise\\.test");
+    await userEvent.click(await screen.findByRole("button", { name: /cancel/i }));
+
+    expect(screen.queryByLabelText(/new password/i)).toBeNull();
+    expect(writes()).toHaveLength(0);
+  });
+});

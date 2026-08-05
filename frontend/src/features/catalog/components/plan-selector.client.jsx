@@ -25,11 +25,16 @@ export function PlanSelector({ country, plans }) {
       await addToCart({ productCode: selected.product_id, quantity: 1 });
       router.push(routes.checkout());
     } catch (err) {
-      // plan_unavailable means the catalogue moved under us — a reload re-reads it.
+      // Both of these are dead ends for a retry, so each names its own way out:
+      // plan_unavailable means the catalogue moved under us and only a reload
+      // re-reads it; cart_limit_exceeded means the cart is at its 50-unit ceiling
+      // and the only way forward is to remove something.
       setError(
         err?.code === "plan_unavailable"
           ? "That plan just became unavailable. Refresh to see current plans."
-          : err?.message || "We couldn't add that plan. Please try again.",
+          : err?.code === "cart_limit_exceeded"
+            ? "Your cart already holds the maximum of 50 eSIMs. Remove one to add this plan."
+            : err?.message || "We couldn't add that plan. Please try again.",
       );
       setAdding(false);
     }
@@ -154,6 +159,20 @@ export function PlanSelector({ country, plans }) {
                   <dd className="text-right font-medium text-foreground">{networks.join(", ")}</dd>
                 </div>
               ) : null}
+              {/* `hotspot_supported` is null for every plan today, and null means
+                  UNKNOWN — not unsupported. Rendering it as "No" would deny a
+                  feature the plan may well have; claiming "Yes" would promise one
+                  we cannot verify. Say we don't know. */}
+              <div className="flex justify-between gap-4">
+                <dt className="shrink-0 text-muted-foreground">Hotspot</dt>
+                <dd className="text-right font-medium text-foreground">
+                  {selected.hotspotSupported === true
+                    ? "Supported"
+                    : selected.hotspotSupported === false
+                      ? "Not supported"
+                      : "Unknown — check with your carrier"}
+                </dd>
+              </div>
               <div className="flex items-end justify-between border-t border-border pt-4">
                 <dt className="font-display text-headline-md text-foreground">Total</dt>
                 <dd aria-live="polite" className="font-display text-headline-lg text-primary">

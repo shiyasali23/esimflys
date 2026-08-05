@@ -1,10 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchAgencySales } from "@/lib/api/agency";
-import { fromMinor } from "@/lib/format/units";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 
 /**
  * Sales attributed to this agency's tracking code.
@@ -58,7 +57,7 @@ export function AgencySales({ orgId }) {
       key: "total_minor",
       header: "Order value",
       align: "right",
-      render: (row) => <Price usd={fromMinor(row.total_minor)} />,
+      render: (row) => <Money minor={row.total_minor} currency={row.currency} />,
     },
     {
       key: "commission_minor",
@@ -66,7 +65,7 @@ export function AgencySales({ orgId }) {
       align: "right",
       render: (row) => (
         <span className="font-medium text-foreground">
-          <Price usd={fromMinor(row.commission_minor)} />
+          <Money minor={row.commission_minor} currency="USD" />
         </span>
       ),
     },

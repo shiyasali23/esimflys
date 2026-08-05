@@ -8,9 +8,8 @@ import { previewPromoCode } from "@/lib/api/cart";
 import { checkout } from "@/lib/api/orders";
 import { fetchMeOrNull, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
 import { fieldErrors } from "@/lib/api/errors";
-import { fromMinor } from "@/lib/format/units";
 import { saveOrderContext } from "@/features/checkout/order-context";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { routes } from "@/config/routes";
@@ -85,7 +84,18 @@ export function CheckoutView() {
     } catch (error) {
       const fields = fieldErrors(error);
       if (Object.keys(fields).length) setFormErrors(fields);
-      else setSubmitError(error?.message || "We couldn't place your order. Please try again.");
+      // The 50-unit cap is re-checked here, not only on add, so the cart can be
+      // over the line by the time someone reaches this button. "Try again" is
+      // useless advice for it — say what has to change.
+      else if (error?.code === "cart_limit_exceeded") {
+        setSubmitError(
+          "Your cart holds more than the maximum of 50 eSIMs. Remove some to place this order.",
+        );
+      } else if (error?.code === "plan_unavailable") {
+        setSubmitError(
+          "A plan in your cart is no longer available. Review your cart and try again.",
+        );
+      } else setSubmitError(error?.message || "We couldn't place your order. Please try again.");
       setSubmitting(false);
     }
   }
@@ -161,7 +171,7 @@ export function CheckoutView() {
                       </button>
                     </div>
                     <div className="w-20 text-right font-display text-headline-md text-primary">
-                      <Price usd={fromMinor(item.line_total_minor)} />
+                      <Money minor={item.line_total_minor} currency={cart.currency} />
                     </div>
                     <button
                       type="button"
@@ -249,10 +259,35 @@ export function CheckoutView() {
             {promoError ? (
               <p role="alert" className="mt-2 text-body-sm text-destructive">{promoError}</p>
             ) : null}
+            {/* A `tracking` code is a travel-agency referral: the customer pays FULL
+                price and the agency earns commission, so promising a saving for one
+                would be a lie (contract §5.2). The preview does not say which kind a
+                code is — it returns only `discount_minor` — so the copy is driven off
+                the amount, which is true either way. Success styling is reserved for
+                an actual reduction. */}
             {promoPreview ? (
-              <p className="mt-2 text-body-sm text-success-text">
-                Code applied — <Price usd={fromMinor(discountMinor)} /> off at checkout.
-              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPromoPreview(null);
+                  setPromo("");
+                  setPromoError(null);
+                }}
+                className="mt-2 text-body-sm text-primary underline underline-offset-2"
+              >
+                Remove code
+              </button>
+            ) : null}
+            {promoPreview ? (
+              discountMinor > 0 ? (
+                <p className="mt-2 text-body-sm text-success-text">
+                  Code applied — <Money minor={discountMinor} currency={cart.currency} /> off at checkout.
+                </p>
+              ) : (
+                <p className="mt-2 text-body-sm text-muted-foreground">
+                  Code accepted. It doesn&rsquo;t reduce this order&rsquo;s total.
+                </p>
+              )
             ) : null}
           </section>
         </div>
@@ -265,13 +300,13 @@ export function CheckoutView() {
                 <dt className="text-muted-foreground">
                   Subtotal ({cart.item_count} {cart.item_count === 1 ? "eSIM" : "eSIMs"})
                 </dt>
-                <dd><Price usd={fromMinor(cart.subtotal_minor)} /></dd>
+                <dd><Money minor={cart.subtotal_minor} currency={cart.currency} /></dd>
               </div>
               {discountMinor > 0 ? (
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Discount</dt>
                   <dd className="text-success-text">
-                    −<Price usd={fromMinor(discountMinor)} />
+                    −<Money minor={discountMinor} currency={cart.currency} />
                   </dd>
                 </div>
               ) : null}
@@ -282,7 +317,7 @@ export function CheckoutView() {
               <div className="flex items-end justify-between border-t border-border pt-4">
                 <dt className="font-display text-headline-md text-foreground">Total</dt>
                 <dd aria-live="polite" className="font-display text-headline-md text-primary">
-                  <Price usd={fromMinor(totalMinor)} />
+                  <Money minor={totalMinor} currency={cart.currency} />
                 </dd>
               </div>
             </dl>

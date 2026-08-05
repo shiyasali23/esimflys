@@ -1,6 +1,12 @@
 from django.urls import path
 
-from .views import CountryDetailView, CountryListView, CountryPlansView, PlanDetailView
+from .views import (
+    CountryDetailView,
+    CountryListView,
+    CountryPlansView,
+    FxRateListView,
+    PlanDetailView,
+)
 
 app_name = "catalog"
 
@@ -9,4 +15,5 @@ urlpatterns = [
     path("countries/<slug:slug>/", CountryDetailView.as_view(), name="country-detail"),
     path("countries/<slug:slug>/plans/", CountryPlansView.as_view(), name="country-plans"),
     path("plans/<str:product_code>/", PlanDetailView.as_view(), name="plan-detail"),
+    path("rates/", FxRateListView.as_view(), name="fx-rates"),
 ]

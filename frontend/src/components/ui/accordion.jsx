@@ -28,10 +28,21 @@ export function AccordionTrigger({ className, children, ...props }) {
   );
 }
 
+/**
+ * `forceMount` keeps the answer in the server-rendered HTML. Without it Radix
+ * renders `isOpen && children` (react-collapsible), so a closed panel ships an
+ * empty div and every FAQ answer exists only in the RSC flight payload — invisible
+ * to crawlers that read HTML rather than execute JavaScript.
+ * Visibility is handed to CSS instead: Radix still sets `data-state` correctly.
+ */
 export function AccordionContent({ className, children, ...props }) {
   return (
     <AccordionPrimitive.Content
-      className={cn("overflow-hidden pb-5 text-body-md text-muted-foreground", className)}
+      forceMount
+      className={cn(
+        "overflow-hidden pb-5 text-body-md text-muted-foreground data-[state=closed]:hidden",
+        className,
+      )}
       {...props}
     >
       {children}

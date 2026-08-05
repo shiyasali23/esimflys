@@ -17,6 +17,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Organization, User
+from apps.accounts.services import create_commission_for_order
 from apps.catalog.models import CatalogPlan, Country, Supplier
 from apps.common.exceptions import Conflict
 from apps.esims import services as esim_services
@@ -195,6 +196,77 @@ class RefundIdempotencyTests(APITestCase):
 
         self.assertEqual(Refund.objects.filter(payment=payment).count(), 2)
         self.assertEqual(second.status, "succeeded")
+
+
+@override_settings(PAYMENTS_GATEWAY="fake", STRIPE_WEBHOOK_SECRET="whsec_test")
+class ReconciliationQuarantineTests(APITestCase):
+    """F-19: the failure state was written inside the transaction that then rolled back."""
+
+    def setUp(self):
+        _catalogue()
+
+    def test_a_mismatched_event_leaves_the_payment_visibly_failed(self):
+        cart, _ = order_services.create_cart(user=None)
+        order_services.add_item(cart, product_code="FR-5GB-30D", quantity=1)
+        order = order_services.checkout(cart_id=cart.id, customer_email="a@b.com")
+        payment_services.create_payment_intent_for_order(order)
+        payment = Payment.objects.get(order=order)
+        self.assertEqual(payment.status, "processing")
+
+        # Signed correctly, but the amount does not match the stored order.
+        payload = json.dumps({
+            "id": "evt_mismatch", "type": "payment_intent.succeeded",
+            "data": {"object": {
+                "id": payment.provider_payment_id, "amount": 999999,
+                "currency": "usd", "metadata": {"order_id": str(order.id)},
+            }},
+        })
+        response = self.client.post(
+            "/api/v1/webhooks/stripe/", data=payload, content_type="application/json",
+            HTTP_STRIPE_SIGNATURE=FakeGateway().sign(payload),
+        )
+        self.assertEqual(response.status_code, 409)
+
+        payment.refresh_from_db()
+        order.refresh_from_db()
+        # The whole point: previously this stayed "processing" because the save was
+        # rolled back by the raise, so nothing downstream could see the bad payment.
+        self.assertEqual(payment.status, "failed")
+        self.assertEqual(payment.failure_code, "reconciliation_mismatch")
+        # And the order must still not be paid on an unreconciled event.
+        self.assertEqual(order.payment_status, "pending")
+        self.assertEqual(
+            WebhookEvent.objects.get(external_event_id="evt_mismatch").status, "failed"
+        )
+
+    def test_a_later_good_event_is_not_blocked_by_the_quarantine(self):
+        """Quarantine must not become a permanent lock on a recoverable intent."""
+        cart, _ = order_services.create_cart(user=None)
+        order_services.add_item(cart, product_code="FR-5GB-30D", quantity=1)
+        order = order_services.checkout(cart_id=cart.id, customer_email="a@b.com")
+        payment_services.create_payment_intent_for_order(order)
+        payment = Payment.objects.get(order=order)
+
+        def deliver(event_id, amount):
+            payload = json.dumps({
+                "id": event_id, "type": "payment_intent.succeeded",
+                "data": {"object": {
+                    "id": payment.provider_payment_id, "amount": amount,
+                    "currency": "usd", "metadata": {"order_id": str(order.id)},
+                }},
+            })
+            return self.client.post(
+                "/api/v1/webhooks/stripe/", data=payload, content_type="application/json",
+                HTTP_STRIPE_SIGNATURE=FakeGateway().sign(payload),
+            )
+
+        self.assertEqual(deliver("evt_bad", 999999).status_code, 409)
+        self.assertEqual(deliver("evt_good", order.total_minor).status_code, 200)
+
+        order.refresh_from_db()
+        payment.refresh_from_db()
+        self.assertEqual(order.payment_status, "paid")
+        self.assertEqual(payment.status, "succeeded")
 
 
 @override_settings(PAYMENTS_GATEWAY="fake", STRIPE_WEBHOOK_SECRET="whsec_test")
@@ -404,3 +476,160 @@ class AgencyMembershipPolicyTests(TestCase):
             account_services.is_agency_account(user=customer),
             "removing someone from an agency must restore their normal login",
         )
+
+
+@override_settings(PAYMENTS_GATEWAY="fake", STRIPE_WEBHOOK_SECRET="whsec_test")
+class CommissionReversalTests(APITestCase):
+    """A full refund must reverse the whole commission, discount or not.
+
+    Accrual is computed on the post-discount amount, so reversal has to divide by the same
+    post-discount figure. Dividing by the pre-discount subtotal under-reverses by exactly
+    the discount ratio, and the leftover stays `pending` — which is inside
+    APPROVABLE_COMMISSION_STATES, so it is still payable. Real money leaves.
+    """
+
+    def setUp(self):
+        _catalogue()
+        self.org = Organization.objects.create(
+            name="Agency", organization_type="travel_agency",
+            billing_email="a@agency.com", status="active",
+        )
+
+    def _paid_order(self, *, promo_code=None):
+        cart, _ = order_services.create_cart(user=None)
+        order_services.add_item(cart, product_code="FR-5GB-30D", quantity=10)  # 10 x 1000
+        order = order_services.checkout(
+            cart_id=cart.id, customer_email="a@b.com", promo_code=promo_code
+        )
+        payment_services.create_payment_intent_for_order(order)
+        payment = Payment.objects.get(order=order)
+        payload = json.dumps({
+            "id": f"evt_{order.id}", "type": "payment_intent.succeeded",
+            "data": {"object": {
+                "id": payment.provider_payment_id, "amount": order.total_minor,
+                "currency": order.currency.lower(),
+                "metadata": {"order_id": str(order.id)},
+            }},
+        })
+        self.client.post("/api/v1/webhooks/stripe/", data=payload,
+                         content_type="application/json",
+                         HTTP_STRIPE_SIGNATURE=FakeGateway().sign(payload))
+        order.refresh_from_db()
+        return order, payment
+
+    def test_full_refund_of_a_discounted_order_reverses_all_commission(self):
+        PromoCode.objects.create(
+            code="AG20", kind="tracking", organization=self.org,
+            discount_type="percentage_bps", discount_value=0,
+            commission_type="percentage_bps", commission_value=2000,
+        )
+        # A separate platform discount, so subtotal != total.
+        PromoCode.objects.create(
+            code="SAVE20", discount_type="percentage_bps", discount_value=2000,
+        )
+        order, payment = self._paid_order(promo_code="SAVE20")
+        self.assertGreater(order.discount_minor, 0, "test needs a discounted order")
+
+        # Attribute the sale to the agency so a commission exists.
+        order.referring_organization = self.org
+        order.promo_code = PromoCode.objects.get(code="AG20")
+        order.save(update_fields=["referring_organization", "promo_code"])
+        commission = create_commission_for_order(order)
+        self.assertIsNotNone(commission)
+
+        # Give the customer back everything they actually paid. That is the discounted
+        # total, not the sum of list prices — refunding the latter exceeds the refundable
+        # balance and is refused, correctly.
+        items = list(order.items.all())
+        share = order.total_minor // len(items)
+        allocations = [{"order_item_id": i.id, "amount_minor": share} for i in items]
+        self.assertEqual(sum(a["amount_minor"] for a in allocations), order.total_minor)
+        payment_services.create_refund(payment=payment, allocations=allocations)
+
+        commission.refresh_from_db()
+        self.assertEqual(
+            commission.reversed_minor, commission.commission_minor,
+            "a fully refunded order must leave no payable commission",
+        )
+        self.assertEqual(commission.status, "reversed")
+
+
+@override_settings(PAYMENTS_GATEWAY="fake", STRIPE_WEBHOOK_SECRET="whsec_test")
+class AsyncRefundTests(APITestCase):
+    """A refund the gateway completes later must still finalise locally.
+
+    FakeGateway always returns "succeeded", so the asynchronous branch is unreachable
+    without patching it — which is precisely why the gap survived: no test could see it.
+    """
+
+    def setUp(self):
+        _catalogue()
+
+    def _paid(self):
+        cart, _ = order_services.create_cart(user=None)
+        order_services.add_item(cart, product_code="FR-5GB-30D", quantity=1)
+        order = order_services.checkout(cart_id=cart.id, customer_email="a@b.com")
+        payment_services.create_payment_intent_for_order(order)
+        payment = Payment.objects.get(order=order)
+        payload = json.dumps({
+            "id": f"evt_{order.id}", "type": "payment_intent.succeeded",
+            "data": {"object": {
+                "id": payment.provider_payment_id, "amount": order.total_minor,
+                "currency": "usd", "metadata": {"order_id": str(order.id)},
+            }},
+        })
+        self.client.post("/api/v1/webhooks/stripe/", data=payload,
+                         content_type="application/json",
+                         HTTP_STRIPE_SIGNATURE=FakeGateway().sign(payload))
+        order.refresh_from_db()
+        return order, payment
+
+    def _deliver(self, event_type, obj, eid):
+        payload = json.dumps({"id": eid, "type": event_type, "data": {"object": obj}})
+        return self.client.post("/api/v1/webhooks/stripe/", data=payload,
+                                content_type="application/json",
+                                HTTP_STRIPE_SIGNATURE=FakeGateway().sign(payload))
+
+    def test_a_pending_refund_is_finalised_by_the_webhook(self):
+        order, payment = self._paid()
+        item = order.items.first()
+
+        with patch.object(FakeGateway, "create_refund",
+                          lambda s, **kw: {"id": "re_async_1", "status": "pending"}):
+            refund = payment_services.create_refund(
+                payment=payment,
+                allocations=[{"order_item_id": item.id, "amount_minor": order.total_minor}],
+            )
+        self.assertEqual(refund.status, "processing")
+        order.refresh_from_db()
+        self.assertEqual(order.payment_status, "paid", "not refunded yet — correct")
+
+        # Stripe finishes the refund later and tells us.
+        response = self._deliver("refund.updated",
+                                 {"id": "re_async_1", "status": "succeeded"}, "evt_ru")
+        self.assertEqual(response.status_code, 200)
+
+        refund.refresh_from_db(); order.refresh_from_db()
+        self.assertEqual(refund.status, "succeeded")
+        self.assertIsNotNone(refund.completed_at)
+        self.assertEqual(order.payment_status, "refunded")
+
+    def test_a_failed_refund_is_marked_failed(self):
+        order, payment = self._paid()
+        item = order.items.first()
+        with patch.object(FakeGateway, "create_refund",
+                          lambda s, **kw: {"id": "re_async_2", "status": "pending"}):
+            refund = payment_services.create_refund(
+                payment=payment,
+                allocations=[{"order_item_id": item.id, "amount_minor": 400}],
+            )
+        self._deliver("refund.updated", {"id": "re_async_2", "status": "failed"}, "evt_rf")
+        refund.refresh_from_db(); order.refresh_from_db()
+        self.assertEqual(refund.status, "failed")
+        self.assertEqual(order.payment_status, "paid", "a failed refund must not refund the order")
+
+    def test_an_unhandled_event_is_not_silently_absorbed(self):
+        """A dispute must be logged loudly, not answered 200 and forgotten."""
+        with self.assertLogs("apps.payments.services", level="ERROR") as logs:
+            self._deliver("charge.dispute.created", {"id": "dp_1"}, "evt_dp")
+        self.assertTrue(any("Unhandled Stripe event" in m for m in logs.output))

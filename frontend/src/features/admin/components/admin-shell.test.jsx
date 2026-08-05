@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AdminShell } from "@/features/admin/components/admin-shell.client";
 import { useSession } from "@/features/auth/use-session.client";
 
@@ -31,12 +32,55 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks());
 
+/**
+ * Staff sign in HERE, in place, rather than being bounced to the storefront login.
+ * That page offers Google, a sign-up link and a password reset — three routes that
+ * cannot create or recover a staff account — and it loses whichever admin page the
+ * visitor was trying to reach.
+ */
 describe("signed out", () => {
-  it("asks the visitor to sign in", async () => {
+  it("shows a staff sign-in form instead of the customer login", async () => {
     useSession.setState({ user: null });
     render(<AdminShell title="Dashboard">content</AdminShell>);
-    expect(await screen.findByText(/sign in to continue/i)).toBeTruthy();
+
+    expect(await screen.findByRole("heading", { name: /staff sign in/i })).toBeTruthy();
+    expect(screen.getByLabelText(/username/i)).toBeTruthy();
+    expect(screen.getByLabelText(/^password$/i)).toBeTruthy();
     expect(screen.queryByText("content")).toBeNull();
+  });
+
+  it("offers nothing that cannot create or recover a staff account", async () => {
+    useSession.setState({ user: null });
+    const { container } = render(<AdminShell title="Dashboard">content</AdminShell>);
+    await screen.findByRole("heading", { name: /staff sign in/i });
+
+    expect(screen.queryByText(/continue with google/i)).toBeNull();
+    expect(container.querySelector('a[href*="signup"]')).toBeNull();
+    expect(container.querySelector('a[href*="forgot-password"]')).toBeNull();
+    expect(screen.getByText(/reset on the server/i)).toBeTruthy();
+  });
+
+  /** The form is public — naming which half was wrong would enumerate staff. */
+  it("does not reveal which credential was wrong", async () => {
+    useSession.setState({ user: null });
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ error: { code: "invalid_credentials", message: "No active account." } }),
+          { status: 401, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+    render(<AdminShell title="Dashboard">content</AdminShell>);
+    await screen.findByRole("heading", { name: /staff sign in/i });
+
+    await userEvent.type(screen.getByLabelText(/username/i), "someone@esimflys.com");
+    await userEvent.type(screen.getByLabelText(/^password$/i), "wrong-password");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(/don't match a staff account/i);
+    expect(alert.textContent).not.toMatch(/no such user|wrong password|not staff/i);
   });
 });
 

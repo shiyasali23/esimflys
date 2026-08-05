@@ -23,12 +23,12 @@ export function Hero({ chips, countries }) {
           <p className="mt-6 max-w-xl text-lg text-white">{hero.subtitle}</p>
           <div className="mt-8 flex flex-col items-start gap-5">
             <HeroSearch countries={countries} />
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               {chips.map((c) => (
                 <Link
                   key={c.slug}
                   href={`/esim/${c.slug}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur transition-colors hover:bg-white/20"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur transition-colors hover:bg-white/20"
                 >
                   <CountryFlag country={c} /> {c.name}
                 </Link>
@@ -38,12 +38,12 @@ export function Hero({ chips, countries }) {
         </div>
         <div className="flex justify-center lg:justify-end">
           <Image
-            src="/images/hero-portal.png"
+            src="/images/hero-portal.webp"
             alt="Circular travel scene — mountains, a city skyline, a beach and a high-speed train framing a smartphone and suitcase, illustrating travel eSIM data on the go."
             width={1040}
             height={958}
             priority
-            sizes="(min-width: 1024px) 460px, 300px"
+            sizes="(min-width: 1024px) 460px, (min-width: 640px) 360px, 300px"
             className="h-auto w-full max-w-[300px] sm:max-w-[360px] lg:max-w-[460px]"
           />
         </div>

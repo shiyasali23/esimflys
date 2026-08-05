@@ -31,11 +31,21 @@ def create_commission_for_order(order):
         )
         return None
 
-    commissionable = max(order.subtotal_minor - order.discount_minor, 0)
+    # Commission is always computed and paid in the platform's base currency, never in
+    # whatever the traveller happened to pay in. An agency's 20% must not move because a
+    # customer chose rupees, and month-end payouts have to be summable across orders.
+    # base_* is populated for every order, including the USD ones backfilled by migration.
+    base_currency = order.base_currency or order.currency
+    if order.base_total_minor is not None:
+        # base_total_minor is stored as (base subtotal - base discount), which is exactly
+        # the commissionable amount, already in the base currency.
+        commissionable = max(order.base_total_minor, 0)
+    else:
+        commissionable = max(order.subtotal_minor - order.discount_minor, 0)
     if promo.commission_type == "percentage_bps":
         commission = commissionable * promo.commission_value // 10000
     else:
-        if promo.commission_currency and promo.commission_currency != order.currency:
+        if promo.commission_currency and promo.commission_currency != base_currency:
             return None
         commission = promo.commission_value
     commission = min(commission, commissionable)
@@ -50,7 +60,7 @@ def create_commission_for_order(order):
             "commissionable_minor": commissionable,
             "commission_minor": commission,
             "reversed_minor": 0,
-            "currency": order.currency,
+            "currency": base_currency,
             "status": "pending",
         },
     )
@@ -120,12 +130,24 @@ def create_agency_tracking_code(
 
 
 def reverse_commission_for_order(order, refunded_minor):
-    if order.subtotal_minor <= 0 or refunded_minor <= 0:
+    """Reverse commission in proportion to what was refunded.
+
+    The denominator must be the amount actually charged, not the pre-discount subtotal.
+    Commission accrues on the post-discount figure (``base_total_minor`` above), so dividing
+    by ``subtotal_minor`` under-reverses by exactly the discount ratio: a fully refunded
+    $100 cart with 20% off and 20% commission reversed only $12.80 of $16.00. The remaining
+    $3.20 stayed ``pending``, which is inside APPROVABLE_COMMISSION_STATES, so it was still
+    payable — real money leaving on a fully refunded order.
+
+    ``refunded_minor`` and ``total_minor`` are both in the charge currency, so the ratio is
+    dimensionless and applies cleanly to a base-currency commission.
+    """
+    if order.total_minor <= 0 or refunded_minor <= 0:
         return
     commission = PartnerCommission.objects.select_for_update().filter(order=order).first()
     if commission is None:
         return
-    reverse = commission.commission_minor * refunded_minor // order.subtotal_minor
+    reverse = commission.commission_minor * refunded_minor // order.total_minor
     reverse = min(reverse, commission.commission_minor - commission.reversed_minor)
     if reverse <= 0:
         return

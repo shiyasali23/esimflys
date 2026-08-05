@@ -1,4 +1,3 @@
-import { FLAGS } from "@/config/flags";
 import { isCountryContentApproved } from "@/content/countries";
 
 /**
@@ -16,9 +15,11 @@ export function countryIndexDecision(country) {
   if (!country) return { index: false, reasons: ["missing-country"] };
 
   const approved = isCountryContentApproved(country.slug);
-  const hasPlans =
-    (country.livePlanCount ?? 0) > 0 ||
-    (FLAGS.showPausedPlans && (country.planCount ?? 0) > 0);
+  // The baked catalogue only ever holds ACTIVE plans, so livePlanCount is the
+  // only meaningful signal here. The old `showPausedPlans` fallback compared
+  // planCount, which the adapter sets to the same number — it could never change
+  // the answer.
+  const hasPlans = (country.livePlanCount ?? 0) > 0;
 
   if (!approved) reasons.push("content-not-approved");
   if (!hasPlans) reasons.push("no-plans");

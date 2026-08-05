@@ -1,26 +1,59 @@
 /**
- * Currency configuration (blueprint §28.8).
- * USD is the canonical base (matches the catalogue + structured data).
- * Everything else is a DISPLAY currency, converted at build time via FX rates.
+ * Currency configuration.
+ *
+ * USD is the canonical base: every plan is priced once in USD, and every other
+ * currency is derived. That keeps 385 plans x 9 currencies from becoming a
+ * maintenance problem, and it is what the structured data declares.
+ *
+ * `decimals`, `roundingStep` and `charmOffset` MIRROR the backend tables in
+ * `apps/common/currency.py` (CURRENCY_DECIMALS / ROUNDING_STEP / CHARM_OFFSET).
+ * They are duplicated here because the displayed price and the charged price must
+ * be the same number, and the browser cannot reach the backend's tables.
+ *
+ * If the backend edits its tables, edit these too — `money.rounding.test.js` pins
+ * the worked examples, but it cannot detect a change made only on the far side.
+ * The durable fix is for `GET /catalog/rates/` to return the tables; that is a
+ * backend change and is recorded as a recommendation, not done here.
  */
 export const BASE_CURRENCY = "USD";
 
+/**
+ * `roundingStep` and `charmOffset` are in MINOR units, which is why they differ so
+ * much per currency: 1 cent off $7.00 gives $6.99, but 1 paisa off Rs 600 gives
+ * Rs 599.99 — India prices on whole rupees, so the offset there is Rs 1 = 100 paise.
+ * A step of 0 disables charm rounding for that currency.
+ */
 export const SUPPORTED_CURRENCIES = [
-  { code: "USD", locale: "en-US", decimals: 2 },
-  { code: "EUR", locale: "de-DE", decimals: 2 },
-  { code: "GBP", locale: "en-GB", decimals: 2 },
-  { code: "INR", locale: "en-IN", decimals: 2 },
-  { code: "AED", locale: "en-AE", decimals: 2 },
-  { code: "SAR", locale: "en-SA", decimals: 2 },
-  { code: "JPY", locale: "ja-JP", decimals: 0 },
-  { code: "AUD", locale: "en-AU", decimals: 2 },
-  { code: "CAD", locale: "en-CA", decimals: 2 },
+  { code: "USD", locale: "en-US", decimals: 2, roundingStep: 100, charmOffset: 1 },
+  { code: "EUR", locale: "de-DE", decimals: 2, roundingStep: 100, charmOffset: 1 },
+  { code: "GBP", locale: "en-GB", decimals: 2, roundingStep: 100, charmOffset: 1 },
+  { code: "INR", locale: "en-IN", decimals: 2, roundingStep: 1000, charmOffset: 100 },
+  { code: "AED", locale: "en-AE", decimals: 2, roundingStep: 50, charmOffset: 0 },
+  { code: "SAR", locale: "en-SA", decimals: 2, roundingStep: 50, charmOffset: 0 },
+  { code: "JPY", locale: "ja-JP", decimals: 0, roundingStep: 10, charmOffset: 0 },
+  { code: "AUD", locale: "en-AU", decimals: 2, roundingStep: 100, charmOffset: 1 },
+  { code: "CAD", locale: "en-CA", decimals: 2, roundingStep: 100, charmOffset: 1 },
 ];
+
+/** Currency metadata, or USD when the code is unknown. Never throws — this is a display path. */
+export function currencyMeta(code) {
+  return (
+    SUPPORTED_CURRENCIES.find((c) => c.code === String(code || "").toUpperCase()) ||
+    SUPPORTED_CURRENCIES[0]
+  );
+}
 
 export const CURRENCY_CODES = SUPPORTED_CURRENCIES.map((c) => c.code);
 
-/** User-origin ISO-2 country → default display currency (edge-geo maps to this). */
-const COUNTRY_TO_CURRENCY = {
+/**
+ * Visitor's ISO-2 country -> default display currency.
+ *
+ * Read in the browser from the locale region subtag, never from IP on the server.
+ * Geo-detection is allowed to *switch* the displayed currency; it must never cause a
+ * redirect, and it must never change the HTML the server emits, or a CDN would cache
+ * one country's page and serve it to everyone including Googlebot.
+ */
+export const COUNTRY_TO_CURRENCY = {
   US: "USD",
   GB: "GBP",
   IN: "INR",
@@ -34,11 +67,3 @@ const COUNTRY_TO_CURRENCY = {
   PT: "EUR", GR: "EUR", AT: "EUR", BE: "EUR", FI: "EUR", LU: "EUR",
 };
 
-/** Map an ISO-2 country code to a supported display currency (default USD). */
-export function currencyForCountry(countryCode) {
-  return COUNTRY_TO_CURRENCY[String(countryCode || "").toUpperCase()] || BASE_CURRENCY;
-}
-
-export function isSupportedCurrency(code) {
-  return CURRENCY_CODES.includes(code);
-}

@@ -1,3 +1,4 @@
+from decimal import Decimal
 import hashlib
 import secrets
 import uuid
@@ -5,7 +6,10 @@ import uuid
 from django.db import transaction
 from django.utils import timezone
 
+from apps.catalog import fx
 from apps.catalog.models import CatalogPlan
+from apps.common import currency as currency_utils
+from apps.common.currency import BASE_CURRENCY
 from apps.common.exceptions import (
     CartExpired,
     Conflict,
@@ -139,16 +143,32 @@ def checkout(*, cart_id, customer_email, promo_code=None, user=None):
                 error_code="cart_limit_exceeded",
             )
 
-        currency = cart.currency
-        snapshots, subtotal = _price_cart(items, currency)
+        # Plans are priced in USD, so the cart is always costed in USD first. That figure is
+        # what commissions and reports read; the charge currency is derived from it.
+        snapshots, base_subtotal = _price_cart(items, BASE_CURRENCY)
 
-        discount, promo, referring_org = 0, None, None
+        base_discount, promo, referring_org = 0, None, None
         if promo_code:
-            promo = _reserve_promo(promo_code, subtotal, currency, customer_email, user)
-            discount = _discount_for(promo, subtotal)
+            promo = _reserve_promo(
+                promo_code, base_subtotal, BASE_CURRENCY, customer_email, user
+            )
+            base_discount = _discount_for(promo, base_subtotal)
             referring_org = promo.organization
 
-        tax = _calculate_tax(subtotal, discount, currency)
+        currency, rate = _resolve_charge_currency(cart.currency, base_subtotal - base_discount)
+
+        subtotal = currency_utils.convert(base_subtotal, to_currency=currency, rate=rate)
+        # Capped at the subtotal: the subtotal is charm-rounded down to a clean price while a
+        # discount is not, so an uncapped full-value discount lands just above it and trips
+        # the order_discount_le_subtotal database constraint.
+        discount = currency_utils.convert_discount(
+            base_discount, to_currency=currency, rate=rate, max_minor=subtotal
+        )
+
+        # No tax is charged. The column stays on the order so the stored total always
+        # balances against subtotal and discount, and so historical orders keep a truthful
+        # record if a tax policy is ever adopted.
+        tax = 0
         total = subtotal - discount + tax
 
         order = Order.objects.create(
@@ -163,11 +183,23 @@ def checkout(*, cart_id, customer_email, promo_code=None, user=None):
             discount_minor=discount,
             tax_minor=tax,
             total_minor=total,
+            base_currency=BASE_CURRENCY,
+            base_subtotal_minor=base_subtotal,
+            base_total_minor=base_subtotal - base_discount,
+            # Snapshotted, never re-derived: a refund weeks later must reverse the amount
+            # that was actually taken, at the rate it was actually taken at.
+            fx_rate_used=rate,
             status="pending_payment",
             payment_status="pending",
             fulfillment_status="pending",
             placed_at=timezone.now(),
         )
+        for snap in snapshots:
+            snap["base_unit_amount_minor"] = snap["unit_amount_minor"]
+            snap["unit_amount_minor"] = currency_utils.convert(
+                snap["base_unit_amount_minor"], to_currency=currency, rate=rate
+            )
+            snap["currency"] = currency
         OrderItem.objects.bulk_create([OrderItem(order=order, **snap) for snap in snapshots])
         if promo:
             PromoRedemption.objects.create(
@@ -217,6 +249,39 @@ def _active_plan_or_error(product_code):
     if plan is None or plan.status != "active" or not plan.country.is_active:
         raise PlanUnavailable()
     return plan
+
+
+#: Smallest charge each currency will accept, in minor units. Stripe rejects anything that
+#: converts to under about 30p — measured against the live account, INR is refused at ₹35
+#: and accepted at ₹40. A little headroom is left on top.
+MIN_CHARGE_MINOR = {"INR": 5000}
+
+
+def _resolve_charge_currency(requested, base_amount_after_discount):
+    """Pick the currency to charge in, falling back to USD rather than failing.
+
+    Two reasons to fall back. The currency may have no configured rate, in which case it
+    simply cannot be priced. Or the converted total may land under the provider's minimum —
+    which Stripe reports as a raw error at the payment step, long after the customer has
+    committed. Quietly charging in USD is a far better outcome than a dead checkout.
+    """
+    requested = (requested or BASE_CURRENCY).upper()
+    if requested == BASE_CURRENCY:
+        return BASE_CURRENCY, Decimal(1)
+
+    rate = fx.latest_rate(requested)
+    if rate is None or not currency_utils.is_supported(requested):
+        return BASE_CURRENCY, Decimal(1)
+
+    minimum = MIN_CHARGE_MINOR.get(requested)
+    if minimum is not None:
+        converted = currency_utils.convert(
+            base_amount_after_discount, to_currency=requested, rate=rate
+        )
+        if converted < minimum:
+            return BASE_CURRENCY, Decimal(1)
+
+    return requested, rate
 
 
 def _price_cart(items, currency):
@@ -301,10 +366,6 @@ def _discount_for(promo, subtotal):
     else:
         discount = promo.discount_value
     return min(discount, subtotal)
-
-
-def _calculate_tax(subtotal, discount, currency):
-    return 0
 
 
 def _order_number():

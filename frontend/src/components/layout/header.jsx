@@ -35,11 +35,12 @@ export function Header() {
       >
         <Link href="/" className="flex items-center gap-2.5">
           <Image
-            src="/images/logo-mark.png"
+            src="/images/logo-mark.webp"
             alt=""
             width={128}
             height={96}
             priority
+            sizes="43px"
             className="h-8 w-auto"
           />
           <span

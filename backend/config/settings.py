@@ -234,6 +234,25 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
 }
 
+# --- Multi-currency pricing ----------------------------------------------------------
+# Plans are priced once in USD; every other currency is derived at checkout.
+#
+# Rates are set by hand rather than pulled from a feed. Gross margin across the catalogue
+# is a median 67%, so ordinary FX drift cannot threaten a sale, and a daily provider would
+# be infrastructure managing a risk that does not exist. Quote them a little conservatively
+# and review occasionally.
+#
+# The exception worth knowing: a handful of expensive plans run near 20% margin
+# (MV-20GB-30D-V1 is retail $129.99 against $104.16 wholesale). If a currency drifts ~20%
+# against a fixed rate those turn into a loss per sale, so glance at these every month or
+# two rather than never.
+FX_RATES = {
+    "INR": env("FX_RATE_INR", default="88"),
+}
+# Applied on top of the rate: absorbs drift between reviews and the conversion fee Stripe
+# charges when settling into the account's own currency (this account settles in GBP).
+FX_BUFFER = env("FX_BUFFER", default="1.03")
+
 VALID_PAYMENTS_GATEWAYS = {"stripe", "fake"}
 VALID_SUPPLIER_GATEWAYS = {"esim_access", "fake"}
 # Both factories pick the real provider by exact name, so an unrecognised value would

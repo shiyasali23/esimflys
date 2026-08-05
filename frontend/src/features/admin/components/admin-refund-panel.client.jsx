@@ -4,7 +4,7 @@ import { Undo2 } from "lucide-react";
 import { createRefund } from "@/lib/api/admin";
 import { useFocusOnReveal } from "@/lib/a11y/use-focus-on-reveal.client";
 import { fromMinor, toMinor } from "@/lib/format/units";
-import { Price } from "@/components/currency/price";
+import { Money } from "@/components/currency/money";
 import { StatusBadge } from "@/components/data/status-badge";
 
 const MAX_REASON = 500;
@@ -36,13 +36,13 @@ export function AdminRefundPanel({ order, items }) {
   const focusConfirm = useFocusOnReveal();
 
   const chosen = items.filter((item) => selected[item.id] !== undefined);
-  const totalMinor = chosen.reduce((sum, item) => sum + toMinor(selected[item.id]), 0);
+  const totalMinor = chosen.reduce((sum, item) => sum + toMinor(selected[item.id], order.currency), 0);
 
   function toggle(item) {
     setAllocationErrors({});
     setSelected((prev) => {
       const next = { ...prev };
-      if (next[item.id] === undefined) next[item.id] = String(fromMinor(item.unit_amount_minor));
+      if (next[item.id] === undefined) next[item.id] = String(fromMinor(item.unit_amount_minor, order.currency));
       else delete next[item.id];
       return next;
     });
@@ -56,7 +56,7 @@ export function AdminRefundPanel({ order, items }) {
       const refund = await createRefund(order.id, {
         allocations: chosen.map((item) => ({
           order_item_id: item.id,
-          amount_minor: toMinor(selected[item.id]),
+          amount_minor: toMinor(selected[item.id], order.currency),
         })),
         reason: reason.trim(),
       });
@@ -92,7 +92,7 @@ export function AdminRefundPanel({ order, items }) {
 
       {issued ? (
         <p role="status" className="mb-4 rounded-md bg-success-text/10 p-3 text-body-sm text-success-text">
-          Refunded <Price usd={fromMinor(issued.amount_minor)} /> · <StatusBadge status={issued.status} />
+          Refunded <Money minor={issued.amount_minor} currency={issued.currency || order.currency} /> · <StatusBadge status={issued.status} />
         </p>
       ) : null}
 
@@ -129,7 +129,7 @@ export function AdminRefundPanel({ order, items }) {
                     <span className="min-w-0">
                       <span className="block font-medium text-foreground">{item.product_name}</span>
                       <span className="block text-body-sm text-muted-foreground">
-                        Paid <Price usd={fromMinor(item.unit_amount_minor)} />
+                        Paid <Money minor={item.unit_amount_minor} currency={order.currency} />
                       </span>
                     </span>
                   </label>
@@ -141,7 +141,7 @@ export function AdminRefundPanel({ order, items }) {
                           type="number"
                           step="0.01"
                           min="0.01"
-                          max={fromMinor(item.unit_amount_minor)}
+                          max={fromMinor(item.unit_amount_minor, order.currency)}
                           value={selected[item.id]}
                           aria-label={`Refund amount for ${item.product_name}`}
                           onChange={(e) =>
@@ -186,7 +186,7 @@ export function AdminRefundPanel({ order, items }) {
               className="mt-4 rounded-md border border-border bg-muted p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <p id="refund-confirm-question" className="mb-3 text-body-md text-foreground">
-                Refund <strong><Price usd={fromMinor(totalMinor)} /></strong> across {chosen.length}{" "}
+                Refund <strong><Money minor={totalMinor} currency={order.currency} /></strong> across {chosen.length}{" "}
                 item{chosen.length === 1 ? "" : "s"}? This returns money to the customer and cannot be
                 undone here.
               </p>
@@ -223,7 +223,7 @@ export function AdminRefundPanel({ order, items }) {
               </button>
               {chosen.length ? (
                 <p className="text-body-md text-foreground">
-                  Total <strong><Price usd={fromMinor(totalMinor)} /></strong>
+                  Total <strong><Money minor={totalMinor} currency={order.currency} /></strong>
                 </p>
               ) : (
                 <p className="text-body-sm text-muted-foreground">Select at least one item.</p>

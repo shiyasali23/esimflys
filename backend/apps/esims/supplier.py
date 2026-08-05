@@ -224,13 +224,22 @@ class EsimAccessGateway:
         if not iccid:
             raise SupplierNotReady("profile not provisioned yet (no iccid)")
 
+        # eSIM Access returns ONE field, `ac`, holding the whole LPA activation string:
+        #   LPA:1$rsp.redtea.io$CDB21D069D3B452F98B3426578A5FD11
+        # There is no separate SM-DP+ or QR-payload field, so both are derived from it.
+        # Reading `smdpAddress` (as an earlier version did) silently produced NULL on every
+        # real order, which the fake supplier hid because it returns those keys itself.
+        activation = profile.get("ac")
+        smdp_address, qr_payload = _split_activation(activation)
+
         return {
             "supplier_reference": profile.get("esimTranNo"),
             "iccid": iccid,
-            "activation_code": profile.get("ac"),
+            "activation_code": activation,
+            "qr_payload": qr_payload,
             "qr_code_url": profile.get("qrCodeUrl"),
             "short_url": profile.get("shortUrl"),
-            "smdp_address": profile.get("smdpAddress") or profile.get("smdp"),
+            "smdp_address": smdp_address,
             "total_data_bytes": profile.get("totalVolume"),
             "remaining_data_bytes": _remaining(profile),
             "expires_at": profile.get("expiredTime"),
@@ -274,6 +283,25 @@ class EsimAccessGateway:
         raise SupplierError(
             "Use order_esim()/query_esim(); eSIM Access provisioning is two-phase."
         )
+
+
+def _split_activation(activation):
+    """Split an LPA activation string into ``(smdp_address, qr_payload)``.
+
+    The format is ``LPA:1$<smdp-address>$<matching-id>``. The whole string is what a phone
+    scans, so it *is* the QR payload; the SM-DP+ address is the middle segment and is only
+    needed for manual entry, where a customer types the two parts separately.
+
+    Anything that is not a well-formed LPA string yields ``(None, None)`` rather than a
+    half-parsed value: a wrong SM-DP+ address sends the phone to the wrong server, which is
+    worse than showing nothing and falling back to the hosted QR image.
+    """
+    if not activation or not activation.startswith("LPA:"):
+        return None, None
+    parts = activation.split("$")
+    if len(parts) < 3 or not parts[1]:
+        return None, None
+    return parts[1], activation
 
 
 def _remaining(row):
