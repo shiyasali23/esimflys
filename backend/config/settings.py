@@ -182,6 +182,12 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Railway's internal healthcheck probe hits the container directly over plain HTTP,
+# bypassing the edge that sets X-Forwarded-Proto. Without this exemption Django 301s
+# the probe to https, the prober doesn't follow redirects, and the deploy times out
+# waiting for a 200 that never comes — even though the app is healthy and real
+# HTTPS traffic through the edge works fine.
+SECURE_REDIRECT_EXEMPT = [r"^health/"]
 if not DEBUG:
     SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = bool(SECURE_HSTS_SECONDS)
