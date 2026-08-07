@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "esimflys-web",
+  "name": "esimflys",
   "main": ".open-next/worker.js",
 
   // nodejs_compat is required: the Next server bundle expects Node built-ins.
