@@ -43,10 +43,23 @@ const nextConfig = {
    * irrelevant. `/accounts/` carries the allauth (Google) redirect flow.
    */
   async rewrites() {
-    // The destination slash is load-bearing: Next normalises `:path*` without it, and
-    // Django's APPEND_SLASH would 301 straight back into a redirect loop.
+    // Two rules per prefix, slash-terminated first, because the runtimes disagree about
+    // what `:path*` captures from a request that already ends in a slash:
+    //
+    //   `/api/v1/auth/csrf/`  ->  Node dev server: `auth/csrf`   (strips it)
+    //                             OpenNext/workerd: `auth/csrf/`  (keeps it)
+    //
+    // A single rule cannot serve both. With the destination slash, workerd emits
+    // `/api/v1/auth/csrf//` and Django 404s; without it, Node emits `/api/v1/auth/csrf`
+    // and Django's APPEND_SLASH 301s — which silently turns an authenticated POST into
+    // a GET. Verified against a live backend: Node 200 / workerd 404 on the same build.
+    //
+    // Matching the trailing slash explicitly first means whichever way the runtime
+    // splits the path, exactly one slash reaches Django.
     return [
+      { source: "/api/v1/:path*/", destination: `${BACKEND_ORIGIN}/api/v1/:path*/` },
       { source: "/api/v1/:path*", destination: `${BACKEND_ORIGIN}/api/v1/:path*/` },
+      { source: "/accounts/:path*/", destination: `${BACKEND_ORIGIN}/accounts/:path*/` },
       { source: "/accounts/:path*", destination: `${BACKEND_ORIGIN}/accounts/:path*/` },
     ];
   },
