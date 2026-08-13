@@ -137,6 +137,32 @@ class FxRateSourceTests(TestCase):
         self.assertEqual(fx.latest_rate("INR"), Decimal("83.2"))
 
     @override_settings(FX_RATES={"INR": "88"})
+    def test_the_quoted_rate_is_the_rate_that_will_be_charged(self):
+        """The storefront reads current_rates; an order prices with latest_rate.
+
+        These two disagreed once: settings won in one and a stored row won in the
+        other, so INR was quoted at 88 and billed at 83.20 — the customer saw ₹1,359
+        and was charged ₹1,289. Nothing about that was visible until someone compared
+        a Stripe intent against the page. It must not be possible again.
+        """
+        FxRate.objects.create(
+            base_currency="USD", quote_currency="INR", rate=Decimal("83.2"),
+            source="test", fetched_at=timezone.now(),
+        )
+        FxRate.objects.create(
+            base_currency="USD", quote_currency="EUR", rate=Decimal("0.92"),
+            source="test", fetched_at=timezone.now(),
+        )
+        quoted = fx.current_rates()
+        for code, rate in quoted.items():
+            self.assertEqual(
+                rate, fx.latest_rate(code),
+                f"{code} is quoted at {rate} but would be charged at {fx.latest_rate(code)}",
+            )
+        # And specifically: the stored row wins in BOTH, not just in pricing.
+        self.assertEqual(quoted["INR"], Decimal("83.2"))
+
+    @override_settings(FX_RATES={"INR": "88"})
     def test_current_rates_lists_what_can_be_charged(self):
         rates = fx.current_rates()
         self.assertEqual(rates["USD"], Decimal(1))

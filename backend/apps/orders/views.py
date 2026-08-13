@@ -251,6 +251,9 @@ class DirectCheckoutView(APIView):
         order = services.checkout_direct(
             items=payload.validated_data["items"],
             customer_email=email,
+            customer_first_name=payload.validated_data.get("customer_first_name", ""),
+            customer_last_name=payload.validated_data.get("customer_last_name", ""),
+            customer_phone=payload.validated_data.get("customer_phone", ""),
             currency=(payload.validated_data.get("currency") or "USD").upper(),
             promo_code=(payload.validated_data.get("promo_code") or None),
             user=user,

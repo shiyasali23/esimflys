@@ -79,6 +79,15 @@ class DirectCheckoutSerializer(serializers.Serializer):
 
     items = DirectCheckoutItemSerializer(many=True, allow_empty=False)
     customer_email = serializers.EmailField(required=False)
+    # Who the eSIM is for. Optional: delivery is by email, and a signed-in customer is
+    # never asked for them.
+    customer_first_name = serializers.CharField(
+        required=False, allow_blank=True, max_length=150
+    )
+    customer_last_name = serializers.CharField(
+        required=False, allow_blank=True, max_length=150
+    )
+    customer_phone = serializers.CharField(required=False, allow_blank=True, max_length=32)
     promo_code = serializers.CharField(required=False, allow_blank=True)
     currency = serializers.CharField(required=False, allow_blank=True, max_length=3)
 
@@ -119,6 +128,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "customer_email",
+            "customer_first_name",
+            "customer_last_name",
+            "customer_phone",
             "currency",
             "subtotal_minor",
             "discount_minor",

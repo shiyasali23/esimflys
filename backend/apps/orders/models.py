@@ -259,6 +259,13 @@ class Order(UUIDModel, TimestampedModel):
     )
     promo_code_snapshot = models.CharField(max_length=120, null=True, blank=True)
     customer_email = CIEmailField()
+    # Who the eSIM is for, as given at checkout. Delivery is by email alone, so all three
+    # are optional: an order placed before these existed, or by a signed-in customer who
+    # was never asked, is still a complete order. Blank (not null) so support code never
+    # has to distinguish "not given" from "given as empty".
+    customer_first_name = models.CharField(max_length=150, blank=True, default="")
+    customer_last_name = models.CharField(max_length=150, blank=True, default="")
+    customer_phone = models.CharField(max_length=32, blank=True, default="")
     # Caller-supplied key that makes checkout safe to retry.
     #
     # Replaces the cart's double-submit guard, which only worked by converting the cart and

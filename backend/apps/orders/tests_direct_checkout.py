@@ -294,3 +294,52 @@ class EveryOrderPathWritesBaseAmountsTests(TestCase):
         )
         self._assert_base_written(topup_order)
         self.assertEqual(topup_order.base_total_minor, 499)
+
+
+class CustomerDetailsTests(APITestCase):
+    """Who the eSIM is for.
+
+    Delivery is by email, so the name and phone are optional everywhere. They must
+    nonetheless survive the round trip — a field the API accepts and silently drops is
+    worse than one it rejects, because support will quote it back to a customer.
+    """
+
+    def setUp(self):
+        _catalogue()
+
+    def _post(self, payload):
+        return self.client.post(
+            "/api/v1/checkout/direct/",
+            data=json.dumps({
+                "items": [{"product_code": "TUR-1GB-7D-V1", "quantity": 1}],
+                "customer_email": "a@b.com",
+                **payload,
+            }),
+            content_type="application/json",
+        )
+
+    def test_details_are_stored_and_returned(self):
+        response = self._post({
+            "customer_first_name": "Jordan",
+            "customer_last_name": "Lee",
+            "customer_phone": "+44 7700 900123",
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["customer_first_name"], "Jordan")
+        self.assertEqual(response.json()["customer_phone"], "+44 7700 900123")
+
+        order = Order.objects.get(id=response.json()["id"])
+        self.assertEqual(order.customer_last_name, "Lee")
+
+    def test_absent_details_are_blank_not_null(self):
+        """Support code must never have to tell "not given" from "given as empty"."""
+        response = self._post({})
+        self.assertEqual(response.status_code, 201)
+        order = Order.objects.get(id=response.json()["id"])
+        self.assertEqual(order.customer_first_name, "")
+        self.assertEqual(order.customer_last_name, "")
+        self.assertEqual(order.customer_phone, "")
+
+    def test_an_over_long_phone_is_refused_rather_than_truncated(self):
+        response = self._post({"customer_phone": "0" * 40})
+        self.assertEqual(response.status_code, 400)

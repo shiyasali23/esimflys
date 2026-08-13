@@ -47,6 +47,13 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Must sit immediately after SecurityMiddleware: it has to see the request before
+    # anything else can redirect or reject it, and after the security headers are applied.
+    #
+    # Django refuses to serve static files when DEBUG=False, expecting nginx or a CDN to do
+    # it. There is neither in front of Gunicorn on Railway, so /static/ 404s and the Django
+    # admin renders unstyled — the tool you reach for when something is already wrong.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -130,6 +137,15 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Hashes each filename and pre-compresses it, so files can be served with a far-future
+    # cache header and a deploy still busts the cache. Only affects Django's own admin and
+    # DRF assets — the storefront is a separate Next.js app.
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 _RENDERERS = ["rest_framework.renderers.JSONRenderer"]

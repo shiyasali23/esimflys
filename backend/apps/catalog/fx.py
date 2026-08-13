@@ -62,9 +62,21 @@ def is_supported_for_charging(currency):
 
 
 def current_rates():
-    """Every currency that may be charged in, USD included."""
-    rates = {BASE: Decimal(1)}
-    rates.update(configured_rates())
-    for row in FxRate.objects.filter(base_currency=BASE).order_by("quote_currency", "-fetched_at"):
-        rates.setdefault(row.quote_currency, row.rate)
-    return rates
+    """Every currency that may be charged in, USD included.
+
+    Resolved through ``latest_rate`` — the same function that prices an order — so a
+    currency can never be QUOTED at one rate and CHARGED at another.
+
+    This is not hypothetical. This function used to let settings win while
+    ``latest_rate`` let a stored row win, and with INR configured at 88 and a row at
+    83.20 the storefront quoted ₹1,359 for a plan that billed at ₹1,289. Anything that
+    reads a rate for display must come through here, and here goes through there.
+    """
+    codes = {BASE, *configured_rates()}
+    codes.update(
+        FxRate.objects.filter(base_currency=BASE)
+        .values_list("quote_currency", flat=True)
+        .distinct()
+    )
+    resolved = ((code, latest_rate(code)) for code in codes)
+    return {code: rate for code, rate in resolved if rate is not None}

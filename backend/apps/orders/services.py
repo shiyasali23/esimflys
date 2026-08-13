@@ -131,7 +131,8 @@ OrderLine = namedtuple("OrderLine", ["catalog_plan_id", "quantity"])
 
 
 def create_order(
-    *, lines, customer_email, requested_currency=BASE_CURRENCY, promo_code=None, user=None
+    *, lines, customer_email, requested_currency=BASE_CURRENCY, promo_code=None, user=None,
+    customer_first_name="", customer_last_name="", customer_phone="",
 ):
     """Price a set of lines and write the order. The single source of truth.
 
@@ -191,6 +192,9 @@ def create_order(
         promo_code=promo,
         promo_code_snapshot=(promo.code if promo else None),
         customer_email=customer_email,
+        customer_first_name=customer_first_name or "",
+        customer_last_name=customer_last_name or "",
+        customer_phone=customer_phone or "",
         currency=currency,
         subtotal_minor=subtotal,
         discount_minor=discount,
@@ -228,7 +232,7 @@ def create_order(
 
 def checkout_direct(
     *, items, customer_email, currency=BASE_CURRENCY, promo_code=None, user=None,
-    idempotency_key=None,
+    idempotency_key=None, customer_first_name="", customer_last_name="", customer_phone="",
 ):
     """Create an order from a request payload, with no cart.
 
@@ -258,6 +262,9 @@ def checkout_direct(
                 requested_currency=currency,
                 promo_code=promo_code,
                 user=user,
+                customer_first_name=customer_first_name,
+                customer_last_name=customer_last_name,
+                customer_phone=customer_phone,
             )
             if idempotency_key:
                 order.idempotency_key = idempotency_key
