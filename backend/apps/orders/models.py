@@ -259,6 +259,15 @@ class Order(UUIDModel, TimestampedModel):
     )
     promo_code_snapshot = models.CharField(max_length=120, null=True, blank=True)
     customer_email = CIEmailField()
+    # Caller-supplied key that makes checkout safe to retry.
+    #
+    # Replaces the cart's double-submit guard, which only worked by converting the cart and
+    # then refusing — leaving a customer whose response was lost with a 409 and no order
+    # number, cut off from the only guest recovery path. Retrying with the same key returns
+    # the original order instead. Nullable because cart checkouts do not supply one.
+    idempotency_key = models.CharField(
+        max_length=255, null=True, blank=True, unique=True
+    )
     # The currency the customer is charged in. Every *_minor field below is denominated in
     # it, which is what keeps the order_total_balances constraint meaningful.
     currency = models.CharField(max_length=3)

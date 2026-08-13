@@ -13,6 +13,7 @@ from . import services
 from .models import Cart, Order
 from .serializers import (
     AddItemSerializer,
+    DirectCheckoutSerializer,
     CartSerializer,
     CheckoutSerializer,
     OrderLookupSerializer,
@@ -219,3 +220,40 @@ class OrderLookupView(APIView):
             for profile in profiles
         ]
         return Response({"order": OrderSerializer(order).data, "esims": esims})
+
+
+class DirectCheckoutView(APIView):
+    """Buy in one request, with no cart.
+
+    The cart exists to hold items between page views. Nothing about creating an order
+    needed it: pricing, promo reservation and currency resolution all work from the
+    payload, and `Order` has never had a foreign key to `Cart`.
+
+    Double submits are handled by an `Idempotency-Key` header rather than by consuming a
+    cart. That is the better guard — a retry after a lost response returns the original
+    order instead of a 409, so the customer still has an order number to quote.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_scope = "checkout"
+
+    def post(self, request):
+        payload = DirectCheckoutSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        user = _user(request)
+
+        email = payload.validated_data.get("customer_email") or (user.email if user else None)
+        if not email:
+            raise ValidationError(
+                {"customer_email": ["This field is required for guest checkout."]}
+            )
+
+        order = services.checkout_direct(
+            items=payload.validated_data["items"],
+            customer_email=email,
+            currency=(payload.validated_data.get("currency") or "USD").upper(),
+            promo_code=(payload.validated_data.get("promo_code") or None),
+            user=user,
+            idempotency_key=request.headers.get("Idempotency-Key") or None,
+        )
+        return Response(OrderSerializer(order).data, status=201)

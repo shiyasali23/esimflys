@@ -65,6 +65,24 @@ class CheckoutSerializer(serializers.Serializer):
     promo_code = serializers.CharField(required=False, allow_blank=True)
 
 
+class DirectCheckoutItemSerializer(serializers.Serializer):
+    product_code = serializers.CharField()
+    quantity = serializers.IntegerField(min_value=1, default=1)
+
+
+class DirectCheckoutSerializer(serializers.Serializer):
+    """Buy without a cart.
+
+    Only identifies WHAT is being bought — never what it costs. Prices are read from the
+    catalogue server-side, so a tampered client can change the product, never the price.
+    """
+
+    items = DirectCheckoutItemSerializer(many=True, allow_empty=False)
+    customer_email = serializers.EmailField(required=False)
+    promo_code = serializers.CharField(required=False, allow_blank=True)
+    currency = serializers.CharField(required=False, allow_blank=True, max_length=3)
+
+
 class OrderLookupSerializer(serializers.Serializer):
     order_number = serializers.CharField()
     email = serializers.EmailField()

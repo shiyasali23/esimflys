@@ -4,7 +4,7 @@ import hashlib
 import secrets
 import uuid
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.catalog import fx
@@ -224,6 +224,54 @@ def create_order(
             reserved_at=timezone.now(),
         )
     return order
+
+
+def checkout_direct(
+    *, items, customer_email, currency=BASE_CURRENCY, promo_code=None, user=None,
+    idempotency_key=None,
+):
+    """Create an order from a request payload, with no cart.
+
+    ``items`` is ``[{"product_code": str, "quantity": int}]``. Prices are read from the
+    catalogue server-side exactly as the cart path does — a client cannot influence them.
+
+    ``idempotency_key`` is what makes a lost response survivable. Returning the original
+    order on a retry is strictly better than the cart's guard, which converted the cart and
+    then answered 409, leaving the customer with nothing to quote at support.
+    """
+    if idempotency_key:
+        existing = Order.objects.filter(idempotency_key=idempotency_key).first()
+        if existing is not None:
+            return existing
+
+    lines = []
+    for entry in items:
+        plan = _active_plan_or_error(entry["product_code"])
+        quantity = _validate_quantity(entry.get("quantity", 1))
+        lines.append(OrderLine(catalog_plan_id=plan.id, quantity=quantity))
+
+    try:
+        with transaction.atomic():
+            order = create_order(
+                lines=lines,
+                customer_email=customer_email,
+                requested_currency=currency,
+                promo_code=promo_code,
+                user=user,
+            )
+            if idempotency_key:
+                order.idempotency_key = idempotency_key
+                order.save(update_fields=["idempotency_key", "updated_at"])
+            return order
+    except IntegrityError:
+        # Two concurrent requests carrying the same key: the unique constraint lets exactly
+        # one through and the loser reads the winner's order. The whole transaction rolls
+        # back, so the loser leaves no half-written order or promo reservation behind.
+        if idempotency_key:
+            winner = Order.objects.filter(idempotency_key=idempotency_key).first()
+            if winner is not None:
+                return winner
+        raise
 
 
 def checkout(*, cart_id, customer_email, promo_code=None, user=None):

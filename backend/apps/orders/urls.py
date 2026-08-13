@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    DirectCheckoutView,
     CartItemDetailView,
     CartItemsView,
     CartPromoView,
@@ -19,6 +20,7 @@ urlpatterns = [
     path("cart/items/<uuid:item_id>/", CartItemDetailView.as_view(), name="cart-item"),
     path("cart/promo-code/", CartPromoView.as_view(), name="cart-promo"),
     path("checkout/", CheckoutView.as_view(), name="checkout"),
+    path("checkout/direct/", DirectCheckoutView.as_view(), name="checkout-direct"),
     path("orders/", OrderListView.as_view(), name="order-list"),
     path("orders/lookup/", OrderLookupView.as_view(), name="order-lookup"),
     path("orders/<uuid:id>/", OrderDetailView.as_view(), name="order-detail"),
