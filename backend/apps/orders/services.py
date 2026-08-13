@@ -1,3 +1,4 @@
+from collections import namedtuple
 from decimal import Decimal
 import hashlib
 import secrets
@@ -124,7 +125,114 @@ def preview_promo(cart, *, code, customer_email):
     }
 
 
+#: What ``create_order`` needs from a line. A CartItem satisfies it, and so does a plain
+#: request payload — which is the whole point: order creation never needed a Cart row.
+OrderLine = namedtuple("OrderLine", ["catalog_plan_id", "quantity"])
+
+
+def create_order(
+    *, lines, customer_email, requested_currency=BASE_CURRENCY, promo_code=None, user=None
+):
+    """Price a set of lines and write the order. The single source of truth.
+
+    Deliberately knows nothing about carts. Every rule that actually protects money lives
+    here — server-side repricing, promo reservation, currency resolution, the base-amount
+    snapshot — and none of it ever depended on a Cart row. ``lines`` only has to expose
+    ``catalog_plan_id`` and ``quantity``.
+
+    The caller owns the transaction: a cart checkout also has to close its cart in the same
+    atomic block, and the direct path has an idempotency row to write.
+    """
+    lines = list(lines)
+    if not lines:
+        raise Conflict(message="There is nothing to check out.")
+
+    units = sum(line.quantity for line in lines)
+    if units > MAX_CART_UNITS:
+        raise Conflict(
+            message=f"An order may contain at most {MAX_CART_UNITS} eSIMs.",
+            error_code="cart_limit_exceeded",
+        )
+
+    # Plans are priced in USD, so an order is always costed in USD first. That figure is
+    # what commissions and reports read; the charge currency is derived from it.
+    snapshots, base_subtotal = _price_cart(lines, BASE_CURRENCY)
+
+    base_discount, promo, referring_org = 0, None, None
+    if promo_code:
+        promo = _reserve_promo(
+            promo_code, base_subtotal, BASE_CURRENCY, customer_email, user
+        )
+        base_discount = _discount_for(promo, base_subtotal)
+        referring_org = promo.organization
+
+    currency, rate = _resolve_charge_currency(
+        requested_currency, base_subtotal - base_discount
+    )
+
+    subtotal = currency_utils.convert(base_subtotal, to_currency=currency, rate=rate)
+    # Capped at the subtotal: the subtotal is charm-rounded down to a clean price while a
+    # discount is not, so an uncapped full-value discount lands just above it and trips
+    # the order_discount_le_subtotal database constraint.
+    discount = currency_utils.convert_discount(
+        base_discount, to_currency=currency, rate=rate, max_minor=subtotal
+    )
+
+    # No tax is charged. The column stays on the order so the stored total always
+    # balances against subtotal and discount, and so historical orders keep a truthful
+    # record if a tax policy is ever adopted.
+    tax = 0
+    total = subtotal - discount + tax
+
+    order = Order.objects.create(
+        order_number=_order_number(),
+        user=user if (user and user.is_authenticated) else None,
+        referring_organization=referring_org,
+        promo_code=promo,
+        promo_code_snapshot=(promo.code if promo else None),
+        customer_email=customer_email,
+        currency=currency,
+        subtotal_minor=subtotal,
+        discount_minor=discount,
+        tax_minor=tax,
+        total_minor=total,
+        base_currency=BASE_CURRENCY,
+        base_subtotal_minor=base_subtotal,
+        base_total_minor=base_subtotal - base_discount,
+        # Snapshotted, never re-derived: a refund weeks later must reverse the amount
+        # that was actually taken, at the rate it was actually taken at.
+        fx_rate_used=rate,
+        status="pending_payment",
+        payment_status="pending",
+        fulfillment_status="pending",
+        placed_at=timezone.now(),
+    )
+    for snap in snapshots:
+        snap["base_unit_amount_minor"] = snap["unit_amount_minor"]
+        snap["unit_amount_minor"] = currency_utils.convert(
+            snap["base_unit_amount_minor"], to_currency=currency, rate=rate
+        )
+        snap["currency"] = currency
+    OrderItem.objects.bulk_create([OrderItem(order=order, **snap) for snap in snapshots])
+    if promo:
+        PromoRedemption.objects.create(
+            promo_code=promo,
+            order=order,
+            user=user if (user and user.is_authenticated) else None,
+            customer_email_hash=email_hash(customer_email),
+            status="reserved",
+            reserved_at=timezone.now(),
+        )
+    return order
+
+
 def checkout(*, cart_id, customer_email, promo_code=None, user=None):
+    """Convert a cart into an order.
+
+    Retained so the existing storefront keeps working unchanged. All it adds over
+    :func:`create_order` is the cart lifecycle: lock the row, refuse an expired or empty
+    cart, and mark it converted — which is also the double-submit guard.
+    """
     with transaction.atomic():
         cart = Cart.objects.select_for_update().filter(pk=cart_id, status="active").first()
         if cart is None:
@@ -135,81 +243,14 @@ def checkout(*, cart_id, customer_email, promo_code=None, user=None):
         items = list(cart.items.all())
         if not items:
             raise Conflict(message="The cart is empty.")
-        # Backstop: carts built before the cap existed, or grown by any path that skipped it.
-        units = sum(item.quantity for item in items)
-        if units > MAX_CART_UNITS:
-            raise Conflict(
-                message=f"A cart may hold at most {MAX_CART_UNITS} eSIMs.",
-                error_code="cart_limit_exceeded",
-            )
 
-        # Plans are priced in USD, so the cart is always costed in USD first. That figure is
-        # what commissions and reports read; the charge currency is derived from it.
-        snapshots, base_subtotal = _price_cart(items, BASE_CURRENCY)
-
-        base_discount, promo, referring_org = 0, None, None
-        if promo_code:
-            promo = _reserve_promo(
-                promo_code, base_subtotal, BASE_CURRENCY, customer_email, user
-            )
-            base_discount = _discount_for(promo, base_subtotal)
-            referring_org = promo.organization
-
-        currency, rate = _resolve_charge_currency(cart.currency, base_subtotal - base_discount)
-
-        subtotal = currency_utils.convert(base_subtotal, to_currency=currency, rate=rate)
-        # Capped at the subtotal: the subtotal is charm-rounded down to a clean price while a
-        # discount is not, so an uncapped full-value discount lands just above it and trips
-        # the order_discount_le_subtotal database constraint.
-        discount = currency_utils.convert_discount(
-            base_discount, to_currency=currency, rate=rate, max_minor=subtotal
-        )
-
-        # No tax is charged. The column stays on the order so the stored total always
-        # balances against subtotal and discount, and so historical orders keep a truthful
-        # record if a tax policy is ever adopted.
-        tax = 0
-        total = subtotal - discount + tax
-
-        order = Order.objects.create(
-            order_number=_order_number(),
-            user=user if (user and user.is_authenticated) else None,
-            referring_organization=referring_org,
-            promo_code=promo,
-            promo_code_snapshot=(promo.code if promo else None),
+        order = create_order(
+            lines=items,
             customer_email=customer_email,
-            currency=currency,
-            subtotal_minor=subtotal,
-            discount_minor=discount,
-            tax_minor=tax,
-            total_minor=total,
-            base_currency=BASE_CURRENCY,
-            base_subtotal_minor=base_subtotal,
-            base_total_minor=base_subtotal - base_discount,
-            # Snapshotted, never re-derived: a refund weeks later must reverse the amount
-            # that was actually taken, at the rate it was actually taken at.
-            fx_rate_used=rate,
-            status="pending_payment",
-            payment_status="pending",
-            fulfillment_status="pending",
-            placed_at=timezone.now(),
+            requested_currency=cart.currency,
+            promo_code=promo_code,
+            user=user,
         )
-        for snap in snapshots:
-            snap["base_unit_amount_minor"] = snap["unit_amount_minor"]
-            snap["unit_amount_minor"] = currency_utils.convert(
-                snap["base_unit_amount_minor"], to_currency=currency, rate=rate
-            )
-            snap["currency"] = currency
-        OrderItem.objects.bulk_create([OrderItem(order=order, **snap) for snap in snapshots])
-        if promo:
-            PromoRedemption.objects.create(
-                promo_code=promo,
-                order=order,
-                user=user if (user and user.is_authenticated) else None,
-                customer_email_hash=email_hash(customer_email),
-                status="reserved",
-                reserved_at=timezone.now(),
-            )
         cart.status = "converted"
         cart.save(update_fields=["status", "updated_at"])
         return order
