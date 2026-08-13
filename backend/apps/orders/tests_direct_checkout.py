@@ -228,3 +228,69 @@ class DirectCheckoutEndpointTests(APITestCase):
             format="json",
         )
         self.assertEqual(Cart.objects.count(), 0)
+
+
+class EveryOrderPathWritesBaseAmountsTests(TestCase):
+    """base_* is what commissions and reports read.
+
+    A NULL there does not fail loudly — it silently drops the order into the legacy
+    pre-multi-currency branch, which computes commission from a different figure. This
+    asserts it for *every* way an order can be created, so a new path cannot forget.
+    """
+
+    def setUp(self):
+        _catalogue()
+
+    def _assert_base_written(self, order):
+        self.assertIsNotNone(order.base_currency, "base_currency missing")
+        self.assertIsNotNone(order.base_subtotal_minor, "base_subtotal_minor missing")
+        self.assertIsNotNone(order.base_total_minor, "base_total_minor missing")
+        self.assertIsNotNone(order.fx_rate_used, "fx_rate_used missing")
+        for item in order.items.all():
+            self.assertIsNotNone(
+                item.base_unit_amount_minor, "base_unit_amount_minor missing on item"
+            )
+
+    def test_cart_checkout(self):
+        cart, _ = services.create_cart(user=None)
+        services.add_item(cart, product_code="TUR-1GB-7D-V1", quantity=1)
+        self._assert_base_written(
+            services.checkout(cart_id=cart.id, customer_email="a@b.com")
+        )
+
+    def test_direct_checkout(self):
+        self._assert_base_written(
+            services.checkout_direct(
+                items=[{"product_code": "TUR-1GB-7D-V1", "quantity": 1}],
+                customer_email="a@b.com",
+            )
+        )
+
+    def test_topup_order(self):
+        """The path that was missing them — a top-up is an order like any other."""
+        from apps.accounts.models import User
+        from apps.catalog.models import TopupProduct
+        from apps.esims import services as esim_services
+        from apps.esims.models import EsimProfile
+
+        user = User.objects.create_user(email="t@b.com", password="pw-123456789")
+        cart, _ = services.create_cart(user=user)
+        services.add_item(cart, product_code="TUR-1GB-7D-V1", quantity=1)
+        order = services.checkout(cart_id=cart.id, customer_email=user.email, user=user)
+        esim_services.enqueue_provisioning_for_order(order)
+        while esim_services.claim_and_process_one():
+            pass
+        profile = EsimProfile.objects.get(order_item__order=order)
+
+        plan = CatalogPlan.objects.get(product_code="TUR-1GB-7D-V1")
+        TopupProduct.objects.create(
+            supplier=plan.supplier, product_code="TOP-1GB", name="Top-up 1 GB",
+            supplier_package_code="TPKG", data_amount_mb=1000, validity_days=7,
+            retail_amount_minor=499, wholesale_amount_minor=60, currency="USD",
+            status="active",
+        )
+        topup_order = esim_services.create_topup_order(
+            user=user, esim_profile_id=profile.id, topup_product_code="TOP-1GB"
+        )
+        self._assert_base_written(topup_order)
+        self.assertEqual(topup_order.base_total_minor, 499)

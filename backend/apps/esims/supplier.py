@@ -322,6 +322,16 @@ def _redact_supplier_payload(payload):
     return {k: payload[k] for k in keep if k in payload}
 
 
+#: Excludes 0-9 and a-f entirely, so a generated code can never appear inside a hash, a
+#: UUID or any other hex identifier. Also drops I/O/S to avoid look-alike confusion.
+_ACTIVATION_ALPHABET = "GHJKLMNPQRTUVWXYZ"
+
+
+def _fake_activation_code(seed, length=12):
+    digest = hashlib.sha256(("activation:" + seed).encode()).digest()
+    return "".join(_ACTIVATION_ALPHABET[b % len(_ACTIVATION_ALPHABET)] for b in digest[:length])
+
+
 class FakeSupplier:
     """Deterministic stand-in. Mirrors the real gateway's two-phase interface."""
 
@@ -338,7 +348,19 @@ class FakeSupplier:
     def query_esim(self, *, order_no=None, transaction_id=None, esim_tran_no=None):
         seed = hashlib.sha256((order_no or transaction_id or esim_tran_no or "x").encode()).hexdigest()
         iccid = ("8944" + str(int(seed[:16], 16)))[:19]
-        token = seed[:10].upper()
+        # Deliberately NOT hex, and derived from a separate hash.
+        #
+        # This used to be `seed[:10].upper()`, while supplier_reference is
+        # "esimref_" + seed[:16]. About 1% of seeds open with ten hex characters that
+        # contain no letters, so .upper() was a no-op and the "secret" became a literal
+        # substring of a non-secret field the audit legitimately keeps. Credential-leak
+        # tests scan for exactly that and failed at random — the long-standing flake.
+        #
+        # Using an alphabet outside [0-9a-f] means a fake activation code can never be a
+        # substring of a hash, a UUID or any other hex identifier, so the whole class of
+        # false positive is gone rather than merely made less likely. It also matches real
+        # LPA codes, which are alphanumeric rather than hex.
+        token = _fake_activation_code(seed)
         return {
             "supplier_reference": "esimref_" + seed[:16],
             "iccid": iccid,

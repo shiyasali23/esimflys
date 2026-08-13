@@ -1,3 +1,4 @@
+from decimal import Decimal
 import logging
 import uuid
 from datetime import timedelta
@@ -78,6 +79,10 @@ def create_topup_order(*, user, esim_profile_id, topup_product_code):
             raise TopupNotSupported(message="This top-up is not compatible with this eSIM.")
 
         source = profile.order_item
+        # Top-ups are priced and charged in USD, so the base amounts equal the local ones
+        # and the rate is exactly 1. Writing them is not cosmetic: commissions and every
+        # report read base_*, and a NULL there silently drops the order into the legacy
+        # pre-multi-currency branch, which computes commission off a different figure.
         order = Order.objects.create(
             order_number="ESF-" + uuid.uuid4().hex[:12].upper(),
             user=user,
@@ -87,6 +92,10 @@ def create_topup_order(*, user, esim_profile_id, topup_product_code):
             discount_minor=0,
             tax_minor=0,
             total_minor=product.retail_amount_minor,
+            base_currency=product.currency,
+            base_subtotal_minor=product.retail_amount_minor,
+            base_total_minor=product.retail_amount_minor,
+            fx_rate_used=Decimal(1),
             status="pending_payment",
             payment_status="pending",
             fulfillment_status="pending",
@@ -109,6 +118,7 @@ def create_topup_order(*, user, esim_profile_id, topup_product_code):
             traffic_policy=None,
             network_names=[],
             unit_amount_minor=product.retail_amount_minor,
+            base_unit_amount_minor=product.retail_amount_minor,
             wholesale_amount_minor=product.wholesale_amount_minor,
             currency=product.currency,
             status="pending",
