@@ -31,5 +31,15 @@
 
   "observability": {
     "enabled": true
-  }
+  },
+
+  // Binds the production domain to this Worker. Without this, esimflys.com and
+  // www resolve to Cloudflare's edge but have no Worker attached, and every
+  // request either 522s (apex, no origin) or falls through to whatever legacy
+  // DNS record is still present (www previously hit Railway's edge directly,
+  // stripping the request path to "/").
+  "routes": [
+    { "pattern": "esimflys.com", "custom_domain": true },
+    { "pattern": "www.esimflys.com", "custom_domain": true }
+  ]
 }
