@@ -13,7 +13,7 @@
  * them in. They are NOT dropped — each has a live equivalent:
  *
  *   rewrites()  -> the proxy Worker (`/api/v1/*`, `/accounts/*`). Kept below for `next dev`.
- *   redirects() -> `public/_redirects`
+ *   redirects() -> `worker/index.js` (legacyRedirect)
  *   headers()   -> `public/_headers`
  *
  * Change one of those and you must change its counterpart, or dev and production drift.
@@ -87,9 +87,10 @@ const nextConfig = {
           ];
         },
         /**
-         * Dev mirror of `public/_redirects` (blueprint §28.3). Cloudflare serves these
-         * in production; without them here, `/plans` 404s in dev only, which is the
-         * kind of divergence that gets "fixed" by deleting the production rule.
+         * Dev mirror of `legacyRedirect()` in worker/index.js (blueprint §28.3). The
+         * Worker serves these in production; without them here, `/plans` 404s in dev
+         * only, which is the kind of divergence that gets "fixed" by deleting the
+         * production rule. Change both together.
          */
         async redirects() {
           return [

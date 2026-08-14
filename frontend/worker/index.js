@@ -29,12 +29,56 @@
  */
 const PROXIED_PREFIXES = ["/api/v1/", "/accounts/"];
 
+/**
+ * Legacy URL canonicalisation (blueprint §28.3), deliberately handled HERE rather than in
+ * a `public/_redirects` file.
+ *
+ * `_redirects` is evaluated BEFORE asset matching, so a rule with a `:slug` placeholder
+ * matches anything in that directory — including Next's own route-payload files. That is
+ * not hypothetical: `/destinations/:slug -> /esim/:slug` was 308ing all seven
+ * `out/destinations/__next.*` files to `/esim/...` paths that do not exist, so every one
+ * 404'd and the App Router lost its prefetch for the main browse page. Measured cost of
+ * that on mobile / Slow 4G: a 1273 ms transition where an unaffected route took 95 ms.
+ *
+ * This Worker runs only when the asset router has already failed to match, so a redirect
+ * expressed here CANNOT shadow a real file. That is the whole reason for moving them.
+ *
+ * The first attempted fix was a `200` passthrough rule in `_redirects`. It worked under
+ * `wrangler dev --local` and was silently ignored in production — proxy-status rules are a
+ * Pages feature, not a Workers Static Assets one. Both environments were checked against
+ * the same `out/`; production kept 308ing. Do not reach for that again.
+ *
+ * 308, not 301: 301 lets an agent downgrade a POST to GET on replay, and 308 is what
+ * `permanent: true` emitted before the static-export migration, so no already-indexed URL
+ * changes meaning.
+ */
+function legacyRedirect(url) {
+  const { pathname } = url;
+
+  if (pathname === "/plans" || pathname === "/plans/") {
+    return new URL("/destinations", url.origin);
+  }
+
+  const slugged = /^\/(?:plans|destinations)\/([^/]+)\/?$/.exec(pathname);
+  if (slugged) {
+    return new URL(`/esim/${slugged[1]}`, url.origin);
+  }
+
+  return null;
+}
+
 const handler = {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (PROXIED_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
       return proxyToBackend(request, url, env);
+    }
+
+    const target = legacyRedirect(url);
+    if (target) {
+      target.search = url.search;
+      return Response.redirect(target.toString(), 308);
     }
 
     return notFound(url, env);
