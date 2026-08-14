@@ -26,9 +26,28 @@ EXPOSE 8000
 # --noinput overwrites, createcachetable no-ops if the table exists), so running them on
 # every boot is safe. `exec` hands off to gunicorn as PID 1 so it still receives signals
 # directly for a clean shutdown.
+#
+# process_jobs runs in this same container, in the background, rather than as a separate
+# Railway service. Without it running SOMEWHERE, Stripe takes the money and the order is
+# marked paid but no eSIM is ever ordered from the supplier — and the web app looks
+# perfectly healthy while every customer waits forever.
+#
+# Co-locating it is safe: the command claims work with SELECT FOR UPDATE SKIP LOCKED (see
+# its own help text), so it cannot double-process even if another copy is ever started,
+# and it opens no port, so nothing collides with gunicorn.
+#
+# The `while true` wrapper is the load-bearing part. Backgrounding a bare `process_jobs`
+# would mean that if it ever died, gunicorn would keep serving, the healthcheck would stay
+# green, and provisioning would stop SILENTLY — the exact class of invisible failure this
+# whole setup exists to prevent. Restarting it in a loop makes a crash self-healing and
+# leaves a visible line in the logs each time it happens.
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput && \
     python manage.py createcachetable && \
+    ( while true; do \
+        python manage.py process_jobs || echo "process_jobs exited unexpectedly; restarting in 5s"; \
+        sleep 5; \
+      done & ) && \
     exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
     --workers 3 \
