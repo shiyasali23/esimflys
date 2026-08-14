@@ -44,8 +44,7 @@ EXPOSE 8000
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput && \
     python manage.py createcachetable && \
-    python manage.py import_catalog && \
-    python manage.py activate_demo_catalog --all && \
+    python manage.py ensure_catalogue && \
     ( while true; do \
         python manage.py process_jobs || echo "process_jobs exited unexpectedly; restarting in 5s"; \
         sleep 5; \
