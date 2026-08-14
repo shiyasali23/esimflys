@@ -50,6 +50,61 @@ const nextConfig = {
    */
   skipTrailingSlashRedirect: true,
 
+  /**
+   * Inline the stylesheet into each prerendered page instead of linking it.
+   *
+   * The stylesheet is small — 13 KB on the wire — but it was the last thing standing
+   * between the visitor and first paint, and not because of its size.
+   *
+   * [MEASURED] /esim/turkey, mobile, Slow 4G, cold cache. Every one of the 16
+   * subresources starts at the same instant (737 ms) when the preload scanner fires,
+   * and then fair-shares the link:
+   *
+   *     bytes in flight before FCP:  JS 201 KB, fonts 92 KB, CSS 13 KB, images 6 KB
+   *     CSS request:                 737 ms -> 2244 ms   (1507 ms for 13 KB)
+   *     FCP:                         2320 ms, immediately after the CSS lands
+   *
+   * 13 KB is ~65 ms of transfer on this link. It took 1507 ms because it was queued
+   * against 24x its own weight of scripts and fonts, none of which first paint needs —
+   * the scripts are hydration-only and the fonts are `display: swap`, so text paints in
+   * the metric-matched fallback regardless. Chrome does not starve those to feed the
+   * render-blocking stylesheet; they all progress together and the small ones land first.
+   *
+   * Inlining removes the round trip and the contention in one move: the styles arrive
+   * inside the HTML, so paint no longer waits on the network at all.
+   *
+   * [MEASURED] A/B on the same machine, same server, same Slow 4G profile, each in a
+   * fresh isolated browser context so neither run saw a warm cache:
+   *
+   *     inlineCss off   HTML 18 KB gz   CSS 12 KB, 580 -> 1504 ms   FCP/LCP 1572 ms
+   *     inlineCss on    HTML 55 KB gz   no CSS request              FCP/LCP  800 ms
+   *
+   * 772 ms, or 49%. Run-to-run spread on this setup was measured at 34%, so the effect is
+   * well outside the noise. Paint now happens BEFORE the document finishes arriving
+   * (FCP 800 ms vs responseEnd 877 ms) because the styles stream in with the markup.
+   *
+   * THE COST, measured rather than assumed, because it is bigger than it looks:
+   *
+   *   - Next inlines the stylesheet TWICE — once as a <style> block and again inside the
+   *     RSC flight payload, so the HTML grows by more than the stylesheet's own weight
+   *     (18 -> 55 KB gz, not 18 -> 31).
+   *   - `__next._index.txt`, which the App Router fetches on every prefetch and every
+   *     client navigation, carries the CSS too: 3.3 KB gz -> 15.4 KB gz per route.
+   *     The other segment payloads are unchanged.
+   *
+   * So this buys 772 ms on every cold load and spends ~12 KB gz per route the visitor
+   * prefetches or navigates to. Taken deliberately: the cold load is what Googlebot and
+   * every first-time visitor measures, and a static export has exactly ONE shared
+   * stylesheet so there is no per-route CSS to duplicate.
+   *
+   * It does sharpen the open question in the audit's F-4 — the home page prefetches four
+   * country pages, which now costs ~48 KB gz instead of ~13 KB. If prefetch volume is
+   * ever tuned down, re-measure this trade rather than assuming it still holds.
+   */
+  experimental: {
+    inlineCss: true,
+  },
+
   ...(IS_PRODUCTION_BUILD
     ? {
         output: "export",
