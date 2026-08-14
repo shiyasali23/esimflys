@@ -42,7 +42,17 @@ export function CurrencySelector({ className, overHero = false }) {
         value={currency}
         onChange={(event) => select(event.target.value, offered)}
         aria-label="Display currency"
-        className="h-full cursor-pointer appearance-none bg-transparent pl-9 pr-9 text-inherit focus:outline-none focus-visible:outline-none"
+        /*
+          `text-base` is load-bearing, not cosmetic: Safari on iOS zooms the whole viewport
+          when a form control smaller than 16 px receives focus, and leaves it zoomed. This
+          select inherited the wrapper's 14 px, so opening the currency picker rescaled the
+          page around it.
+          Measured 14 px on the live site. It is the only form control on the page under
+          16 px. The wrapper hides it below `md`, so this bites on tablets and on a phone in
+          landscape rather than in portrait — narrower than it sounds, but the fix is two
+          pixels on a three-letter code inside an `h-9` pill, which still fits.
+        */
+        className="h-full cursor-pointer appearance-none bg-transparent pl-9 pr-9 text-base text-inherit focus:outline-none focus-visible:outline-none"
       >
         {offered.map((code) => (
           <option key={code} value={code} className="bg-white font-medium text-foreground">

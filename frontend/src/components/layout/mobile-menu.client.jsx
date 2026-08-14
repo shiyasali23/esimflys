@@ -17,7 +17,10 @@ export function MobileMenu({ items, overHero }) {
         <button
           type="button"
           aria-label="Open menu"
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-full md:hidden ${overHero ? "text-white" : "text-foreground"}`}
+          // 44 px, not 40. This is the only way into navigation on a phone, so it is the
+          // last control that should be under the guideline. The header is flex, so the
+          // extra 4 px absorbs without moving anything around it.
+          className={`inline-flex h-11 w-11 items-center justify-center rounded-full md:hidden ${overHero ? "text-white" : "text-foreground"}`}
         >
           <Menu className="h-6 w-6" aria-hidden />
         </button>

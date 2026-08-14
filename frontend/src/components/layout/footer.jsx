@@ -56,12 +56,27 @@ export function Footer({ compact = false }) {
           {nav.footer.map((col) => (
             <nav key={col.title} aria-label={col.title}>
               <h2 className="mb-4 text-label-caps uppercase text-muted-foreground">{col.title}</h2>
-              <ul className="flex flex-col gap-3">
+              {/*
+                The tap target is the link box, not the text. At `text-body-sm` these
+                render 17 px tall, and the old `gap-3` put 12 px of dead space between
+                them — 29 px of pitch, of which only 17 px was touchable, against a 44 px
+                guideline. Measured on the live site at 375 px: 19 footer links, every one
+                17 px.
+
+                `min-h-11` (44 px) on a flex box makes the whole row touchable and the gap
+                redundant, so the gap goes and the pitch becomes 44 px of pure target. The
+                text stays 17 px — this changes what you can hit, not what you can read.
+
+                Cost, deliberately accepted: a 5-link column grows ~133 px -> 220 px, and
+                the columns stack on mobile, so the footer is noticeably taller. `min-h-10`
+                would cap it at 40 px if that ever matters more than the guideline.
+              */}
+              <ul className="flex flex-col">
                 {col.links.map((l) => (
                   <li key={l.label}>
                     <Link
                       href={l.href}
-                      className="text-body-sm text-muted-foreground transition-colors hover:text-primary"
+                      className="flex min-h-11 items-center text-body-sm text-muted-foreground transition-colors hover:text-primary"
                     >
                       {l.label}
                     </Link>
