@@ -14,7 +14,17 @@ export function Breadcrumbs({ items }) {
           return (
             <li key={item.name} className="flex items-center gap-2">
               {item.href && !last ? (
-                <Link href={item.href} className="hover:text-primary">
+                /*
+                  `min-h-11` makes the whole row touchable. The text alone renders 20 px
+                  tall, which fails even the 24 px WCAG 2.5.8 AA bar, never mind the 44 px
+                  guideline the rest of the site now meets.
+
+                  This makes the breadcrumb strip ~44 px instead of ~20 px, directly under
+                  the header. That is the visible cost, and it is the reason breadcrumbs
+                  were left out of the previous pass — accepted here for consistency with
+                  the footer and menu button rather than inventing a second standard.
+                */
+                <Link href={item.href} className="flex min-h-11 items-center hover:text-primary">
                   {item.name}
                 </Link>
               ) : (

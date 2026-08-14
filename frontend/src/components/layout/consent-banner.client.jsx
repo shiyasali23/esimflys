@@ -79,11 +79,17 @@ export function ConsentBanner() {
         <p className="text-sm text-muted-foreground">
           We use an essential cookie to remember your currency. Analytics stays off unless you accept.
         </p>
+        {/*
+          `md` (h-11, 44 px), not `sm` (h-9, 36 px). These two are the only way to dismiss
+          a banner pinned over the bottom of every page, so a missed tap leaves it covering
+          the buy bar — the exact collision the height-publishing effect above exists to
+          prevent.
+        */}
         <div className="flex shrink-0 gap-2">
-          <Button variant="ghost" size="sm" onClick={() => choose("declined")}>
+          <Button variant="ghost" size="md" onClick={() => choose("declined")}>
             Decline
           </Button>
-          <Button variant="cta" size="sm" onClick={() => choose("accepted")}>
+          <Button variant="cta" size="md" onClick={() => choose("accepted")}>
             Accept
           </Button>
         </div>
