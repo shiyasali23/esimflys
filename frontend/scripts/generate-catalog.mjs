@@ -1,5 +1,6 @@
 /**
- * Bakes the catalogue into `src/data/catalog.json` at build time.
+ * Refreshes the two committed data files: `src/data/catalog.json` and
+ * `src/data/rates.json`.
  *
  * The storefront reads that file, not the API. Country pages then render with no
  * runtime dependency on the backend — faster, statically generated, and immune to
@@ -12,8 +13,8 @@
  * that has since been paused — so a customer can be surprised, but never
  * mischarged. Rebuild whenever the catalogue changes.
  *
- * Run: `node scripts/generate-catalog.mjs` (wired to `prebuild`, so `npm run build`
- * does it automatically).
+ * Run by hand: `npm run catalog`. Deliberately NOT wired into `build` — the build
+ * must never need the backend. Refresh, read the diff, commit it.
  */
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -22,6 +23,7 @@ import { adaptCountries, adaptPlans, withNetworks } from "../src/server/catalog/
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "src", "data", "catalog.json");
+const RATES_OUT = join(HERE, "..", "src", "data", "rates.json");
 
 const API = (process.env.CATALOG_API_ORIGIN || "http://localhost:8000").replace(/\/$/, "");
 const CONCURRENCY = 8;
@@ -91,6 +93,32 @@ async function main() {
 
   await writeFile(OUT, `${JSON.stringify(payload, null, 2)}\n`);
 
+  /**
+   * The FX table travels with the catalogue. Both are committed artifacts read at
+   * build time with no network call, so refreshing them together keeps prices and the
+   * rates they convert through from drifting apart. Only currencies the backend is
+   * actually quoting are written — an unquoted one must not be offered.
+   */
+  const fx = await getJson("/catalog/rates/");
+  const rates = {};
+  for (const [code, value] of Object.entries(fx?.rates || {})) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) rates[String(code).toUpperCase()] = numeric;
+  }
+  rates.USD = 1;
+  const buffer = Number(fx?.buffer);
+  const ratesPayload = {
+    meta: {
+      source: `${API}/api/v1/catalog/rates/`,
+      generatedBy: "scripts/generate-catalog.mjs",
+      generatedAt: new Date().toISOString(),
+    },
+    rates,
+    buffer: Number.isFinite(buffer) && buffer > 0 ? buffer : 1,
+  };
+  await writeFile(RATES_OUT, `${JSON.stringify(ratesPayload, null, 2)}\n`);
+  console.log(`[catalog] wrote rates: ${Object.keys(rates).join(", ")} (buffer ${ratesPayload.buffer})`);
+
   const withoutPlans = payload.meta.countryCount - payload.meta.countriesWithPlans;
   console.log(
     `[catalog] wrote ${payload.meta.countryCount} countries, ${payload.meta.planCount} plans` +
@@ -100,7 +128,8 @@ async function main() {
 
 main().catch((error) => {
   console.error(`\n[catalog] FAILED: ${error.message}`);
-  console.error("[catalog] the backend must be reachable to build the catalogue.");
+  console.error("[catalog] the backend must be reachable to REFRESH the data. The build itself never calls it,");
+  console.error("[catalog] so the committed catalog.json and rates.json are untouched and still deployable.");
   console.error(`[catalog] set CATALOG_API_ORIGIN if it is not at ${API}\n`);
   process.exit(1);
 });

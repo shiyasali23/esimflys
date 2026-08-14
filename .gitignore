@@ -75,3 +75,5 @@ tmp/
 .claude/
 claude/*
 /.claude/
+# Separate project copy kept locally (1.2 GB incl. node_modules/.next). Never commit.
+/flyesim-main/

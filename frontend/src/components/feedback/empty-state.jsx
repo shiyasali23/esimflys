@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
  */
 export function EmptyState({ icon: Icon, title, body, action }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-md border border-border bg-white px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-md border border-border bg-card px-6 py-16 text-center">
       {Icon ? (
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Icon size={28} aria-hidden />

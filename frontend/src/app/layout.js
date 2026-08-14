@@ -1,5 +1,5 @@
 import "./globals.css";
-import { Oswald, Poppins } from "next/font/google";
+import { Inter, Inter_Tight } from "next/font/google";
 import { SITE } from "@/config/site";
 import { SkipLink } from "@/components/layout/skip-link";
 import { NoFlashCurrencyScript } from "@/components/currency/no-flash-script";
@@ -10,16 +10,31 @@ import { ConsentBanner } from "@/components/layout/consent-banner.client";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
 
-const oswald = Oswald({
+/**
+ * Inter Tight for display, Inter for text.
+ *
+ * This replaced Oswald + Poppins, which were the reason the storefront read as a
+ * template rather than a shop you would hand a card to. Oswald is a condensed
+ * sports-poster face and Poppins is the geometric default of every free theme; set in
+ * heavy uppercase together they signal "discount flyer", which is the last thing a page
+ * asking for payment details should signal.
+ *
+ * Inter is the type of trusted payment UI, and it earns its place here on detail as
+ * well as tone: real tabular figures, so a column of prices lines up digit for digit,
+ * and a disambiguated 1/l/I and 0/O — this page shows ICCIDs and order numbers where a
+ * misread character costs a support ticket.
+ *
+ * Both are variable fonts, so each is ONE self-hosted file covering every weight. The
+ * previous pair shipped nine static instances.
+ */
+const interTight = Inter_Tight({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-oswald",
+  variable: "--font-inter-tight",
   display: "swap",
 });
-const poppins = Poppins({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-poppins",
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -61,7 +76,7 @@ export default async function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`${oswald.variable} ${poppins.variable}`}
+      className={`${interTight.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <body>

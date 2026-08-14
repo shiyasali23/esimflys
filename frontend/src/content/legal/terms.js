@@ -100,6 +100,35 @@ export const TERMS = {
       ],
     },
     {
+      id: "always-on-service",
+      title: "Always On service",
+      body: [
+        { p: "The service activates in the following circumstances:" },
+        {
+          ul: [
+            "upon cancellation of a User’s subscription; or",
+            "at eSIM installation for a single, limited-days destination package.",
+          ],
+        },
+        { p: "The Always On service is provided to Users at no additional charge. This service is an automatic, limited-data service that activates after the cancellation of a User’s subscription. It offers continued network connectivity under defined conditions. For subscription plans, a “Local Phone Number Activation” refers to the optional service allowing Users to receive SMS messages via a local number assigned in supported countries." },
+        { p: "The Always On service provides data coverage in the following countries:" },
+        {
+          ul: [
+            "Europe: Albania, Austria, Belgium, Bulgaria, Croatia, Cyprus, Czech Republic, Denmark, Estonia, Finland, France, Georgia, Germany, Gibraltar, Greece, Hungary, Iceland, Ireland, Italy, Latvia, Liechtenstein, Lithuania, Luxembourg, Malta, Moldova, Monaco, Montenegro, Netherlands, North Macedonia, Norway, Poland, Portugal, Romania, Serbia, Slovakia, Slovenia, Spain, Sweden, Switzerland, Ukraine, United Kingdom.",
+            "Asia: Bangladesh, Hong Kong, India, Indonesia, Israel, Japan, Jordan, Kuwait, Kyrgyzstan, Laos, Macau, Malaysia, Pakistan, Philippines, Russia, Singapore, South Korea, Sri Lanka, Taiwan, Thailand, Turkey, United Arab Emirates, Uzbekistan, Vietnam.",
+            "North America: United States, Mexico, Canada, Costa Rica, Puerto Rico.",
+            "South America: Brazil.",
+            "Africa: Egypt, Morocco, Guinea-Bissau, Réunion.",
+            "Oceania: Australia, New Zealand.",
+          ],
+        },
+        { p: "Starting 4 November 2025 (CET), this feature is available for all subscriptions activated on or after that date." },
+        { p: "Starting 26 February 2026 (CET), this benefit also applies to users who purchase trip-destination eSIMs, except for the following destinations where the benefit is not included: Niger, Iran, Sudan, Cambodia, China, Dominican Republic, Kosovo, Sri Lanka, Haiti, Curaçao, Balkans, Bonaire, Palestine, St. Pierre and Miquelon, Guinea, Monaco, Myanmar, Belarus, Greenland, Yemen." },
+        { p: "The Always On service is not eligible for any refunds, whether partial or full, under any circumstances." },
+        { p: "eSIMFlys reserves the right to contact the User to verify the status of the “Always On” service following a period of consecutive weeks of inactivity." },
+      ],
+    },
+    {
       id: "payment-terms",
       title: "Payment terms",
       body: [

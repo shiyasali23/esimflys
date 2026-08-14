@@ -1,9 +1,15 @@
 {
   "hero": {
-    "titleLines": ["Instant travel eSIM data.", "60+ countries.", "Online when you land."],
+    "titleLines": [
+      "Instant travel eSIM data.",
+      "60+ countries.",
+      "Online when you land."
+    ],
     "highlightLine": "60+ countries.",
-    "subtitle": "Choose your destination, compare per-day rates clearly, and land with your data ready to go.",
-    "cta": { "label": "Choose a destination", "href": "/destinations" }
+    "cta": {
+      "label": "Choose a destination",
+      "href": "/destinations"
+    }
   },
   "whatIsEsim": {
     "title": "What is an eSIM?",
@@ -13,36 +19,83 @@
   "whereTravelersGo": {
     "title": "Where travelers go with eSIMFlys",
     "subtitle": "Compare per-day pricing across the top destinations. Tap any country to see plans, coverage, and validity in seconds.",
-    "cta": { "label": "Browse all destinations", "href": "/destinations" }
+    "cta": {
+      "label": "Browse all destinations",
+      "href": "/destinations"
+    }
   },
   "howItWorks": {
     "eyebrow": "No kiosk needed",
     "title": "Buy it. Scan it. Land online.",
     "subtitle": "The whole setup is built to stay obvious under travel pressure: choose a plan, pay once, scan the QR, and keep moving without hunting for a plastic SIM on arrival.",
-    "features": ["Plans for 60+ countries", "Instant QR installation", "Main SIM stays active"],
-    "cta": { "label": "Explore travel plans", "href": "/destinations" },
+    "features": [
+      "Plans for 60+ countries",
+      "Instant QR installation",
+      "Main SIM stays active"
+    ],
+    "cta": {
+      "label": "Explore travel plans",
+      "href": "/destinations"
+    },
     "steps": [
-      { "n": "01", "kicker": "Start with the route", "title": "Pick the right plan", "body": "Filter by country, then compare data, validity, and cost in seconds. See exactly what's covered and what you'll pay before you commit." },
-      { "n": "02", "kicker": "Buy once", "title": "Check out, get QR fast", "body": "Complete your secure payment to instantly receive your QR code and easy activation instructions. Delivery is instant, so setup can happen before the flight." },
-      { "n": "03", "kicker": "Switch on abroad", "title": "Scan, install, go online", "body": "Install on your phone and activate when needed, while your regular SIM remains active. Use travel data while your main number stays reachable." }
+      {
+        "n": "01",
+        "kicker": "Start with the route",
+        "title": "Pick the right plan",
+        "body": "Filter by country, then compare data, validity, and cost in seconds. See exactly what's covered and what you'll pay before you commit."
+      },
+      {
+        "n": "02",
+        "kicker": "Buy once",
+        "title": "Check out, get QR fast",
+        "body": "Complete your secure payment to instantly receive your QR code and easy activation instructions. Delivery is instant, so setup can happen before the flight."
+      },
+      {
+        "n": "03",
+        "kicker": "Switch on abroad",
+        "title": "Scan, install, go online",
+        "body": "Install on your phone and activate when needed, while your regular SIM remains active. Use travel data while your main number stays reachable."
+      }
     ]
   },
   "whyPick": {
     "title": "Why travelers pick eSIMFlys",
     "subtitle": "The experience is built to remove friction: faster setup, clearer plan choices, and coverage details you can understand at a glance.",
     "benefits": [
-      { "title": "Keep your number. Add travel data.", "body": "Go online abroad without removing your regular SIM, visiting kiosks, or dealing with tiny trays at the airport." },
-      { "title": "Pick a plan that matches the trip", "body": "Choose lighter data for short stays or larger bundles for work, maps, uploads, and nonstop travel days." },
-      { "title": "Support that actually helps", "body": "If setup gets stuck or your route changes mid-trip, you can get answers quickly instead of troubleshooting alone." },
-      { "title": "Buy fast. Activate faster.", "body": "Purchase online, scan the QR code, and finish activation in a few taps before departure or right after landing." },
-      { "title": "Clear coverage. No roaming guesswork.", "body": "See where each plan works and connect through trusted local networks with pricing shown upfront." }
+      {
+        "title": "Keep your number. Add travel data.",
+        "body": "Go online abroad without removing your regular SIM, visiting kiosks, or dealing with tiny trays at the airport."
+      },
+      {
+        "title": "Pick a plan that matches the trip",
+        "body": "Choose lighter data for short stays or larger bundles for work, maps, uploads, and nonstop travel days."
+      },
+      {
+        "title": "Support that actually helps",
+        "body": "If setup gets stuck or your route changes mid-trip, you can get answers quickly instead of troubleshooting alone."
+      },
+      {
+        "title": "Buy fast. Activate faster.",
+        "body": "Purchase online, scan the QR code, and finish activation in a few taps before departure or right after landing."
+      },
+      {
+        "title": "Clear coverage. No roaming guesswork.",
+        "body": "See where each plan works and connect through trusted local networks with pricing shown upfront."
+      }
     ]
   },
   "ctaBand": {
     "title": "Leave home planned. Land already online.",
     "subtitle": "Compare country plans in minutes, activate before your flight, and skip the airport SIM scramble entirely.",
-    "cta": { "label": "Explore travel plans", "href": "/destinations" },
-    "assurances": ["Instant QR delivery", "Coverage in 60+ destinations", "No roaming surprises"]
+    "cta": {
+      "label": "Explore travel plans",
+      "href": "/destinations"
+    },
+    "assurances": [
+      "Instant QR delivery",
+      "Coverage in 60+ destinations",
+      "No roaming surprises"
+    ]
   },
   "appCta": {
     "title": "Take eSIMFlys with you",

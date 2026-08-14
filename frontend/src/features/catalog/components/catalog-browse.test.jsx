@@ -67,13 +67,17 @@ describe("searching destinations", () => {
     expect(link.getAttribute("href")).toBe("/esim/saudi-arabia");
   });
 
-  /** Regional bundles do not exist yet; the tab says so instead of showing nothing. */
-  it("is honest that regional bundles are not available", async () => {
-    render(<DestinationsBrowser countries={COUNTRIES} />);
+  /**
+   * Regional bundles do not exist yet. The redesigned browser filters by region
+   * rather than offering a "Regional" product tab, so the honesty message moved to
+   * the homepage (`where-travelers-go.client.jsx`). What must stay true here is that
+   * this screen never offers a regional bundle it cannot sell.
+   */
+  it("offers no regional bundle it cannot sell", () => {
+    const { container } = render(<DestinationsBrowser countries={COUNTRIES} />);
 
-    await userEvent.click(screen.getByRole("tab", { name: /regional/i }));
-
-    expect(await screen.findByText(/regional bundles are on the way/i)).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: /regional/i })).toBeNull();
+    expect(container.textContent).not.toMatch(/regional (bundle|plan)/i);
   });
 });
 

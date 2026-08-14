@@ -14,16 +14,16 @@ export const metadata = buildMetadata({
 export default function SupportedDevicesPage() {
   return (
     <>
-      <section className="relative -mt-20 overflow-hidden bg-gradient-to-br from-primary via-primary to-[#4a47c4] text-white">
+      <section className="relative -mt-20 overflow-hidden bg-gradient-to-br from-primary via-primary to-[#0f766e] text-white">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 pb-14 pt-32 md:pb-20 md:pt-44 lg:grid-cols-2">
           <div>
             <h1 className="font-display text-4xl font-bold uppercase md:text-5xl">
               {devices.checker.title}
             </h1>
-            <p className="mt-4 max-w-lg text-lg text-white">{devices.checker.subtitle}</p>
+            <p className="mt-4 max-w-lg text-lg text-white/80">{devices.checker.subtitle}</p>
             <div className="mt-8 max-w-md">
               <DeviceChecker />
-              <p className="mt-4 text-sm text-white">{devices.manualCheck.body}</p>
+              <p className="mt-4 text-sm text-white/80">{devices.manualCheck.body}</p>
             </div>
           </div>
           <div className="flex justify-center">
@@ -33,7 +33,7 @@ export default function SupportedDevicesPage() {
               width={1500}
               height={1000}
               priority
-              sizes="(min-width: 1024px) 560px, 90vw"
+              sizes="(min-width: 1024px) 520px, 90vw"
               className="h-auto w-full max-w-[560px] drop-shadow-2xl"
             />
           </div>

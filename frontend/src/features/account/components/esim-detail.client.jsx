@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { getEsim, refreshEsimUsage, isEsimPending, isEsimReady } from "@/lib/api/esims";
 import { useSession } from "@/features/auth/use-session.client";
+import { ErrorState } from "@/components/feedback/error-state";
 import { formatBytes, usageRatio } from "@/lib/format/units";
 import { QrCode } from "@/components/media/qr-code.client";
 import { TopupPanel } from "./topup-panel.client";
@@ -21,6 +22,8 @@ import { routes } from "@/config/routes";
 export function EsimDetail({ esimId }) {
   const user = useSession((s) => s.user);
   const loadSession = useSession((s) => s.load);
+  const sessionError = useSession((s) => s.error);
+  const retrySession = useSession((s) => s.retry);
   const [esim, setEsim] = useState(null);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,6 +82,22 @@ export function EsimDetail({ esimId }) {
           action={{ label: "Back to my eSIMs", href: routes.accountEsims() }}
         />
       </Container>
+    );
+  }
+
+  /**
+   * A session that could not be verified is NOT a signed-out session. The store only
+   * sets `user = null` when the server said 401/403; any other failure leaves it
+   * `undefined`, which used to render the loading skeleton forever — no message, no
+   * retry, nothing to act on. Same treatment as `admin-shell`.
+   */
+  if (sessionError) {
+    return (
+      <ErrorState
+        error={sessionError}
+        title="We couldn't verify your session"
+        onRetry={retrySession}
+      />
     );
   }
 

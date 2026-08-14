@@ -1,116 +1,81 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 /**
  * `src/server/rates.js` imports `server-only`, which throws outside a server
- * component. Stubbing it lets the fetch policy be tested directly, which matters
- * because the failure modes here are the ones that quietly charge people wrongly.
+ * component. Stubbing it lets the table policy be tested directly, because the
+ * failure modes here are the ones that quietly quote people the wrong number.
+ *
+ * The table is a COMMITTED file now, not a fetch, so these mock the module rather
+ * than the network. The rule that matters has not changed: only what the backend
+ * actually quoted may be offered, and anything malformed answers USD.
  */
 vi.mock("server-only", () => ({}));
 
-const { getRates, USD_ONLY } = await import("./rates");
-
-/**
- * The current response shape. `max_age_hours` was removed along with the daily FX
- * feed — rates are a hand-set settings value now, so there is no staleness concept
- * and nothing here may reintroduce one.
- */
-const OK = {
-  base: "USD",
-  buffer: "1.03",
-  rates: { USD: "1", INR: "88", EUR: "0.92" },
-};
-
-function respond(body, ok = true) {
-  return Promise.resolve({ ok, json: () => Promise.resolve(body) });
+/** Load `getRates` with a given `rates.json` standing in for the committed file. */
+async function withTable(table) {
+  vi.resetModules();
+  vi.doMock("@/data/rates.json", () => ({ default: table }));
+  return import("./rates");
 }
 
-beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(() => respond(OK)));
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+const OK = {
+  meta: { source: "GET /api/v1/catalog/rates/", generatedAt: "2026-01-01T00:00:00.000Z" },
+  rates: { USD: 1, INR: 88, EUR: 0.92 },
+  buffer: 1.03,
+};
 
 describe("getRates", () => {
-  it("parses the decimal strings into numbers and keeps the buffer separate", async () => {
+  it("reads the committed table and keeps the buffer separate", async () => {
+    const { getRates } = await withTable(OK);
     const fx = await getRates();
+
     expect(fx.rates).toEqual({ USD: 1, INR: 88, EUR: 0.92 });
     expect(fx.buffer).toBe(1.03);
   });
 
   /**
-   * Cached indefinitely, not revalidated. This fetch is in the ROOT layout, so any
-   * revalidation window makes every page in the app incrementally static and forces a
-   * cache backend on Cloudflare Workers. Rates come from hand-configured backend
-   * settings rather than a live feed, so a deploy is the right refresh boundary.
+   * The whole point of moving this into the repo: a build must not depend on the
+   * backend being up, and must not silently become single-currency when it is not.
    */
-  it("caches indefinitely so the whole site stays static", async () => {
+  it("makes no network call at all", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { getRates } = await withTable(OK);
+
     await getRates();
-    const [, options] = fetch.mock.calls[0];
-    expect(options.cache).toBe("force-cache");
-    expect(options.next).toBeUndefined();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
-  /**
-   * The backend withdraws a currency whose quote has gone stale rather than charge
-   * on an old number. Absent must mean unavailable — inventing a rate here would
-   * quote a price nobody has agreed to honour.
-   */
-  it("offers only the currencies the backend actually returned", async () => {
-    fetch.mockReturnValueOnce(respond({ ...OK, rates: { USD: "1", INR: "83.2" } }));
-    const fx = await getRates();
-    expect(Object.keys(fx.rates).sort()).toEqual(["INR", "USD"]);
-    expect(fx.rates.EUR).toBeUndefined();
+  it("offers only the currencies the table actually names", async () => {
+    const { getRates } = await withTable({ ...OK, rates: { USD: 1, INR: 83.2 } });
+    expect(Object.keys((await getRates()).rates).sort()).toEqual(["INR", "USD"]);
   });
 
   it("drops currencies this frontend has no configuration for", async () => {
-    fetch.mockReturnValueOnce(respond({ ...OK, rates: { USD: "1", ZWL: "9999" } }));
-    const fx = await getRates();
-    expect(fx.rates.ZWL).toBeUndefined();
+    const { getRates } = await withTable({ ...OK, rates: { USD: 1, ZWL: 9999 } });
+    expect((await getRates()).rates).toEqual({ USD: 1 });
   });
 
   it("drops broken quotes rather than dividing by them", async () => {
-    fetch.mockReturnValueOnce(
-      respond({ ...OK, rates: { USD: "1", INR: "0", EUR: "-3", GBP: "abc" } }),
-    );
-    const fx = await getRates();
-    expect(Object.keys(fx.rates)).toEqual(["USD"]);
+    const { getRates } = await withTable({ ...OK, rates: { USD: 1, INR: 0, EUR: -1 } });
+    expect((await getRates()).rates).toEqual({ USD: 1 });
   });
 
-  it("pins USD to exactly 1 whatever the feed claims", async () => {
-    fetch.mockReturnValueOnce(respond({ ...OK, rates: { USD: "1.07" } }));
-    const fx = await getRates();
-    expect(fx.rates.USD).toBe(1);
+  it("pins USD to exactly 1 whatever the table claims", async () => {
+    const { getRates } = await withTable({ ...OK, rates: { USD: 1.07, INR: 88 } });
+    expect((await getRates()).rates.USD).toBe(1);
   });
 
-  /** A hardcoded rate would be a price we cannot honour. USD-only is the safe answer. */
-  it.each([
-    ["a non-OK response", () => respond({}, false)],
-    ["a network failure", () => Promise.reject(new Error("ECONNREFUSED"))],
-    ["a payload with no rates", () => respond({ base: "USD" })],
-  ])("falls back to USD only on %s", async (_label, impl) => {
-    fetch.mockImplementationOnce(impl);
-    const fx = await getRates();
-    expect(fx).toEqual(USD_ONLY);
-    expect(fx.rates).toEqual({ USD: 1 });
-    expect(fx.buffer).toBe(1);
+  /** A file edited by hand can be malformed. Quote USD rather than guess. */
+  it("answers USD only when the table has no usable rates", async () => {
+    const { getRates, USD_ONLY } = await withTable({ meta: {}, buffer: 1.03 });
+    expect(await getRates()).toEqual(USD_ONLY);
   });
 
-  it("never invents a buffer", async () => {
-    fetch.mockReturnValueOnce(respond({ ...OK, buffer: "nonsense" }));
+  it("ignores a buffer that is missing or nonsensical", async () => {
+    const { getRates } = await withTable({ ...OK, buffer: 0 });
     expect((await getRates()).buffer).toBe(1);
-  });
-
-  /**
-   * The real state of this deployment right now: the FX feed has no API key, so the
-   * backend has no rates to publish and quotes USD alone. The storefront must sell
-   * normally in that state, not break.
-   */
-  it("copes with a table that quotes USD alone", async () => {
-    fetch.mockReturnValueOnce(respond({ ...OK, rates: { USD: "1" } }));
-    const fx = await getRates();
-    expect(fx.rates).toEqual({ USD: 1 });
-    expect(fx.buffer).toBe(1.03);
   });
 });

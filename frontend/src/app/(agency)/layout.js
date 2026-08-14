@@ -5,8 +5,8 @@ import { AgencySignOut } from "@/features/agency/components/agency-sign-out.clie
  * Chrome for the partner portal.
  *
  * Deliberately not the storefront Header/Footer: an agency is here to read its own
- * sales, not to shop, and the marketing nav ("Browse destinations", the cart) invites
- * them into a funnel that isn't theirs.
+ * sales, not to shop, and the marketing nav ("Browse destinations", the plan pages)
+ * invites them into a funnel that isn't theirs.
  */
 export default function AgencyLayout({ children }) {
   return (

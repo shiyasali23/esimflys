@@ -1,74 +1,106 @@
 "use client";
 import { create } from "zustand";
-import {
-  addCartItem,
-  getCart,
-  isCartEmpty,
-  removeCartItem,
-  updateCartItem,
-} from "@/lib/api/cart";
 
 /**
- * Cart state mirrored from the server, which owns pricing and revalidates every
- * plan at checkout. Nothing is persisted here: the guest's `X-Cart-Token` in
- * localStorage is the continuity, and the contents are re-read from the API — so
- * a stale tab can never check out against a price that has since changed.
+ * What the shopper has selected, held in the browser only.
  *
- * Shape: {id, currency, status, items[], subtotal_minor, item_count}
+ * There is no server-side cart any more: `POST /checkout/direct/` takes the item list
+ * and creates the order in one call. So this store answers "what did they pick", and
+ * nothing else. It holds no prices the server will honour — `usd` here is the
+ * catalogue figure used to render a total, and the server prices every line itself
+ * when the order is created.
+ *
+ * Persisted to sessionStorage because the previous server cart survived a page
+ * reload via its token, and losing the selection on refresh would be a regression.
+ * Session, not local: a selection is one visit's intent, not a standing basket.
+ *
+ * Item shape: {productCode, displayName, countryName, countrySlug, usd, quantity}
  */
+const STORAGE_KEY = "esimflys-selection";
+const MAX_UNITS = 50;
+
+function readStored() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persist(items) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Safari private mode throws. The selection still works for this page.
+  }
+}
+
 export const useCart = create((set, get) => ({
-  cart: null,
-  loading: false,
-  error: null,
-  pendingItemId: null,
+  /**
+   * Starts empty on both server and client so the first client render matches the
+   * server's. `hydrate()` fills it from sessionStorage in an effect, after mount.
+   */
+  items: [],
+  hydrated: false,
 
-  async refresh() {
-    set({ loading: true, error: null });
-    try {
-      set({ cart: await getCart(), loading: false });
-    } catch (error) {
-      set({ error, loading: false });
-    }
+  hydrate() {
+    if (get().hydrated) return;
+    set({ items: readStored(), hydrated: true });
   },
 
-  async add({ productCode, quantity = 1 }) {
-    set({ loading: true, error: null });
-    try {
-      const cart = await addCartItem({ productCode, quantity });
-      set({ cart, loading: false });
-      return cart;
-    } catch (error) {
-      set({ error, loading: false });
-      throw error;
+  /** Adding the same plan twice raises its quantity rather than duplicating the row. */
+  add({ productCode, displayName, countryName, countrySlug, usd, quantity = 1 }) {
+    const items = [...get().items];
+    const existing = items.findIndex((i) => i.productCode === productCode);
+    if (existing >= 0) {
+      items[existing] = { ...items[existing], quantity: items[existing].quantity + quantity };
+    } else {
+      items.push({ productCode, displayName, countryName, countrySlug, usd, quantity });
     }
+    set({ items });
+    persist(items);
+    return items;
   },
 
-  async setQuantity(itemId, quantity) {
-    if (quantity < 1) return get().remove(itemId);
-    set({ pendingItemId: itemId, error: null });
-    try {
-      set({ cart: await updateCartItem(itemId, quantity), pendingItemId: null });
-    } catch (error) {
-      set({ error, pendingItemId: null });
-    }
+  setQuantity(productCode, quantity) {
+    if (quantity < 1) return get().remove(productCode);
+    // The server enforces this too; checking here keeps the button honest rather
+    // than letting someone reach checkout and be refused.
+    const capped = Math.min(quantity, MAX_UNITS);
+    const items = get().items.map((i) =>
+      i.productCode === productCode ? { ...i, quantity: capped } : i,
+    );
+    set({ items });
+    persist(items);
   },
 
-  async remove(itemId) {
-    set({ pendingItemId: itemId, error: null });
-    try {
-      await removeCartItem(itemId);
-      set({ cart: await getCart(), pendingItemId: null });
-    } catch (error) {
-      set({ error, pendingItemId: null });
-    }
+  remove(productCode) {
+    const items = get().items.filter((i) => i.productCode !== productCode);
+    set({ items });
+    persist(items);
   },
 
-  /** Local reset after checkout consumes the cart server-side. */
+  /** Called once the order exists — the selection has become an order. */
   reset() {
-    set({ cart: null, loading: false, error: null, pendingItemId: null });
+    set({ items: [] });
+    persist([]);
   },
 }));
 
-export function cartIsEmpty(cart) {
-  return isCartEmpty(cart);
+export function cartIsEmpty(items) {
+  return !Array.isArray(items) || items.length === 0;
 }
+
+export function totalUnits(items) {
+  return (items || []).reduce((sum, i) => sum + i.quantity, 0);
+}
+
+export function subtotalUsd(items) {
+  return (items || []).reduce((sum, i) => sum + i.usd * i.quantity, 0);
+}
+
+export { MAX_UNITS };

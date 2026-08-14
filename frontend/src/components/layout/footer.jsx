@@ -1,9 +1,43 @@
 import Link from "next/link";
+import { AppStoreBadge, GooglePlayBadge } from "@/components/media/store-badges";
 import nav from "@/content/nav.json";
 import site from "@/content/site.json";
 
-export function Footer() {
+const APP_STORE_BADGES = {
+  "App Store": AppStoreBadge,
+  "Google Play": GooglePlayBadge,
+};
+
+/**
+ * The full marketing footer, and a compact one for checkout.
+ *
+ * A 434px sitemap under a payment form is 400px of exits from a page whose only job is
+ * to finish one thing — and on a laptop it was the single reason checkout did not fit on
+ * screen. `compact` keeps what a transactional page is actually obliged to carry: the
+ * legal links and the copyright.
+ */
+export function Footer({ compact = false }) {
   const year = new Date().getFullYear();
+
+  if (compact) {
+    const legal = nav.footer.find((col) => col.title?.toLowerCase() === "legal")?.links || [];
+    return (
+      <footer className="border-t border-border bg-background">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-4 text-body-sm text-muted-foreground sm:flex-row">
+          <p>© {year} {site.brand}</p>
+          {legal.length ? (
+            <nav aria-label="Legal" className="flex gap-4">
+              {legal.map((l) => (
+                <Link key={l.label} href={l.href} className="transition-colors hover:text-primary">
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="border-t border-border bg-background">
@@ -13,14 +47,10 @@ export function Footer() {
             <div className="font-display text-2xl font-bold uppercase text-primary">{site.brand}</div>
             <p className="mt-3 max-w-xs text-body-sm text-muted-foreground">{site.tagline}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              {site.appStores.map((a) => (
-                <span
-                  key={a.label}
-                  className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground"
-                >
-                  {a.label} · soon
-                </span>
-              ))}
+              {site.appStores.map((a) => {
+                const Badge = APP_STORE_BADGES[a.label];
+                return Badge ? <Badge key={a.label} /> : null;
+              })}
             </div>
           </div>
           {nav.footer.map((col) => (

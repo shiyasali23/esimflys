@@ -81,28 +81,6 @@ export const UNLIMITED_PLAN = {
 
 export const PLANS = [PLAN, UNLIMITED_PLAN];
 
-export const CART = {
-  id: "cart-1",
-  currency: "USD",
-  subtotal_minor: 1699,
-  discount_minor: 0,
-  tax_minor: 0,
-  total_minor: 1699,
-  promo_code: null,
-  items: [
-    {
-      id: "ci-1",
-      product_code: PLAN.product_id,
-      product_name: PLAN.display_name,
-      country_name: "Saudi Arabia",
-      quantity: 1,
-      unit_amount_minor: 1699,
-      amount_minor: 1699,
-      currency: "USD",
-    },
-  ],
-};
-
 export const ORDER = {
   id: "ord-1",
   order_number: "ESF-79039D08EF7C",

@@ -85,7 +85,7 @@ export function PaymentView() {
       <Container className="py-16">
         <EmptyState
           title="Nothing to pay for"
-          body="We couldn't find an order to pay. Your cart may already have been checked out."
+          body="We couldn't find an order to pay. It may already have been paid for."
           action={{ label: "Browse destinations", href: routes.destinations() }}
         />
       </Container>

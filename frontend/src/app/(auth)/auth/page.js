@@ -1,17 +1,16 @@
-import { AuthBento } from "@/features/auth/components/auth-bento.client";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { redirect } from "next/navigation";
+import { routes } from "@/config/routes";
 
-export const metadata = buildMetadata({
-  title: "Sign in",
-  description: "Sign in to eSIMFlys or continue as a guest to check out.",
-  path: "/auth",
-  index: false,
-});
-
+/**
+ * `/auth` used to render `AuthBento`, whose sign-in form was a stub:
+ * `onSubmit={(e) => e.preventDefault()}` over uncontrolled inputs, so pressing the
+ * button did nothing at all. The header linked here, which made it the app's primary
+ * sign-in entry point.
+ *
+ * The working form lives at /auth/signin (AuthCard — it calls login()/register()), so
+ * this route now just goes there. Kept rather than deleted because it is linked from
+ * outside the app and from older emails.
+ */
 export default function AuthPage() {
-  return (
-    <div className="w-full max-w-4xl">
-      <AuthBento />
-    </div>
-  );
+  redirect(routes.signin());
 }

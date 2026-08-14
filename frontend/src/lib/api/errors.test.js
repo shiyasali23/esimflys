@@ -43,7 +43,7 @@ describe("toApiError", () => {
 
   it("falls back to a readable sentence for an empty or HTML body", () => {
     const error = toApiError(null, 500, "");
-    expect(error.message).toBe(GENERIC_MESSAGE);
+    expect(error.message).toMatch(/our side/i);
     expect(error.code).toBe("internal_error");
     expect(String(error)).not.toContain("[object Object]");
   });
@@ -60,7 +60,7 @@ describe("actionForError", () => {
 
   it("maps recoverable commerce conflicts to their recovery", () => {
     expect(actionForError({ code: "plan_unavailable" })).toBe("refresh-catalogue");
-    expect(actionForError({ code: "cart_expired" })).toBe("new-cart");
+    expect(actionForError({ code: "cart_limit_exceeded" })).toBe("cart-limit");
     expect(actionForError({ code: "payment_already_completed" })).toBe("go-confirmation");
     expect(actionForError({ code: "rate_limited" })).toBe("back-off");
     expect(actionForError({ code: "validation_error" })).toBe("form");

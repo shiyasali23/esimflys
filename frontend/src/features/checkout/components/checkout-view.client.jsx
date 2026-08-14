@@ -1,106 +1,244 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, ArrowRight, Minus, Plus, Trash2 } from "lucide-react";
-import { useCart, cartIsEmpty } from "@/features/cart/use-cart.client";
-import { previewPromoCode } from "@/lib/api/cart";
-import { checkout } from "@/lib/api/orders";
-import { fetchMeOrNull, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
+import { ShoppingBag, ArrowRight, Minus, Plus, Trash2, Tag, CheckCircle2 } from "lucide-react";
+import { useCart, cartIsEmpty, subtotalUsd, totalUnits } from "@/features/cart/use-cart.client";
+import { useCurrency } from "@/components/currency/use-currency.client";
+import { checkoutDirect } from "@/lib/api/orders";
+import { fetchMeOrNull, logout, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
 import { fieldErrors } from "@/lib/api/errors";
 import { saveOrderContext } from "@/features/checkout/order-context";
-import { Money } from "@/components/currency/money";
+import { Price } from "@/components/currency/price";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { GoogleLogo } from "@/components/media/google-logo";
 import { routes } from "@/config/routes";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Lets the pinned mobile bar submit the form it sits outside of. */
+const FORM_ID = "checkout-place-order";
+const GUEST_KEY = "esimflys-guest";
+
+function readGuestEmail() {
+  if (typeof window === "undefined") return "";
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(GUEST_KEY) || "null");
+    // Tolerates the older {firstName, lastName, email, phone} record still in a tab
+    // someone left open across the change.
+    if (typeof parsed === "string") return parsed;
+    return typeof parsed?.email === "string" ? parsed.email : "";
+  } catch {
+    return "";
+  }
+}
+
+function persistGuestEmail(value) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(GUEST_KEY, JSON.stringify(value));
+  } catch {
+    // Safari private mode throws. Checkout still works for this page.
+  }
+}
 
 /**
- * Checkout against the live cart. The server reprices every plan when the order
- * is created, so the totals here are indicative and the order response is what
- * we carry forward — never a locally computed figure.
+ * Checkout straight from the local selection — one call, no server-side cart.
+ *
+ * The totals shown here are converted from the committed catalogue with the same rate
+ * table the backend prices from, so they should match the charge to the rupee — but
+ * they are still only an estimate. `POST /checkout/direct/` names WHAT is bought and
+ * in WHICH currency; the server prices every line itself and the order it returns is
+ * what we carry forward. Prices here therefore use `<Price usd>` (converts a catalogue
+ * figure) and never `<Money minor currency>`, which is for amounts already recorded.
+ *
+ * Identity is a step of its own: an order needs an address to deliver the QR code to,
+ * so either the shopper is signed in or they confirm guest details first. Only then
+ * does the pay button do anything.
  */
 export function CheckoutView() {
   const router = useRouter();
-  const { cart, loading, refresh, setQuantity, remove, pendingItemId, reset } = useCart();
+  const { items, hydrate, setQuantity, remove, reset } = useCart();
+  /**
+   * The order is created in the currency on screen, not in USD. Two reasons: a total
+   * the customer never saw is not a total they agreed to, and Stripe only offers UPI
+   * on an INR PaymentIntent — a USD one silently drops it from the payment sheet.
+   */
+  const currency = useCurrency((s) => s.currency);
   const [mounted, setMounted] = useState(false);
   const [account, setAccount] = useState(null);
-  const [email, setEmail] = useState("");
+  /** Distinct from `account === null`, which is also the answer for a guest. Without
+   *  it the guest form flashes on screen before the session probe comes back. */
+  const [accountLoaded, setAccountLoaded] = useState(false);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestConfirmed, setGuestConfirmed] = useState(false);
   const [promo, setPromo] = useState("");
-  const [promoPreview, setPromoPreview] = useState(null);
-  const [promoError, setPromoError] = useState(null);
+  const [promoOpen, setPromoOpen] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const identityRef = useRef(null);
+  /**
+   * One key per purchase ATTEMPT, reused on every retry of that attempt. If a response
+   * is lost in flight the order still exists, and retrying with the same key returns
+   * that order instead of creating a second one. Regenerating on retry would defeat
+   * the whole mechanism.
+   */
+  const idempotencyKey = useRef(null);
 
   useEffect(() => {
     setMounted(true);
-    refresh();
-    fetchMeOrNull().then((me) => {
-      setAccount(me);
-      if (me?.email) setEmail(me.email);
-    });
-  }, [refresh]);
+    hydrate();
+    setGuestEmail(readGuestEmail());
+    fetchMeOrNull()
+      .then((me) => setAccount(me))
+      /**
+       * `fetchMeOrNull` only swallows 401/403 — the ordinary signed-out answers. Anything
+       * else (backend down, a 500 from the proxy) still rejects, and without this the
+       * page threw an unhandled rejection into the console on every load.
+       *
+       * Treating it as "not signed in" is the right fallback: guest checkout only needs
+       * an email address, so the purchase can still be completed while accounts are
+       * unreachable.
+       */
+      .catch(() => setAccount(null))
+      .finally(() => setAccountLoaded(true));
+  }, [hydrate]);
 
-  async function applyPromo(event) {
+  const email = account?.email || (guestConfirmed ? guestEmail.trim() : "");
+  const identityReady = Boolean(account) || guestConfirmed;
+
+  /**
+   * A changed selection, address OR currency is a different purchase. Keeping the old
+   * key would make the server answer with the order the previous one created — right
+   * for a retry, wrong for a basket, an email or a currency the shopper has since
+   * changed.
+   */
+  useEffect(() => {
+    idempotencyKey.current = null;
+  }, [items, email, currency]);
+
+  /**
+   * Sends focus to the problem rather than leaving an error nobody scrolled to.
+   *
+   * Deferred by a timeout, not requestAnimationFrame: the errors it looks for render on
+   * the next commit, and rAF does not fire at all while the document is hidden — which
+   * would make this silently do nothing in a background tab.
+   */
+  function revealIdentitySoon() {
+    setTimeout(revealIdentity, 0);
+  }
+
+  function revealIdentity() {
+    const section = identityRef.current;
+    if (!section) return;
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    // Optional call: jsdom does not implement it, and neither do some older WebViews.
+    section.scrollIntoView?.({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    const target =
+      section.querySelector("[aria-invalid='true']") || section.querySelector("input");
+    // preventScroll: the smooth scroll above owns the movement; focus would jump it.
+    target?.focus?.({ preventScroll: true });
+  }
+
+  /** The one thing an order cannot be delivered without. */
+  function emailErrors(candidate) {
+    return EMAIL_PATTERN.test(candidate.trim())
+      ? {}
+      : { customer_email: "Enter the email address we should send your eSIM to." };
+  }
+
+  function confirmGuest(event) {
     event.preventDefault();
-    const code = promo.trim();
-    if (!code) return;
-    setPromoError(null);
-    try {
-      setPromoPreview(await previewPromoCode({ code, customerEmail: email || undefined }));
-    } catch (error) {
-      setPromoPreview(null);
-      setPromoError(error?.message || "That code couldn't be applied.");
+    setSubmitError(null);
+    const errors = emailErrors(guestEmail);
+    setFormErrors(errors);
+    if (Object.keys(errors).length) {
+      revealIdentitySoon();
+      return;
     }
+    const trimmed = guestEmail.trim();
+    setGuestEmail(trimmed);
+    persistGuestEmail(trimmed);
+    setGuestConfirmed(true);
+  }
+
+  /** Lets someone on a shared or wrong account buy under different details. */
+  async function signOut() {
+    try {
+      await logout();
+    } catch {
+      // Whatever the server said, this browser is done with that session.
+    }
+    setAccount(null);
+    revealIdentitySoon();
+  }
+
+  function editGuest() {
+    setGuestConfirmed(false);
+    setSubmitError(null);
+    revealIdentitySoon();
   }
 
   async function placeOrder(event) {
     event.preventDefault();
-    setFormErrors({});
     setSubmitError(null);
 
-    const trimmed = email.trim();
-    if (!account && !EMAIL_PATTERN.test(trimmed)) {
-      setFormErrors({ customer_email: "Enter the email address for your eSIM." });
+    // An order with no address to deliver to is not an order. Say so where the fix is,
+    // not next to a pay button three screens further down.
+    if (!identityReady) {
+      setFormErrors(emailErrors(guestEmail));
+      setSubmitError("Tell us where to send your eSIM before paying.");
+      revealIdentitySoon();
       return;
     }
 
+    setFormErrors({});
     setSubmitting(true);
+    if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
     try {
-      // The promo preview does not persist — the code must be sent again here.
-      const order = await checkout({
-        customerEmail: trimmed || undefined,
-        promoCode: promoPreview ? promo.trim() : undefined,
+      const order = await checkoutDirect({
+        items,
+        customerEmail: email,
+        promoCode: promo.trim() || undefined,
+        currency,
+        idempotencyKey: idempotencyKey.current,
       });
       saveOrderContext({
         orderId: order.id,
         orderNumber: order.order_number,
-        email: order.customer_email || trimmed,
+        email: order.customer_email || email,
       });
+      idempotencyKey.current = null;
       reset();
       router.push(`${routes.payment()}?order=${encodeURIComponent(order.id)}`);
     } catch (error) {
       const fields = fieldErrors(error);
-      if (Object.keys(fields).length) setFormErrors(fields);
-      // The 50-unit cap is re-checked here, not only on add, so the cart can be
-      // over the line by the time someone reaches this button. "Try again" is
+      if (Object.keys(fields).length) {
+        setFormErrors(fields);
+        // A rejected email or name is fixed in the identity card, which on mobile is
+        // well above the button that was just pressed.
+        revealIdentitySoon();
+      }
+      // `cart_limit_exceeded` is the backend's wire code for the 50-unit cap
+      // (verified live: "An order may contain at most 50 eSIMs."). "Try again" is
       // useless advice for it — say what has to change.
       else if (error?.code === "cart_limit_exceeded") {
         setSubmitError(
-          "Your cart holds more than the maximum of 50 eSIMs. Remove some to place this order.",
+          "This order holds more than the maximum of 50 eSIMs. Remove some to place it.",
         );
       } else if (error?.code === "plan_unavailable") {
         setSubmitError(
-          "A plan in your cart is no longer available. Review your cart and try again.",
+          "A plan in this order is no longer available. Review your selection and try again.",
         );
       } else setSubmitError(error?.message || "We couldn't place your order. Please try again.");
       setSubmitting(false);
     }
   }
 
-  if (!mounted || (loading && !cart)) {
+  if (!mounted) {
     return (
       <Container className="py-12">
         <div className="h-72 animate-pulse rounded-lg bg-muted" aria-busy="true" />
@@ -108,12 +246,12 @@ export function CheckoutView() {
     );
   }
 
-  if (cartIsEmpty(cart)) {
+  if (cartIsEmpty(items)) {
     return (
       <Container className="py-16">
         <EmptyState
           icon={ShoppingBag}
-          title="Your cart is empty"
+          title="No plan selected yet"
           body="Choose a destination and a data plan to get started."
           action={{ label: "Browse destinations", href: routes.destinations() }}
         />
@@ -121,39 +259,49 @@ export function CheckoutView() {
     );
   }
 
-  const discountMinor = promoPreview?.discount_minor ?? 0;
-  const totalMinor = Math.max(0, (cart.subtotal_minor ?? 0) - discountMinor);
+  // Indicative only. Any promo discount is applied by the server when the order is
+  // created — there is no preview to compute one from here.
+  const subtotal = subtotalUsd(items);
+  const units = totalUnits(items);
+  const unitLabel = units === 1 ? "eSIM" : "eSIMs";
+  const accountName = [account?.first_name, account?.last_name].filter(Boolean).join(" ");
+
+
 
   return (
-    <Container className="py-12">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-headline-lg uppercase text-foreground">Secure checkout</h1>
+    <Container className="pt-6 pb-44 lg:pb-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="font-display text-headline-md uppercase text-foreground">Secure checkout</h1>
         <span className="rounded-full border border-success-text/20 bg-success-text/10 px-3 py-1 text-label-caps uppercase text-success-text">
           Secure SSL
         </span>
       </div>
 
-      <div className="grid items-start gap-12 lg:grid-cols-12">
-        <div className="space-y-8 lg:col-span-7">
-          <section className="rounded-lg border border-border bg-white p-8">
-            <h2 className="mb-4 font-display text-headline-md text-foreground">Your plans</h2>
+      <div className="grid items-start gap-6 lg:grid-cols-12 lg:gap-8">
+        <div className="space-y-4 lg:col-span-7">
+          <section className="rounded-lg border border-border bg-white p-5 sm:p-6">
+            <h2 className="mb-3 font-display text-headline-md text-foreground">Your plans</h2>
             <ul className="divide-y divide-border">
-              {cart.items.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-4 py-4 first:pt-0">
-                  <div className="min-w-0">
-                    <p className="font-display text-headline-md text-foreground">
-                      {item.display_name}
-                    </p>
-                    <p className="text-body-sm text-muted-foreground">{item.product_code}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
+              {items.map((item) => (
+                /*
+                  Stacked below sm. Side by side, the stepper, price and bin left the
+                  title about 80px on a 375px screen and "Saudi Arabia · 10 GB" broke
+                  across four lines.
+                */
+                <li
+                  key={item.productCode}
+                  className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
+                  <p className="min-w-0 font-display text-headline-md text-foreground">
+                    {item.countryName} · {item.displayName}
+                  </p>
+                  <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
                     <div className="flex items-center gap-1 rounded-full border border-border">
                       <button
                         type="button"
-                        aria-label={`Decrease quantity of ${item.display_name}`}
-                        disabled={pendingItemId === item.id}
-                        onClick={() => setQuantity(item.id, item.quantity - 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-foreground disabled:opacity-50"
+                        aria-label={`Decrease quantity of ${item.displayName}`}
+                        onClick={() => setQuantity(item.productCode, item.quantity - 1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-foreground"
                       >
                         <Minus size={14} aria-hidden />
                       </button>
@@ -162,23 +310,27 @@ export function CheckoutView() {
                       </span>
                       <button
                         type="button"
-                        aria-label={`Increase quantity of ${item.display_name}`}
-                        disabled={pendingItemId === item.id}
-                        onClick={() => setQuantity(item.id, item.quantity + 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-foreground disabled:opacity-50"
+                        aria-label={`Increase quantity of ${item.displayName}`}
+                        onClick={() => setQuantity(item.productCode, item.quantity + 1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-foreground"
                       >
                         <Plus size={14} aria-hidden />
                       </button>
                     </div>
-                    <div className="w-20 text-right font-display text-headline-md text-primary">
-                      <Money minor={item.line_total_minor} currency={cart.currency} />
+                    {/*
+                      min-width, not width. A fixed 24 (96px) was cut for "$14.99";
+                      "₹1,359.00" overruns it and lands on top of the delete button.
+                      The floor still keeps prices aligned across rows, and tabular
+                      figures stop the digits shifting as a quantity changes.
+                    */}
+                    <div className="whitespace-nowrap text-right font-display text-headline-md tabular-nums text-primary sm:min-w-24">
+                      <Price usd={item.usd * item.quantity} />
                     </div>
                     <button
                       type="button"
-                      aria-label={`Remove ${item.display_name}`}
-                      disabled={pendingItemId === item.id}
-                      onClick={() => remove(item.id)}
-                      className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      aria-label={`Remove ${item.displayName}`}
+                      onClick={() => remove(item.productCode)}
+                      className="text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 size={16} aria-hidden />
                     </button>
@@ -188,140 +340,196 @@ export function CheckoutView() {
             </ul>
             <Link
               href={routes.destinations()}
-              className="mt-4 inline-block text-label-bold text-primary hover:underline"
+              className="mt-3 inline-block text-label-bold text-primary hover:underline"
             >
               Add another destination
             </Link>
           </section>
 
-          <section className="rounded-lg border border-border bg-white p-8">
-            <h2 className="mb-6 font-display text-headline-md text-foreground">1. Your identity</h2>
-            {account ? (
-              <p className="text-body-md text-foreground">
-                Signed in as <span className="font-semibold">{account.email}</span>
-              </p>
+          <section
+            ref={identityRef}
+            id="identity"
+            className="scroll-mt-24 rounded-lg border border-border bg-white p-5 sm:p-6"
+          >
+            <h2 className="mb-3 font-display text-headline-md text-foreground">Your details</h2>
+
+            {!accountLoaded ? (
+              <div className="h-28 animate-pulse rounded-md bg-muted" aria-busy="true" />
+            ) : identityReady ? (
+              /*
+                One card for both routes in. Whether the address came from an account or
+                from the box below, the only thing that matters here is where the QR code
+                is going — so it says that, and offers a way to change it.
+              */
+              <div className="flex items-start justify-between gap-4 rounded-md border border-success-text/20 bg-success-text/5 p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-text" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">{email}</p>
+                    <p className="mt-1 text-body-sm text-muted-foreground">
+                      We'll send your eSIM QR code here.
+                    </p>
+                  </div>
+                </div>
+                {/*
+                  Says what it does. "Not you?" was accurate and useless: it gave no hint
+                  that behind it are the email box AND the Google button, so someone
+                  signed in to the wrong account had no visible way to change it.
+                */}
+                <button
+                  type="button"
+                  onClick={account ? signOut : editGuest}
+                  className="shrink-0 rounded text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {account ? "Use another account" : "Change"}
+                </button>
+              </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <>
+                {/*
+                  One field, because one field is all the order needs: the eSIM is
+                  delivered by email and the backend treats name and phone as optional.
+                  Every extra box here is a chance to abandon a purchase.
+
+                  Its own form, submitted by its own button: confirming where the eSIM
+                  goes and paying are separate acts, and Enter in this box must not place
+                  an order.
+                */}
+                <form onSubmit={confirmGuest} noValidate>
+                  <label className="block">
+                    <span className="mb-1.5 block text-body-sm font-medium text-foreground">
+                      Email address
+                    </span>
+                    <input
+                      type="email"
+                      name="customer_email"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                      autoFocus
+                      aria-invalid={formErrors.customer_email ? "true" : undefined}
+                      aria-describedby={
+                        formErrors.customer_email ? "customer_email-error" : "email-hint"
+                      }
+                      className="w-full rounded-md border border-border bg-muted px-4 py-3 text-body-md outline-none focus:border-primary"
+                    />
+                  </label>
+                  {formErrors.customer_email ? (
+                    <p
+                      id="customer_email-error"
+                      role="alert"
+                      className="mt-1.5 text-body-sm text-destructive"
+                    >
+                      {formErrors.customer_email}
+                    </p>
+                  ) : (
+                    <p id="email-hint" className="mt-1.5 text-body-sm text-muted-foreground">
+                      We'll send your eSIM QR code here — no account needed.
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    className="mt-4 w-full rounded-full bg-cta px-6 py-3 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110"
+                  >
+                    Continue
+                  </button>
+                </form>
+
+                <div className="my-4 flex items-center gap-3 text-body-sm text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  or
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+
+                {/* OAuth needs a full-page redirect, so this must be an anchor. */}
                 <a
                   href={GOOGLE_LOGIN_PATH}
-                  className="flex items-center justify-center gap-3 rounded-md border border-border bg-muted py-4 font-semibold text-foreground hover:bg-muted"
+                  className="flex w-full items-center justify-center gap-3 rounded-full border border-border bg-white py-3 font-semibold text-foreground transition-colors hover:bg-muted"
                 >
+                  <GoogleLogo />
                   Continue with Google
                 </a>
-                <label className="block">
-                  <span className="sr-only">Email address</span>
-                  <input
-                    type="email"
-                    name="customer_email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email address"
-                    autoComplete="email"
-                    aria-invalid={formErrors.customer_email ? "true" : undefined}
-                    aria-describedby={formErrors.customer_email ? "email-error" : undefined}
-                    className="w-full rounded-md border border-border bg-muted px-4 py-4 text-body-md outline-none focus:border-primary"
-                  />
-                </label>
-              </div>
-            )}
-            {formErrors.customer_email ? (
-              <p id="email-error" role="alert" className="mt-2 text-body-sm text-destructive">
-                {formErrors.customer_email}
-              </p>
-            ) : null}
-            {!account ? (
-              <p className="mt-3 text-body-sm text-muted-foreground">
-                Guest checkout — we'll email your eSIM QR code.
-              </p>
-            ) : null}
-          </section>
 
-          <section className="rounded-lg border border-border bg-white p-8">
-            <h2 className="mb-4 font-display text-headline-md text-foreground">2. Promo code</h2>
-            <form onSubmit={applyPromo} className="flex gap-3">
-              <label className="flex-1">
-                <span className="sr-only">Promo code</span>
-                <input
-                  type="text"
-                  value={promo}
-                  onChange={(e) => setPromo(e.target.value)}
-                  placeholder="Enter a code"
-                  className="w-full rounded-md border border-border bg-muted px-4 py-3 text-body-md uppercase outline-none focus:border-primary"
-                />
-              </label>
-              <button
-                type="submit"
-                className="rounded-full border border-border px-6 py-3 text-label-bold text-foreground hover:bg-muted"
-              >
-                Apply
-              </button>
-            </form>
-            {promoError ? (
-              <p role="alert" className="mt-2 text-body-sm text-destructive">{promoError}</p>
-            ) : null}
-            {/* A `tracking` code is a travel-agency referral: the customer pays FULL
-                price and the agency earns commission, so promising a saving for one
-                would be a lie (contract §5.2). The preview does not say which kind a
-                code is — it returns only `discount_minor` — so the copy is driven off
-                the amount, which is true either way. Success styling is reserved for
-                an actual reduction. */}
-            {promoPreview ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setPromoPreview(null);
-                  setPromo("");
-                  setPromoError(null);
-                }}
-                className="mt-2 text-body-sm text-primary underline underline-offset-2"
-              >
-                Remove code
-              </button>
-            ) : null}
-            {promoPreview ? (
-              discountMinor > 0 ? (
-                <p className="mt-2 text-body-sm text-success-text">
-                  Code applied — <Money minor={discountMinor} currency={cart.currency} /> off at checkout.
+                <p className="mt-3 text-body-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <Link href={routes.signin()} className="font-semibold text-primary hover:underline">
+                    Sign in
+                  </Link>
+                  .
                 </p>
-              ) : (
-                <p className="mt-2 text-body-sm text-muted-foreground">
-                  Code accepted. It doesn&rsquo;t reduce this order&rsquo;s total.
-                </p>
-              )
-            ) : null}
+              </>
+            )}
           </section>
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:col-span-5">
-          <div className="rounded-lg border border-border bg-white p-8 shadow-sm">
-            <h2 className="mb-6 font-display text-headline-md text-foreground">Order summary</h2>
-            <dl className="mb-6 space-y-3 text-body-md">
+          <div className="rounded-lg border border-border bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="mb-3 font-display text-headline-md text-foreground">Order summary</h2>
+            <dl className="space-y-3 text-body-md">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">
-                  Subtotal ({cart.item_count} {cart.item_count === 1 ? "eSIM" : "eSIMs"})
+                  Subtotal ({units} {unitLabel})
                 </dt>
-                <dd><Money minor={cart.subtotal_minor} currency={cart.currency} /></dd>
+                <dd><Price usd={subtotal} /></dd>
               </div>
-              {discountMinor > 0 ? (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Discount</dt>
-                  <dd className="text-success-text">
-                    −<Money minor={discountMinor} currency={cart.currency} />
-                  </dd>
-                </div>
-              ) : null}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">eSIM activation</dt>
                 <dd className="font-semibold text-success-text">FREE</dd>
               </div>
-              <div className="flex items-end justify-between border-t border-border pt-4">
-                <dt className="font-display text-headline-md text-foreground">Total</dt>
-                <dd aria-live="polite" className="font-display text-headline-md text-primary">
-                  <Money minor={totalMinor} currency={cart.currency} />
-                </dd>
-              </div>
             </dl>
-            <form onSubmit={placeOrder}>
+
+            {/*
+              The code is sent once, with the order — there is no live preview, because
+              previewing required a server-side cart and never attached anything anyway.
+              An invalid code comes back as promo_invalid / promo_expired /
+              promo_usage_exceeded and surfaces under the button.
+
+              Collapsed until asked for: an empty box labelled "promo code" sends people
+              off to hunt for one, and most shoppers here do not have a code at all.
+            */}
+            <div className="mt-4 border-t border-dashed border-border pt-4">
+              {promoOpen ? (
+                <div>
+                  <label className="block">
+                    <span className="mb-1.5 block text-body-sm font-medium text-foreground">
+                      Promo code
+                    </span>
+                    <input
+                      type="text"
+                      value={promo}
+                      onChange={(e) => setPromo(e.target.value)}
+                      placeholder="ENTER CODE"
+                      autoFocus
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="w-full rounded-md border border-border bg-muted px-3 py-2.5 text-body-sm uppercase tracking-wide outline-none placeholder:tracking-normal placeholder:text-muted-foreground focus:border-primary"
+                    />
+                  </label>
+                  <p className="mt-1.5 text-body-sm text-muted-foreground">
+                    Applied when you place the order.
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPromoOpen(true)}
+                  className="flex items-center gap-2 rounded text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  <Tag size={15} aria-hidden />
+                  Have a promo code?
+                </button>
+              )}
+            </div>
+
+            <dl className="mt-4 flex items-end justify-between border-t border-border pt-4">
+              <dt className="font-display text-headline-md text-foreground">Total</dt>
+              <dd aria-live="polite" className="font-display text-headline-md text-primary">
+                <Price usd={subtotal} />
+              </dd>
+            </dl>
+            <form id={FORM_ID} onSubmit={placeOrder} className="mt-6">
               <button
                 type="submit"
                 disabled={submitting}
@@ -337,10 +545,43 @@ export function CheckoutView() {
               </p>
             ) : null}
             <p className="mt-3 text-center text-body-sm text-muted-foreground">
-              Charged in USD. Prices shown in your currency are indicative.
+              Charged in {currency}. Your card or bank may add its own conversion fee.
             </p>
           </div>
         </aside>
+      </div>
+
+      {/*
+        On mobile the summary is the last thing on a long page, so the total and the pay
+        button are pinned instead. Mirrors the plan-selector's bar, down to the z-index,
+        so the two never fight for the same strip of screen.
+      */}
+      <div
+        data-checkout-bar
+        style={{ bottom: "var(--consent-banner-h, 0px)" }}
+        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 pb-4 pt-3 shadow-l3 backdrop-blur lg:hidden"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-2 flex items-baseline justify-between gap-4">
+            <span className="text-body-sm text-muted-foreground">
+              Total · {units} {unitLabel}
+            </span>
+            {/* Not aria-live: the summary card's total already announces changes, and
+                two live regions would read the same number twice. */}
+            <span className="font-display text-headline-md leading-none text-primary">
+              <Price usd={subtotal} />
+            </span>
+          </div>
+          <button
+            type="submit"
+            form={FORM_ID}
+            disabled={submitting}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-cta px-6 py-3.5 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110 disabled:opacity-60"
+          >
+            {submitting ? "Placing order…" : "Proceed to payment"}
+            {submitting ? null : <ArrowRight size={20} aria-hidden />}
+          </button>
+        </div>
       </div>
     </Container>
   );

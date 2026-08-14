@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { routes } from "@/config/routes";
 import Link from "next/link";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -32,7 +33,6 @@ export function MobileMenu({ items, overHero }) {
                 alt=""
                 width={128}
                 height={96}
-                sizes="43px"
                 className="h-8 w-auto"
               />
               <span className="font-display text-xl font-bold uppercase text-primary">eSIMFlys</span>
@@ -61,7 +61,7 @@ export function MobileMenu({ items, overHero }) {
             <CurrencySelector />
           </div>
           <Button
-            href="/auth"
+            href={routes.signin()}
             variant="destructive"
             size="lg"
             className="w-full"

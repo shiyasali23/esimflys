@@ -18,6 +18,21 @@
 export const BASE_CURRENCY = "USD";
 
 /**
+ * What a visitor sees when nothing better is known — deliberately NOT `BASE_CURRENCY`.
+ *
+ * The two answer different questions. `BASE_CURRENCY` is what the order is charged in
+ * and what the structured data declares; it is money, and it does not move. This is a
+ * display preference for a visitor whose locale tells us nothing useful, and India is
+ * the primary market.
+ *
+ * It is a *preference*, not a guarantee: the backend withdraws a currency whose rate
+ * has gone stale, and `no-flash-script` falls back to `BASE_CURRENCY` when this one is
+ * not being quoted. Honouring it blindly would leave an empty gap where the price
+ * should be, because the CSS only reveals a span that was actually rendered.
+ */
+export const DEFAULT_DISPLAY_CURRENCY = "INR";
+
+/**
  * `roundingStep` and `charmOffset` are in MINOR units, which is why they differ so
  * much per currency: 1 cent off $7.00 gives $6.99, but 1 paisa off Rs 600 gives
  * Rs 599.99 — India prices on whole rupees, so the offset there is Rs 1 = 100 paise.

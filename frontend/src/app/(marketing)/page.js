@@ -5,28 +5,18 @@ import { WhereTravelersGo } from "@/features/home/components/where-travelers-go.
 import { TripQuiz } from "@/features/home/components/trip-quiz.client";
 import { HowItWorks } from "@/features/home/components/how-it-works";
 import { WhyPick } from "@/features/home/components/why-pick";
+import { Testimonials } from "@/features/home/components/testimonials.client";
 import { CtaBand } from "@/features/home/components/cta-band";
 import { StatsBand } from "@/features/home/components/stats-band";
 import { Faq } from "@/features/home/components/faq";
-import { AppCta } from "@/features/home/components/app-cta";
-import { JsonLd } from "@/components/seo/json-ld";
-import { faqPageJsonLd } from "@/lib/seo/jsonld";
-import faq from "@/content/faq.json";
-import {
-  getAllCountries,
-  getFeaturedCountries,
-  getHomeDestinations,
-} from "@/server/catalog/repository";
+import { getAllCountries, getHomeDestinations } from "@/server/catalog/repository";
 
 export const metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
-  const [destinations, chips, allCountries] = await Promise.all([
-    getHomeDestinations(8),
-    getFeaturedCountries(4),
-    getAllCountries(),
-  ]);
-  const searchCountries = allCountries.map((c) => ({
+  const destinations = await getHomeDestinations(8);
+  const chips = await getHomeDestinations(4);
+  const searchCountries = (await getAllCountries()).map((c) => ({
     slug: c.slug,
     name: c.name,
     iso2: c.iso2,
@@ -36,7 +26,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <JsonLd data={faqPageJsonLd(faq.items)} />
       <Hero chips={chips} countries={searchCountries} />
       <TrustTicker />
       <WhatIsEsim />
@@ -44,10 +33,10 @@ export default async function HomePage() {
       <TripQuiz />
       <HowItWorks />
       <WhyPick />
+      <Testimonials />
       <CtaBand />
       <StatsBand />
       <Faq />
-      <AppCta />
     </>
   );
 }

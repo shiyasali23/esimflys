@@ -27,7 +27,7 @@ const STEPS = [
 export function HowItWorks() {
   const { howItWorks: h } = home;
   return (
-    <section id="how-it-works" className="relative overflow-hidden bg-[#f5f5fb] py-16 md:py-24">
+    <section id="how-it-works" className="relative overflow-hidden bg-muted py-16 md:py-24">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-32 top-10 h-80 w-80 rounded-full bg-primary/10 blur-[100px]"
@@ -96,7 +96,7 @@ export function HowItWorks() {
                       <Icon className="h-6 w-6" aria-hidden />
                     </div>
                   </div>
-                  <div className="flex-1 rounded-card bg-white p-6 shadow-[0_4px_24px_-10px_rgba(20,20,60,0.15)] ring-1 ring-black/[0.04] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_-16px_rgba(97,93,229,0.3)]">
+                  <div className="flex-1 rounded-card bg-card p-6 shadow-[0_4px_24px_-10px_rgba(20,20,60,0.15)] ring-1 ring-black/[0.04] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_-16px_rgba(97,93,229,0.3)]">
                     <div className="flex items-center gap-2">
                       <span className={cn("shrink-0 whitespace-nowrap font-display text-sm font-bold", s.label)}>
                         STEP {st.n}

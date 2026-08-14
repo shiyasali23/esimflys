@@ -1,10 +1,9 @@
 import { networkError, toApiError } from "./errors";
-import { readCartToken, writeCartToken } from "./cart-token";
 
 /**
  * The single entry point to the backend. Everything the API contract demands lives
- * here so no call site can forget it: credentials on every request, CSRF on unsafe
- * ones, and the write-once `X-Cart-Token` captured off the response.
+ * here so no call site can forget it: credentials on every request and CSRF on
+ * unsafe ones.
  *
  * In the browser we call relative paths so the Next rewrite keeps us same-origin and
  * the session cookie is sent (see next.config.mjs). On the server there is no origin
@@ -78,7 +77,7 @@ async function parseBody(response) {
 /**
  * @param {string} path e.g. "/catalog/countries/" (the /api/v1 prefix is added)
  * @param {{method?: string, body?: any, cookie?: string, signal?: AbortSignal,
- *          headers?: Record<string,string>, cartToken?: string|null}} [options]
+ *          headers?: Record<string,string>}} [options]
  * @returns {Promise<any>} parsed JSON, or null for 204
  * @throws {ApiError}
  */
@@ -93,10 +92,6 @@ export async function apiFetch(path, options = {}) {
     if (csrf) headers["X-CSRFToken"] = csrf;
   }
 
-  // Explicit null means "this call must not carry a cart"; undefined means "use the stored one".
-  const cartToken = options.cartToken === undefined ? readCartToken() : options.cartToken;
-  if (cartToken) headers["X-Cart-Token"] = cartToken;
-
   // Server-side authenticated calls have no ambient cookie jar — the caller forwards one.
   if (isServer && options.cookie) headers.Cookie = options.cookie;
 
@@ -109,8 +104,8 @@ export async function apiFetch(path, options = {}) {
       // Without a deadline a hung backend hangs the tab forever: every spinner in the
       // app waits on this one function. A caller-supplied signal still wins.
       signal: options.signal || AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      // Authenticated and cart traffic must never be cached; the public catalogue
-      // opts back in explicitly so country pages can stay statically generated.
+      // Authenticated traffic must never be cached; the public catalogue opts back
+      // in explicitly so country pages can stay statically generated.
       cache: options.cache || (options.next ? undefined : "no-store"),
       ...(options.next ? { next: options.next } : {}),
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
@@ -119,9 +114,6 @@ export async function apiFetch(path, options = {}) {
     if (cause?.name === "AbortError") throw cause;
     throw networkError(cause);
   }
-
-  const issued = response.headers.get("X-Cart-Token");
-  if (issued) writeCartToken(issued);
 
   const body = await parseBody(response);
 

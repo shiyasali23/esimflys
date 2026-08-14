@@ -1,58 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: var(--font-oswald), "Oswald", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-poppins), "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
   --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
+  --color-card-foreground: #0f172a;
   --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
+  --color-popover-foreground: #0f172a;
 
-  --color-primary: #615de5;
+  --color-primary: #2563eb;
   --color-primary-foreground: #ffffff;
   --color-on-primary: #ffffff;
-  --color-primary-container: #6f6be9;
+  --color-primary-container: #3b82f6;
 
-  --color-cta: #3535ff;
+  --color-cta: #f97316;
   --color-cta-foreground: #ffffff;
-  --color-highlight: #c6f135;
-  --color-highlight-foreground: #14210a;
-  --color-ticker: #e40014;
+  --color-highlight: #0ea5e9;
+  --color-highlight-foreground: #ffffff;
+  --color-ticker: #0b1220;
   --color-ticker-foreground: #ffffff;
 
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #171717;
-  --color-secondary-container: #eef0ff;
-  --color-on-secondary-container: #3730a3;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #6b6b6b;
-  --color-accent: #f2f2fb;
-  --color-accent-foreground: #171717;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-secondary-container: #dbeafe;
+  --color-on-secondary-container: #1e3a8a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #eff6ff;
+  --color-accent-foreground: #1e3a8a;
 
   --color-surface: #ffffff;
-  --color-surface-variant: #f5f5f5;
-  --color-outline: #737373;
-  --color-outline-variant: #e5e5e5;
-  --color-border: #e5e5e5;
-  --color-input: #e5e5e5;
-  --color-ring: #615de5;
+  --color-surface-variant: #f1f5f9;
+  --color-outline: #64748b;
+  --color-outline-variant: #e2e8f0;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #2563eb;
 
-  --color-destructive: #e40014;
+  --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
-  /* Error text sits on a 10% tint of its own colour, not on white. #e40014 reads
-     4.87:1 on white but only 4.09:1 on that tint — below AA, on the message
-     someone reads when something has gone wrong. This reads 5.25:1 there. The
-     base token is unchanged: white on #e40014 is 4.87:1, fine for buttons. */
-  --color-destructive-text: #c40012;
-  --color-error: #e40014;
+  /* Error text sits on a 10% tint of its own colour, not on white. The base red
+     reads 4.13:1 there — below AA, on the message someone reads when something has
+     gone wrong. This reads 5.54:1. Used by 22 call sites. */
+  --color-destructive-text: #b91c1c;
+  --color-error: #dc2626;
   --color-on-error: #ffffff;
-  --color-success: #c6f135;
-  /* #1b7f3b measured 4.42:1 as badge text on its own 10% tint — below AA. This
-     reads 5.76:1 there and 6.6:1 on white. */
-  --color-success-text: #166b32;
+  --color-success: #d1fae5;
+  --color-success-text: #047857;
 
   --color-chart-1: #f05100;
   --color-chart-2: #009588;

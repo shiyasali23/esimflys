@@ -1,5 +1,4 @@
 import { api, ensureCsrfToken } from "./client";
-import { clearCartToken } from "./cart-token";
 
 /**
  * Session auth (API.md §6.8). Django session cookie + CSRF — no tokens are stored
@@ -21,10 +20,8 @@ export function login({ email, password }) {
   return api.post("/auth/login/", { email, password });
 }
 
-/** Also drops the guest cart token so the next visitor starts clean. */
 export async function logout() {
   await api.post("/auth/logout/");
-  clearCartToken();
 }
 
 export function fetchMe(options) {

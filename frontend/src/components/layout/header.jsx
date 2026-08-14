@@ -1,37 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { Zap } from "lucide-react";
+import { routes } from "@/config/routes";
+import { Button } from "@/components/ui/button";
 import { CurrencySelector } from "@/components/currency/currency-selector.client";
-import { AccountNav } from "./account-nav.client";
-import { PortalLinks } from "./portal-links.client";
 import { MobileMenu } from "./mobile-menu.client";
 import nav from "@/content/nav.json";
-import { cn } from "@/lib/cn";
 
 export function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const pathname = usePathname();
-  const overHero = pathname === "/" && !scrolled;
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-3">
       <nav
         aria-label="Primary"
-        className={cn(
-          "mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border px-4 transition-all sm:px-6",
-          overHero
-            ? "border-transparent bg-transparent"
-            : "border-border bg-background/90 shadow-l2 backdrop-blur",
-        )}
+        className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/90 px-4 shadow-l2 backdrop-blur transition-all sm:px-6"
       >
         <Link href="/" className="flex items-center gap-2.5">
           <Image
@@ -40,15 +22,9 @@ export function Header() {
             width={128}
             height={96}
             priority
-            sizes="43px"
             className="h-8 w-auto"
           />
-          <span
-            className={cn(
-              "font-display text-xl font-bold uppercase tracking-tight",
-              overHero ? "text-white" : "text-primary",
-            )}
-          >
+          <span className="font-display text-xl font-bold uppercase tracking-tight text-primary">
             eSIMFlys
           </span>
         </Link>
@@ -57,10 +33,7 @@ export function Header() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={cn(
-                  "font-body text-sm font-medium transition-colors",
-                  overHero ? "text-white hover:underline" : "text-foreground/80 hover:text-primary",
-                )}
+                className="font-body text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
               >
                 {item.label}
               </Link>
@@ -68,10 +41,15 @@ export function Header() {
           ))}
         </ul>
         <div className="flex items-center gap-2">
-          <CurrencySelector overHero={overHero} className="hidden sm:inline-flex" />
-          <PortalLinks overHero={overHero} />
-          <AccountNav overHero={overHero} />
-          <MobileMenu items={nav.header} overHero={overHero} />
+          <CurrencySelector className="hidden sm:inline-flex" />
+          <Button href={routes.signin()} variant="outline" size="sm" className="hidden sm:inline-flex">
+            Sign in
+          </Button>
+          <Button href="/destinations" variant="cta" size="sm" className="hidden gap-1.5 lg:inline-flex">
+            <Zap className="h-3.5 w-3.5" aria-hidden />
+            Get eSIM Now
+          </Button>
+          <MobileMenu items={nav.header} />
         </div>
       </nav>
     </header>

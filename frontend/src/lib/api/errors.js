@@ -6,6 +6,11 @@
 
 export const GENERIC_MESSAGE = "Something went wrong. Please try again.";
 const NETWORK_MESSAGE = "We couldn't reach the server. Check your connection and try again.";
+/**
+ * Shown for any 5xx that did not come from the API itself. Says what happened, that
+ * it is our side, and what to do — none of which "Internal Server Error" conveys.
+ */
+const SERVER_MESSAGE = "Something went wrong on our side. Please try again in a moment.";
 
 export class ApiError extends Error {
   constructor({ code, message, fields, status, correlationId }) {
@@ -49,6 +54,20 @@ export function toApiError(body, status, statusText) {
 
   const detail = body && typeof body === "object" ? body.detail : null;
 
+  /**
+   * A 5xx WITHOUT an envelope did not come from the API — it came from the proxy or
+   * the platform in front of it, and its body is an HTTP status phrase. "Internal
+   * Server Error" and "Bad Gateway" read as a real sentence to a developer and as
+   * nothing at all to the customer who just pressed Buy, so neither the phrase nor
+   * `statusText` may reach the screen here.
+   *
+   * The backend's own 5xx is unaffected: it carries the envelope handled above,
+   * with a written message and the correlation id.
+   */
+  if (status >= 500) {
+    return new ApiError({ code: codeForStatus(status), message: SERVER_MESSAGE, status });
+  }
+
   return new ApiError({
     code: codeForStatus(status),
     message: typeof detail === "string" ? detail : statusText || GENERIC_MESSAGE,
@@ -81,7 +100,7 @@ function codeForStatus(status) {
  * `authentication_required` code that API.md §5 documents. Verified against the
  * running server on `GET /esims/` and `GET /orders/{id}/`.
  *
- * @returns {"form"|"login"|"not-found"|"refresh-catalogue"|"new-cart"|"cart-limit"|"go-confirmation"|"back-off"|"retry"|"message"}
+ * @returns {"form"|"login"|"not-found"|"refresh-catalogue"|"cart-limit"|"go-confirmation"|"back-off"|"retry"|"message"}
  */
 export function actionForError(error) {
   switch (error?.code) {
@@ -95,9 +114,7 @@ export function actionForError(error) {
       return "not-found";
     case "plan_unavailable":
       return "refresh-catalogue";
-    case "cart_expired":
-      return "new-cart";
-    // Retrying cannot help — the cart is already at the 50-unit ceiling and the
+    // Retrying cannot help — the order is already at the 50-unit ceiling and the
     // only way forward is to remove something.
     case "cart_limit_exceeded":
       return "cart-limit";

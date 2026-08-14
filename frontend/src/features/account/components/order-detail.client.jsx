@@ -4,12 +4,12 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getOrder } from "@/lib/api/orders";
 import { useSession } from "@/features/auth/use-session.client";
+import { ErrorState } from "@/components/feedback/error-state";
 import { fromMinor, formatDataMb } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
-import { ErrorState } from "@/components/feedback/error-state";
 import { routes } from "@/config/routes";
 
 /**
@@ -22,6 +22,8 @@ import { routes } from "@/config/routes";
 export function OrderDetail({ orderId }) {
   const user = useSession((s) => s.user);
   const loadSession = useSession((s) => s.load);
+  const sessionError = useSession((s) => s.error);
+  const retrySession = useSession((s) => s.retry);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
 
@@ -39,6 +41,22 @@ export function OrderDetail({ orderId }) {
       active = false;
     };
   }, [user, orderId]);
+
+  /**
+   * A session that could not be verified is NOT a signed-out session. The store only
+   * sets `user = null` when the server said 401/403; any other failure leaves it
+   * `undefined`, which used to render the loading skeleton forever — no message, no
+   * retry, nothing to act on. Same treatment as `admin-shell`.
+   */
+  if (sessionError) {
+    return (
+      <ErrorState
+        error={sessionError}
+        title="We couldn't verify your session"
+        onRetry={retrySession}
+      />
+    );
+  }
 
   if (user === undefined) {
     return (

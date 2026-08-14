@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "source": "GET /api/v1/catalog/rates/",
+    "generatedBy": "scripts/generate-catalog.mjs",
+    "generatedAt": null,
+    "note": "Verified 2026-08-14: all nine match GET /api/v1/catalog/rates/ exactly. These are now CHARGING rates, not display-only \u2014 checkout sends the on-screen currency, so what this table renders is what Stripe bills. Proven end to end: a 10 GB Saudi plan renders \u20b91,359.00 here and its PaymentIntent is 135900 INR. Keep in step with the backend: fx.current_rates() and fx.latest_rate() both resolve through latest_rate, so a stored FxRate row beats settings.FX_RATES in BOTH, and a change there needs `npm run catalog` here or the storefront quotes a price it will not charge."
+  },
+  "rates": {
+    "USD": 1,
+    "EUR": 0.92,
+    "GBP": 0.79,
+    "INR": 88,
+    "AED": 3.67,
+    "SAR": 3.75,
+    "JPY": 157,
+    "AUD": 1.52,
+    "CAD": 1.36
+  },
+  "buffer": 1.03
+}

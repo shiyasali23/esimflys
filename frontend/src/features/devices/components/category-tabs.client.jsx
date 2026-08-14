@@ -1,3 +1,4 @@
+"use client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import devices from "@/content/devices.json";
 
@@ -12,7 +13,7 @@ export function CategoryTabs() {
         ))}
       </TabsList>
       {devices.categories.map((c) => (
-        <TabsContent key={c.name} value={c.name} forceMount>
+        <TabsContent key={c.name} value={c.name}>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {c.brands.map((b) => (
               <div key={b.brand} className="rounded-card border border-border bg-card p-5">

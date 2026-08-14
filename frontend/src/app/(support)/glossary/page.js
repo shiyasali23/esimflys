@@ -35,7 +35,7 @@ export default function GlossaryPage() {
                 </h2>
                 <dl className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {g.terms.map((t) => (
-                    <div key={t.id} id={t.id} className="scroll-mt-24 rounded-md border border-border bg-white p-6">
+                    <div key={t.id} id={t.id} className="scroll-mt-24 rounded-md border border-border bg-card p-6">
                       <dt className="mb-2 flex items-center gap-2 font-display text-headline-md text-primary">
                         {t.term}
                         {t.badge ? (
@@ -51,13 +51,7 @@ export default function GlossaryPage() {
                           {t.seeAlso.map((s, i) => (
                             <span key={s}>
                               {i > 0 ? ", " : ""}
-                              {/* Underlined always, not just on hover: inside a sentence
-                                  the indigo sits at 1.06:1 against the grey around it, so
-                                  colour alone cannot mark it as a link (WCAG 1.4.1). */}
-                              <a
-                                href={`#${s}`}
-                                className="text-primary underline underline-offset-2"
-                              >
+                              <a href={`#${s}`} className="text-primary hover:underline">
                                 {s.toUpperCase()}
                               </a>
                             </span>

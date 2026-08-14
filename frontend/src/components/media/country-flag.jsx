@@ -1,18 +1,22 @@
 import { cn } from "@/lib/cn";
 
 /**
- * Country flag — single swap point for flag rendering.
- * TODO(perf): replace the emoji with a LOCAL inline SVG keyed by ISO-2
- * (blueprint decision: inline SVG, not emoji, not a PNG folder — zero requests,
- * consistent cross-platform). Emoji is a Phase-0 placeholder only.
- * @param {{ country: { name: string, iso2: string, flagEmoji: string }, className?: string }} props
+ * @param {boolean} [decorative] Hide from assistive tech. Use wherever the country is
+ *   already named in the same breath — in a heading that reads "eSIM Albania", the
+ *   labelled flag makes a screen reader announce "eSIM Albania, Albania flag".
  */
-export function CountryFlag({ country, className }) {
+export function CountryFlag({ country, className, decorative = false }) {
+  if (!country?.flagEmoji) return null;
+
   return (
     <span
-      role="img"
-      aria-label={`${country.name} flag`}
-      className={cn("inline-block leading-none", className)}
+      {...(decorative
+        ? { "aria-hidden": true }
+        : {
+            role: "img",
+            "aria-label": country.name ? `${country.name} flag` : "country flag",
+          })}
+      className={cn("leading-none", className)}
     >
       {country.flagEmoji}
     </span>

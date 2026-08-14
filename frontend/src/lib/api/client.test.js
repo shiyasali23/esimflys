@@ -44,9 +44,20 @@ describe("error bodies that are not JSON", () => {
   const respond = (body, type, status = 500) =>
     new Response(body, { status, statusText: "Internal Server Error", headers: { "content-type": type } });
 
-  it("keeps a short single-line reason", async () => {
+  /**
+   * "Bad Gateway" is an HTTP status phrase, not a sentence. It reads as information
+   * to a developer and as nothing to the customer who just pressed Buy, so it must
+   * not become the visible message — while the status and code stay intact for
+   * diagnostics and for `actionForError` to route on.
+   */
+  it("does not put a gateway status phrase in front of the user", async () => {
     globalThis.fetch = vi.fn(() => Promise.resolve(respond("Bad Gateway", "text/plain", 502)));
-    await expect(apiFetch("/admin/orders/")).rejects.toMatchObject({ message: "Bad Gateway" });
+    const error = await apiFetch("/admin/orders/").catch((e) => e);
+
+    expect(error.message).not.toContain("Bad Gateway");
+    expect(error.message).toMatch(/our side/i);
+    expect(error.status).toBe(502);
+    expect(error.code).toBe("internal_error");
   });
 
   it("drops a multi-line traceback and falls back to the status text", async () => {
@@ -57,7 +68,7 @@ describe("error bodies that are not JSON", () => {
     globalThis.fetch = vi.fn(() => Promise.resolve(respond(traceback, "text/plain")));
 
     const error = await apiFetch("/admin/orders/").catch((e) => e);
-    expect(error.message).toBe("Internal Server Error");
+    expect(error.message).toMatch(/our side/i);
     expect(error.message).not.toContain("payment_intent");
     expect(error.message).not.toContain("Request Method");
   });
@@ -74,6 +85,6 @@ describe("error bodies that are not JSON", () => {
     globalThis.fetch = vi.fn(() => Promise.resolve(respond("", "text/plain")));
     const error = await apiFetch("/admin/orders/").catch((e) => e);
     expect(error.status).toBe(500);
-    expect(error.message).toBe("Internal Server Error");
+    expect(error.message).toMatch(/our side/i);
   });
 });

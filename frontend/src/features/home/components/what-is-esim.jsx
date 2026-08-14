@@ -5,7 +5,7 @@ import home from "@/content/home.json";
 export function WhatIsEsim() {
   const { whatIsEsim: w } = home;
   return (
-    <section className="bg-[#f5f5fb]">
+    <section className="bg-muted">
       <div className="relative mx-auto hidden max-w-6xl lg:block">
         <Image
           src="/images/what-is-esim.webp"

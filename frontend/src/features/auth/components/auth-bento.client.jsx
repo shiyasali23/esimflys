@@ -1,11 +1,16 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GoogleLogo } from "@/components/media/google-logo";
+import { EmailOtpVerify } from "./email-otp-verify.client";
+import { routes } from "@/config/routes";
 
 export function AuthBento() {
+  const router = useRouter();
   const [show, setShow] = useState(false);
 
   return (
@@ -15,7 +20,8 @@ export function AuthBento() {
         <p className="mt-2 text-sm text-muted-foreground">
           Access your eSIMs, orders, and top-ups.
         </p>
-        <Button variant="secondary" size="md" className="mt-6 w-full">
+        <Button variant="secondary" size="md" className="mt-6 w-full gap-2">
+          <GoogleLogo />
           Continue with Google
         </Button>
         <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
@@ -52,17 +58,16 @@ export function AuthBento() {
       <div className="rounded-card border border-border bg-muted p-8">
         <h2 className="font-display text-2xl font-bold uppercase">Prefer not to create an account yet?</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Check out as a guest — we'll email your QR code and order details.
+          Check out as a guest — verify your email and we'll send your QR code and order details there.
         </p>
-        <form className="mt-6 space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div>
-            <label htmlFor="guest-email" className="text-sm font-medium">Email for your QR code</label>
-            <Input id="guest-email" type="email" placeholder="you@example.com" className="mt-1" />
-          </div>
-          <Button type="submit" variant="primary" size="md" className="w-full">Continue as guest</Button>
-        </form>
+        <div className="mt-6">
+          <EmailOtpVerify
+            ctaLabel="Continue as guest"
+            onVerified={() => router.push(routes.destinations())}
+          />
+        </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Demo — authentication is handled by the backend once connected.
+          Demo — real verification codes are sent once the backend is connected.
         </p>
       </div>
     </div>

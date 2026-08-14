@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { expectNoAxeViolations } from "@/test/axe";
-import { COUNTRY, COUNTRIES, PLANS, CART, ORDER, ESIM, page } from "./storefront-fixtures";
+import { COUNTRY, COUNTRIES, PLANS, ORDER, ESIM, page } from "./storefront-fixtures";
 
 import { Hero } from "@/features/home/components/hero";
 import { HeroSearch } from "@/features/home/components/hero-search.client";
@@ -54,7 +54,6 @@ function mockApi(route) {
       if (custom !== undefined) return Promise.resolve(jsonResponse(custom));
     }
     if (path.includes("/account/me/")) return Promise.resolve(jsonResponse({ id: "u1", email: "traveller@example.com" }));
-    if (path.includes("/cart")) return Promise.resolve(jsonResponse(CART));
     if (path.includes("/esims")) return Promise.resolve(jsonResponse(page([ESIM])));
     if (path.includes("/orders")) return Promise.resolve(jsonResponse(page([ORDER])));
     return Promise.resolve(jsonResponse(page([])));

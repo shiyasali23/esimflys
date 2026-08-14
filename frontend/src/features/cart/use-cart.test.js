@@ -1,148 +1,180 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { useCart, cartIsEmpty } from "@/features/cart/use-cart.client";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  useCart,
+  cartIsEmpty,
+  totalUnits,
+  subtotalUsd,
+  MAX_UNITS,
+} from "@/features/cart/use-cart.client";
 
 /**
- * The cart store. The server owns pricing and quantities, so this only mirrors
- * what the API returns — the point of these tests is that it never invents or
- * retains state the server has not confirmed.
+ * The selection store. There is no server cart any more — `POST /checkout/direct/`
+ * takes the item list and creates the order in one call — so this holds only what
+ * the shopper picked. The point of these tests is that it never becomes a source
+ * of truth for money: `usd` is the catalogue figure used to render a total, and the
+ * server prices every line itself.
  */
 
-function jsonResponse(body, status = 200, headers = {}) {
-  return new Response(body === null ? null : JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", ...headers },
+const STORAGE_KEY = "esimflys-selection";
+
+/** jsdom in this setup ships no working sessionStorage. */
+function installMemoryStorage() {
+  const data = new Map();
+  Object.defineProperty(window, "sessionStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => (data.has(k) ? data.get(k) : null),
+      setItem: (k, v) => data.set(k, String(v)),
+      removeItem: (k) => data.delete(k),
+      clear: () => data.clear(),
+    },
   });
+  return data;
 }
 
-const CART = {
-  id: "cart-1",
-  currency: "USD",
-  status: "active",
-  items: [
-    {
-      id: "item-1",
-      product_code: "SA-10GB-30D-V1",
-      display_name: "Saudi Arabia 10 GB — 30 Days",
-      quantity: 2,
-      unit_amount_minor: 1499,
-      line_total_minor: 2998,
-    },
-  ],
-  subtotal_minor: 2998,
-  item_count: 2,
+const PLAN = {
+  productCode: "SA-10GB-30D-V1",
+  displayName: "10 GB",
+  countryName: "Saudi Arabia",
+  countrySlug: "saudi-arabia",
+  usd: 14.99,
+  quantity: 1,
 };
 
-const EMPTY_CART = { id: null, items: [], subtotal_minor: 0, item_count: 0 };
+let store;
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn();
-  document.cookie = "csrftoken=t; path=/";
-  useCart.setState({ cart: null, loading: false, error: null, pendingItemId: null });
+  store = installMemoryStorage();
+  useCart.setState({ items: [], hydrated: false });
 });
 
-afterEach(() => vi.restoreAllMocks());
-
-describe("cartIsEmpty", () => {
-  // The backend represents an empty cart as {id: null, items: []}, not a 404.
-  it("recognises the server's empty-cart shape", () => {
-    expect(cartIsEmpty(EMPTY_CART)).toBe(true);
+describe("helpers", () => {
+  it("treats a missing or empty list as nothing selected", () => {
     expect(cartIsEmpty(null)).toBe(true);
-    expect(cartIsEmpty(CART)).toBe(false);
+    expect(cartIsEmpty([])).toBe(true);
+    expect(cartIsEmpty([PLAN])).toBe(false);
+  });
+
+  it("sums units and catalogue dollars across lines", () => {
+    const items = [
+      { ...PLAN, quantity: 2 },
+      { ...PLAN, productCode: "AL-5GB-30D-V1", usd: 9.5, quantity: 3 },
+    ];
+    expect(totalUnits(items)).toBe(5);
+    expect(subtotalUsd(items)).toBeCloseTo(14.99 * 2 + 9.5 * 3, 10);
   });
 });
 
-describe("refresh", () => {
-  it("mirrors the server cart", async () => {
-    globalThis.fetch.mockResolvedValue(jsonResponse(CART));
-    await useCart.getState().refresh();
-    const { cart, loading } = useCart.getState();
-    expect(cart.subtotal_minor).toBe(2998);
-    expect(cart.items[0].quantity).toBe(2);
-    expect(loading).toBe(false);
+describe("hydrate", () => {
+  /**
+   * The store must start empty on the client too, or the first client render would
+   * not match the server's and React would throw a hydration mismatch. The stored
+   * selection is only adopted afterwards, in an effect.
+   */
+  it("starts empty and only reads storage when asked", () => {
+    store.set(STORAGE_KEY, JSON.stringify([PLAN]));
+    expect(useCart.getState().items).toEqual([]);
+    useCart.getState().hydrate();
+    expect(useCart.getState().items).toEqual([PLAN]);
+    expect(useCart.getState().hydrated).toBe(true);
   });
 
-  it("records the error without wiping the last known cart", async () => {
-    useCart.setState({ cart: CART });
-    globalThis.fetch.mockRejectedValue(new TypeError("Failed to fetch"));
-    await useCart.getState().refresh();
-    expect(useCart.getState().error).toBeTruthy();
-    expect(useCart.getState().cart).toEqual(CART);
+  // Otherwise a second mount would wipe a selection made since the first.
+  it("does not re-read storage once hydrated", () => {
+    useCart.getState().hydrate();
+    useCart.getState().add(PLAN);
+    store.set(STORAGE_KEY, JSON.stringify([]));
+    useCart.getState().hydrate();
+    expect(useCart.getState().items).toHaveLength(1);
+  });
+
+  it("survives corrupt storage rather than throwing on first paint", () => {
+    store.set(STORAGE_KEY, "{not json");
+    useCart.getState().hydrate();
+    expect(useCart.getState().items).toEqual([]);
   });
 });
 
 describe("add", () => {
-  it("adopts the cart the server returns", async () => {
-    globalThis.fetch.mockResolvedValue(jsonResponse(CART, 201));
-    const cart = await useCart.getState().add({ productCode: "SA-10GB-30D-V1", quantity: 2 });
-    expect(cart.item_count).toBe(2);
-    expect(useCart.getState().cart.item_count).toBe(2);
+  it("persists the selection so a reload does not lose it", () => {
+    useCart.getState().add(PLAN);
+    expect(JSON.parse(store.get(STORAGE_KEY))).toEqual([PLAN]);
   });
 
-  // The caller navigates on success, so a rejection must reach it.
-  it("rethrows so the page does not navigate on failure", async () => {
-    globalThis.fetch.mockResolvedValue(
-      jsonResponse({ error: { code: "plan_unavailable", message: "Gone." } }, 409),
-    );
-    await expect(
-      useCart.getState().add({ productCode: "X" }),
-    ).rejects.toMatchObject({ code: "plan_unavailable" });
-    expect(useCart.getState().error.code).toBe("plan_unavailable");
+  it("raises the quantity instead of duplicating the same plan", () => {
+    useCart.getState().add(PLAN);
+    useCart.getState().add(PLAN);
+    const { items } = useCart.getState();
+    expect(items).toHaveLength(1);
+    expect(items[0].quantity).toBe(2);
+  });
+
+  it("keeps different plans as separate lines", () => {
+    useCart.getState().add(PLAN);
+    useCart.getState().add({ ...PLAN, productCode: "AL-5GB-30D-V1" });
+    expect(useCart.getState().items).toHaveLength(2);
   });
 });
 
 describe("setQuantity", () => {
-  it("applies the server's recalculated totals", async () => {
-    const updated = { ...CART, item_count: 3, subtotal_minor: 4497 };
-    globalThis.fetch.mockResolvedValue(jsonResponse(updated));
-    await useCart.getState().setQuantity("item-1", 3);
-    expect(useCart.getState().cart.subtotal_minor).toBe(4497);
-    expect(useCart.getState().pendingItemId).toBeNull();
+  it("applies the new quantity and persists it", () => {
+    useCart.getState().add(PLAN);
+    useCart.getState().setQuantity(PLAN.productCode, 4);
+    expect(useCart.getState().items[0].quantity).toBe(4);
+    expect(JSON.parse(store.get(STORAGE_KEY))[0].quantity).toBe(4);
+  });
+
+  /**
+   * The server enforces the ceiling too and answers `cart_limit_exceeded`. Capping
+   * here keeps the stepper honest rather than letting someone reach checkout and be
+   * refused.
+   */
+  it("caps at the 50-unit ceiling the backend enforces", () => {
+    useCart.getState().add(PLAN);
+    useCart.getState().setQuantity(PLAN.productCode, MAX_UNITS + 10);
+    expect(useCart.getState().items[0].quantity).toBe(MAX_UNITS);
   });
 
   // Dropping to zero is a removal, not a zero-quantity line.
-  it("removes the line when quantity falls below one", async () => {
-    globalThis.fetch
-      .mockResolvedValueOnce(jsonResponse(null, 204))
-      .mockResolvedValueOnce(jsonResponse(EMPTY_CART));
-    await useCart.getState().setQuantity("item-1", 0);
-    const [url, init] = globalThis.fetch.mock.calls[0];
-    expect(init.method).toBe("DELETE");
-    expect(url).toContain("/cart/items/item-1/");
-    expect(cartIsEmpty(useCart.getState().cart)).toBe(true);
-  });
-
-  it("clears the pending marker even when the update fails", async () => {
-    globalThis.fetch.mockResolvedValue(
-      jsonResponse({ error: { code: "cart_expired", message: "Start again." } }, 409),
-    );
-    await useCart.getState().setQuantity("item-1", 5);
-    expect(useCart.getState().pendingItemId).toBeNull();
-    expect(useCart.getState().error.code).toBe("cart_expired");
+  it("removes the line when quantity falls below one", () => {
+    useCart.getState().add(PLAN);
+    useCart.getState().setQuantity(PLAN.productCode, 0);
+    expect(useCart.getState().items).toEqual([]);
   });
 });
 
-describe("remove", () => {
-  it("re-reads the cart afterwards rather than mutating it locally", async () => {
-    globalThis.fetch
-      .mockResolvedValueOnce(jsonResponse(null, 204))
-      .mockResolvedValueOnce(jsonResponse(EMPTY_CART));
-    await useCart.getState().remove("item-1");
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-    expect(globalThis.fetch.mock.calls[1][1].method).toBe("GET");
-    expect(cartIsEmpty(useCart.getState().cart)).toBe(true);
+describe("remove and reset", () => {
+  it("drops one line and leaves the others", () => {
+    useCart.getState().add(PLAN);
+    useCart.getState().add({ ...PLAN, productCode: "AL-5GB-30D-V1" });
+    useCart.getState().remove(PLAN.productCode);
+    expect(useCart.getState().items.map((i) => i.productCode)).toEqual(["AL-5GB-30D-V1"]);
   });
-});
 
-describe("reset", () => {
-  it("drops local state after checkout consumes the cart server-side", () => {
-    useCart.setState({ cart: CART, error: new Error("x"), pendingItemId: "item-1" });
+  // Called once the order exists — the selection has become an order.
+  it("clears storage as well as state, so a reload cannot resurrect it", () => {
+    useCart.getState().add(PLAN);
     useCart.getState().reset();
-    expect(useCart.getState()).toMatchObject({
-      cart: null,
-      error: null,
-      pendingItemId: null,
-      loading: false,
+    expect(useCart.getState().items).toEqual([]);
+    expect(JSON.parse(store.get(STORAGE_KEY))).toEqual([]);
+  });
+});
+
+describe("storage failure", () => {
+  // Safari private mode throws on write. The selection must still work for this page.
+  it("keeps working when sessionStorage refuses to write", () => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error("QuotaExceededError");
+        },
+        removeItem: vi.fn(),
+      },
     });
+    expect(() => useCart.getState().add(PLAN)).not.toThrow();
+    expect(useCart.getState().items).toHaveLength(1);
   });
 });

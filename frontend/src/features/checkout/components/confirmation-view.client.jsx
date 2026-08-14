@@ -5,7 +5,6 @@ import { CheckCircle2, QrCode as QrIcon, Mail, Clock, AlertCircle } from "lucide
 import { pollOrderUntilDelivered, isPaid, isDelivered, isTerminalFailure } from "@/lib/api/orders";
 import { listEsims, getEsim } from "@/lib/api/esims";
 import { readOrderContext } from "@/features/checkout/order-context";
-import { forgetCart } from "@/lib/api/cart";
 import { QrCode } from "@/components/media/qr-code.client";
 import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
@@ -44,9 +43,6 @@ export function ConfirmationView() {
     const ctx = readOrderContext();
     setContext(ctx);
     if (!ctx) return;
-
-    // The cart was consumed server-side when the order was created.
-    forgetCart();
 
     const controller = new AbortController();
 

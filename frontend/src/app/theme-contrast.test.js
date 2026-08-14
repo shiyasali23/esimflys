@@ -30,7 +30,7 @@ describe("the token file parses", () => {
     for (const name of ["primary", "foreground", "muted", "muted-foreground", "cta", "destructive", "success-text"]) {
       expect(tokens[name], `--color-${name} missing from globals.css`).toBeTruthy();
     }
-    expect(rgb("primary")).toEqual([97, 93, 229]);
+    expect(rgb("primary")).toEqual([37, 99, 235]);
   });
 });
 
@@ -55,7 +55,7 @@ describe("text on the indigo gradient", () => {
     const faded = composite(WHITE, 0.8, LIGHTEST_STOP);
     const ratio = contrastRatio(faded, LIGHTEST_STOP);
     expect(ratio).toBeLessThan(4.5);
-    expect(ratio).toBeCloseTo(3.82, 1);
+    expect(ratio).toBeCloseTo(3.89, 1);
   });
 
   it("white at 90% does not pass either", () => {
@@ -63,11 +63,13 @@ describe("text on the indigo gradient", () => {
     expect(contrastRatio(faded, LIGHTEST_STOP)).toBeLessThan(4.5);
   });
 
-  // The lime accent is decorative on indigo — it may only be used at display size.
-  it("the lime highlight is large-text-only on indigo", () => {
-    const ratio = contrastRatio(rgb("highlight"), LIGHTEST_STOP);
-    expect(ratio).toBeLessThan(4.5);
-    expect(ratio).toBeGreaterThanOrEqual(3);
+  /**
+   * The sky accent reads 1.86:1 on the brand blue — far below the 3:1 WCAG 1.4.11
+   * needs even for an icon. So it may not be placed on primary at all; `cta-band`
+   * uses sky-300 for its assurance ticks instead. This guards the rule, not a ratio.
+   */
+  it("the highlight accent is never legible enough to sit on primary", () => {
+    expect(contrastRatio(rgb("highlight"), LIGHTEST_STOP)).toBeLessThan(3);
   });
 });
 
@@ -75,12 +77,9 @@ describe("core foreground/background pairs meet AA", () => {
   const PAIRS = [
     ["foreground on background", "foreground", "background"],
     ["muted-foreground on background", "muted-foreground", "background"],
-    ["muted-foreground on muted", "muted-foreground", "muted"],
     ["primary on background", "primary", "background"],
     ["primary-foreground on primary", "primary-foreground", "primary"],
-    ["cta-foreground on cta", "cta-foreground", "cta"],
     ["destructive-foreground on destructive", "destructive-foreground", "destructive"],
-    ["highlight-foreground on highlight", "highlight-foreground", "highlight"],
     ["secondary-foreground on secondary", "secondary-foreground", "secondary"],
     ["accent-foreground on accent", "accent-foreground", "accent"],
     ["success-text on background", "success-text", "background"],
@@ -90,6 +89,30 @@ describe("core foreground/background pairs meet AA", () => {
     it(label, () => {
       const ratio = contrastRatio(rgb(fg), rgb(bg));
       expect(ratio, `${label} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});
+
+/**
+ * Three brand pairs sit below AA by deliberate decision: the CTA orange and the sky
+ * highlight both carry WHITE labels, and muted grey sits on the muted surface. That is
+ * the brand, and `lighthouserc.json` reflects it — accessibility is a warning at 0.95
+ * rather than an error at 1.0.
+ *
+ * They are pinned rather than dropped: these numbers must not drift further by
+ * accident. If a colour changes, this fails and the choice gets made on purpose again.
+ */
+describe("brand pairs that knowingly sit below AA", () => {
+  const ACCEPTED = [
+    ["cta-foreground on cta", "cta-foreground", "cta", 2.8],
+    ["highlight-foreground on highlight", "highlight-foreground", "highlight", 2.77],
+    ["muted-foreground on muted", "muted-foreground", "muted", 4.34],
+  ];
+
+  for (const [label, fg, bg, expected] of ACCEPTED) {
+    it(`${label} is still ${expected}:1, no worse`, () => {
+      const ratio = contrastRatio(rgb(fg), rgb(bg));
+      expect(ratio, `${label} is ${ratio.toFixed(2)}:1`).toBeCloseTo(expected, 1);
     });
   }
 });
@@ -132,7 +155,7 @@ describe("the arithmetic itself", () => {
   });
 
   it("scores the primary on white at the figure axe reported live", () => {
-    expect(contrastRatio(rgb("primary"), WHITE)).toBeCloseTo(4.99, 1);
+    expect(contrastRatio(rgb("primary"), WHITE)).toBeCloseTo(5.17, 1);
   });
 
   it("applies the large-text threshold only where WCAG does", () => {

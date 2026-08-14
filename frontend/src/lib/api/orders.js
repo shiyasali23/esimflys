@@ -8,12 +8,50 @@ import { api, toList } from "./client";
  * `fulfillment_status: "delivered"`. Nothing here may mark an order paid locally.
  */
 
-/** Quantity N expands into N order items — one eSIM each. */
-export function checkout({ customerEmail, promoCode }) {
-  return api.post("/checkout/", {
-    ...(customerEmail ? { customer_email: customerEmail } : {}),
-    ...(promoCode ? { promo_code: promoCode } : {}),
-  });
+/**
+ * Create an order straight from a list of products — no server-side cart.
+ *
+ * `items` names WHAT is bought, never what it costs. The server prices every line
+ * itself and ignores any amount sent, which is what makes a stale `catalog.json`
+ * a misquote rather than a mischarge.
+ *
+ * `idempotencyKey` is required rather than optional on purpose. If the response is
+ * lost in flight the order still exists, and retrying with the SAME key returns that
+ * original order instead of creating a second one. A fresh key per retry defeats the
+ * whole mechanism, so the caller owns the key for the lifetime of one attempt.
+
+ *
+ * Quantity N expands into N order items — one eSIM each.
+ */
+export function checkoutDirect({
+  items,
+  customerEmail,
+  firstName,
+  lastName,
+  phone,
+  promoCode,
+  currency,
+  idempotencyKey,
+}) {
+  return api.post(
+    "/checkout/direct/",
+    {
+      items: items.map((item) => ({
+        product_code: item.productCode,
+        quantity: item.quantity,
+      })),
+      ...(customerEmail ? { customer_email: customerEmail } : {}),
+      // Optional everywhere: delivery is by email, and a signed-in customer is never
+      // asked for them. Omitted rather than sent blank so the payload says nothing it
+      // does not mean.
+      ...(firstName ? { customer_first_name: firstName } : {}),
+      ...(lastName ? { customer_last_name: lastName } : {}),
+      ...(phone ? { customer_phone: phone } : {}),
+      ...(promoCode ? { promo_code: promoCode } : {}),
+      ...(currency ? { currency } : {}),
+    },
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined,
+  );
 }
 
 /** Authenticated owners only — a guest who placed the order still gets 403 here. */
@@ -61,8 +99,8 @@ export function isTerminalFailure(order) {
  * Poll until the order is delivered, fails, or we run out of patience.
  *
  * Guests must poll `lookupOrder` because `getOrder` 403s for them — verified
- * against the running backend with both a session cookie and a cart token. The
- * slower guest interval respects the 10/min limit on that endpoint.
+ * against the running backend. The slower guest interval respects the 10/min limit
+ * on that endpoint.
  *
  * @param {{orderId?: string, orderNumber?: string, email?: string,
  *          onUpdate?: (order: any, esims: any[]) => void, signal?: AbortSignal,
