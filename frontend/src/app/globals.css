@@ -164,6 +164,18 @@
   .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
+/*
+ * The consent banner ships in the server-rendered HTML so it paints with the page rather
+ * than appearing after hydration — see NoFlashConsentScript for the measurements. This
+ * hides it, before paint, for anyone who has already chosen.
+ *
+ * Keyed on `="1"` rather than mere presence so the pre-paint script's explicit `"0"` and
+ * a missing attribute (script failed to run) both leave the banner visible. Failing open
+ * shows a notice to someone who already answered; failing closed hides it from someone
+ * who has not, which is the compliance problem.
+ */
+:root[data-consent="1"] [data-consent-banner] { display: none; }
+
 .price [data-c] { display: none; }
 :root:not([data-currency]) .price [data-c="USD"],
 :root[data-currency="USD"] .price [data-c="USD"],

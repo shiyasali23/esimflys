@@ -7,6 +7,7 @@ import { RatesProvider } from "@/components/currency/rates-provider.client";
 import { AccountCurrencySync } from "@/components/currency/account-currency-sync.client";
 import { getRates } from "@/server/rates";
 import { ConsentBanner } from "@/components/layout/consent-banner.client";
+import { NoFlashConsentScript } from "@/components/layout/no-flash-consent-script";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
 
@@ -81,6 +82,7 @@ export default async function RootLayout({ children }) {
     >
       <body>
         <NoFlashCurrencyScript offered={Object.keys(fx.rates)} />
+        <NoFlashConsentScript />
         <SkipLink />
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         <RatesProvider value={fx}>

@@ -12,12 +12,34 @@ import { Button } from "@/components/ui/button";
  * buried, so the two stack.
  */
 export function ConsentBanner() {
-  const [show, setShow] = useState(false);
+  /*
+   * Starts SHOWN, so the banner is in the server-rendered HTML and paints with the rest
+   * of the page. It used to start hidden and appear only after an effect read the cookie,
+   * which meant it arrived after the page's own heading — and because its paragraph is a
+   * bigger text block than any h1 on the site, it then became the Largest Contentful Paint
+   * element and reset the LCP clock.
+   *
+   * [MEASURED] /esim/turkey, Slow 4G, warm cache, only the `consent` cookie changed:
+   *     banner shown       FCP 888 ms  ->  LCP 1036 ms   (LCP element = this paragraph)
+   *     banner suppressed  FCP 852 ms  ->  LCP  852 ms   (LCP element = h1)
+   * Cold and CPU-throttled the same gap was 1164 ms, since it is however long hydration
+   * takes. Googlebot and every first-time visitor arrive with no cookie, so the inflated
+   * number is the one that gets measured.
+   *
+   * Returning visitors do not see it flash: `NoFlashConsentScript` sets
+   * `<html data-consent="1">` before paint and globals.css hides it on that attribute.
+   * The effect below then unmounts it, purely so it leaves the accessibility tree — by
+   * that point CSS has already made it invisible, so nothing moves on screen.
+   *
+   * `show` must start `true` on the client too, or the first client render would disagree
+   * with the server HTML and React would throw a hydration mismatch.
+   */
+  const [show, setShow] = useState(true);
   const ref = useRef(null);
 
   useEffect(() => {
     const has = document.cookie.split("; ").some((c) => c.startsWith("consent="));
-    if (!has) setShow(true);
+    if (has) setShow(false);
   }, []);
 
   useEffect(() => {
@@ -50,6 +72,7 @@ export function ConsentBanner() {
       ref={ref}
       role="region"
       aria-label="Cookie consent"
+      data-consent-banner=""
       className="fixed inset-x-0 bottom-0 z-[70] border-t border-border bg-background/95 p-4 backdrop-blur"
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
