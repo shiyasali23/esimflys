@@ -1,0 +1,17 @@
+# Cloudflare Workers Static Assets redirect rules.
+#
+# Production replacement for `redirects()` in next.config.mjs, which a static export
+# cannot run. Copied into `out/` by the build; evaluated by the asset router before any
+# asset lookup, so these cost no Worker invocation.
+#
+# 308, not 301: 301 lets an agent downgrade a POST to GET on replay. Nothing POSTs to
+# these paths today, but 308 is the permanent redirect that preserves method, and it is
+# what `permanent: true` emitted before the migration — keeping the status identical
+# means no already-indexed URL changes its meaning.
+#
+# Canonicalises the mockup's /plans routes onto /esim/:slug (blueprint §28.3). Mirrored
+# in next.config.mjs for `next dev`; change both together.
+
+/plans                  /destinations   308
+/plans/:slug            /esim/:slug     308
+/destinations/:slug     /esim/:slug     308

@@ -9,8 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "catalog": "node scripts/generate-catalog.mjs",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "preview": "next build && wrangler dev",
+    "deploy": "next build && wrangler deploy"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.16",
@@ -31,7 +31,6 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

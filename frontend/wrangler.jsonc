@@ -1,32 +1,46 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "esimflys",
-  "main": ".open-next/worker.js",
 
-  // nodejs_compat is required: the Next server bundle expects Node built-ins.
-  // The date must be >= 2024-09-23 for the v2 implementation of that flag.
+  // A ~40-line proxy, not a framework adapter. It replaced `.open-next/worker.js`, whose
+  // 6.27 MB handler was evaluated on every cold isolate and produced Error 1102.
+  "main": "worker/index.js",
+
   "compatibility_date": "2025-04-01",
-  "compatibility_flags": ["nodejs_compat"],
+  // No nodejs_compat. The old entry needed Node built-ins because it loaded the Next.js
+  // server runtime; this Worker uses only fetch and URL, and dropping the flag keeps the
+  // isolate as small as the code.
+  "compatibility_flags": [],
 
-  // Everything under .next/static and public/ is served straight from the edge
-  // rather than through the Worker, and does not count toward the bundle limit.
   "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    // `next build` with `output: "export"` writes the whole site here — every page as a
+    // prerendered .html file. Cloudflare serves these directly, so a page view costs no
+    // Worker invocation at all.
+    "directory": "./out",
+    "binding": "ASSETS",
+
+    // Next emits `/about.html`; visitors ask for `/about`. Auto handling resolves both
+    // spellings and canonicalises with a redirect, which is what next.config.mjs's
+    // `skipTrailingSlashRedirect` used to be negotiating with the Node server.
+    "html_handling": "auto-trailing-slash",
+
+    // MUST stay "none". Anything else makes the asset router answer unmatched paths
+    // itself, and /api/v1/* matches no asset — the API would receive the 404 page
+    // instead of reaching the Worker. The Worker serves 404.html itself; see
+    // `notFound()` in worker/index.js.
+    "not_found_handling": "none"
   },
 
-  // Backs `next/image`. The Node image optimizer does not run on Workers, so without
-  // this binding /_next/image has nothing to serve. Only five source images exist, so
-  // the number of unique transformations stays far inside the free allowance.
-  "images": {
-    "binding": "IMAGES"
-  },
-
-  // A public hostname, not a secret. Set here so a deploy cannot silently inherit a
-  // stale dashboard value. NOTE: the same value must ALSO be set as a *build*
-  // variable in Cloudflare, because next.config.mjs bakes it into the rewrites.
+  // A public hostname, not a secret. Read at REQUEST time by the Worker — unlike the
+  // OpenNext setup, where it was baked into the build, so a wrong value needed a full
+  // rebuild to correct. Changing the backend host is now a `wrangler deploy` away.
+  //
+  // This is the Railway service's own hostname, not `api.esimflys.com` — that name has
+  // never had a DNS record, and the value here went unread because OpenNext used the
+  // build-time variable instead. Under the proxy Worker it IS the value that gets used,
+  // so a wrong one takes down every API call rather than being cosmetic.
   "vars": {
-    "BACKEND_ORIGIN": "https://api.esimflys.com"
+    "BACKEND_ORIGIN": "https://esimflys-production-512c.up.railway.app"
   },
 
   "observability": {

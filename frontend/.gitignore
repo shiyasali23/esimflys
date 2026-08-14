@@ -17,8 +17,7 @@
 /.next/
 /out/
 
-# cloudflare workers (opennext)
-/.open-next/
+# cloudflare workers
 .dev.vars
 .wrangler/
 
@@ -37,6 +36,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Opted in. Neither holds a secret, and both are load-bearing: .env.production carries
+# NEXT_PUBLIC_SITE_URL, without which `next build` aborts. Leaving it untracked means the
+# build works only on the laptop that happens to have the file.
+!.env.example
+!.env.production
 
 # vercel
 .vercel

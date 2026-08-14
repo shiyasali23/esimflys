@@ -130,14 +130,20 @@ describe("tenant switcher", () => {
 });
 
 describe("navigation", () => {
-  it("links every section under the tenant's own path", async () => {
+  /*
+   * The tabs are sibling static pages carrying `?org=`, not path segments beneath the
+   * org id — a static export can only emit pages for ids known at build time, and org
+   * ids are not. What still has to hold is that every tab carries the tenant, because a
+   * tab that loses it lands on the "choose an organization" state mid-session.
+   */
+  it("carries the tenant on every section link", async () => {
     useSession.setState({ user: USER });
     useAgency.setState({ organizations: [ORG] });
     render(<AgencyShell orgId="org-1">content</AgencyShell>);
     await screen.findByText("Sunrise Travel");
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(links).toContain("/agency/org-1");
-    expect(links).toContain("/agency/org-1/sales");
-    expect(links.every((h) => h.startsWith("/agency/org-1"))).toBe(true);
+    expect(links).toContain("/agency/portal?org=org-1");
+    expect(links).toContain("/agency/sales?org=org-1");
+    expect(links.every((h) => h.startsWith("/agency/") && h.endsWith("?org=org-1"))).toBe(true);
   });
 });

@@ -127,7 +127,7 @@ describe("order history", () => {
     render(<AdminCustomerDetail customerId="cust-1" />);
 
     const link = await screen.findByRole("link", { name: "ESF-79039D08EF7C" });
-    expect(link.getAttribute("href")).toBe("/admin/orders/o1");
+    expect(link.getAttribute("href")).toBe("/admin/orders/detail?id=o1");
   });
 
   it("shows payment and fulfilment separately — paid is not delivered", async () => {

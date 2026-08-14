@@ -97,8 +97,6 @@ export function AgencyShell({ orgId, title, children }) {
     );
   }
 
-  const base = routes.agency(orgId);
-
   return (
     <Container className="py-12">
       <header className="mb-8">
@@ -139,10 +137,12 @@ export function AgencyShell({ orgId, title, children }) {
         <nav aria-label="Agency sections" className="mt-6 overflow-x-auto">
           <ul className="flex gap-1 border-b border-border">
             {TABS.map((tab) => {
-              const href = tab.slug ? `${base}/${tab.slug}` : base;
-              const active = tab.slug
-                ? pathname.startsWith(href)
-                : pathname === base || pathname === `${base}/`;
+              // Tabs are sibling static pages carrying `?org=`, not path segments under
+              // the org id, so the active check compares pathname only — `href` now has
+              // a query string and would never match a bare pathname.
+              const href = routes.agencyTab(orgId, tab.slug);
+              const tabPath = routes.agencyTabPath(tab.slug);
+              const active = pathname === tabPath || pathname === `${tabPath}/`;
               return (
                 <li key={tab.slug || "dashboard"}>
                   <Link

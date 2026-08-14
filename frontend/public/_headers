@@ -1,0 +1,49 @@
+# Cloudflare Workers Static Assets header rules.
+#
+# This file is the production replacement for `headers()` in next.config.mjs, which a
+# static export cannot run. It is copied verbatim into `out/` by the Next build and read
+# by Cloudflare's asset router — so these headers are applied WITHOUT invoking the Worker,
+# which is the whole point: a page load costs zero Worker CPU.
+#
+# Keep in sync with the dev server. There is no dev equivalent of this file, so a header
+# added here is production-only until someone checks.
+
+/*
+  # frame-ancestors is the load-bearing one: /account/esims/detail renders decrypted eSIM
+  # activation credentials, and without it any site can iframe that page and overlay it.
+  # X-Frame-Options repeats it for older agents.
+  #
+  # Deliberately NOT a script-src CSP. The app injects inline JSON-LD and a pre-paint
+  # currency script, and Next emits its own bootstrap inline — locking those down needs
+  # per-request nonces, which needs a server this app no longer has. A CSP with
+  # 'unsafe-inline' would be decoration, so this protects what can actually be protected.
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com")
+  # Cloudflare answers http:// itself and that redirect never reaches these rules, so this
+  # only hardens clients that already arrived over TLS.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Everything under /_next/static is content-hashed by the build, so the filename changes
+# whenever the bytes do. A year of immutable caching is safe and means repeat visits fetch
+# no JS or CSS at all.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Session-backed screens. The exported HTML is only an empty shell — every personal value
+# arrives later over fetch — but a shared cache holding the shell keyed by URL would still
+# let a stale build persist past a deploy on exactly the pages where that matters most.
+/account/*
+  Cache-Control: private, no-store
+/admin/*
+  Cache-Control: private, no-store
+/agency/*
+  Cache-Control: private, no-store
+/checkout/*
+  Cache-Control: private, no-store
+/auth/*
+  Cache-Control: private, no-store
+/orders/*
+  Cache-Control: private, no-store

@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { OrderDetail } from "@/features/account/components/order-detail.client";
+import { OrderDetailRoute } from "./route.client";
 
 export const metadata = buildMetadata({
   title: "Order details",
@@ -8,7 +9,10 @@ export const metadata = buildMetadata({
   index: false, // noindex — authenticated, personal
 });
 
-export default async function OrderDetailPage({ params }) {
-  const { id } = await params;
-  return <OrderDetail orderId={id} />;
+export default function OrderDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrderDetailRoute />
+    </Suspense>
+  );
 }

@@ -75,7 +75,7 @@ describe("with eSIMs", () => {
     globalThis.fetch.mockResolvedValue(jsonResponse(list([READY])));
     render(<EsimList />);
     await screen.findByText("Malaysia 10 GB — 30 Days");
-    expect(screen.getByRole("link").getAttribute("href")).toBe("/account/esims/e1");
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/account/esims/detail?id=e1");
   });
 
   /** The whole point of the list/detail split. */

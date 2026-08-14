@@ -110,7 +110,7 @@ describe("signed in", () => {
 
     await screen.findByText("ESF-79039D08EF7C");
     const link = screen.getByRole("link", { name: /view/i });
-    expect(link.getAttribute("href")).toBe(`/account/orders/${ORDER.id}`);
+    expect(link.getAttribute("href")).toBe(`/account/orders/detail?id=${ORDER.id}`);
   });
 
   it("dashes an unplaced order rather than printing an invalid date", async () => {

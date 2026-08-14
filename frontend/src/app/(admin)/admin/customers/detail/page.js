@@ -1,6 +1,7 @@
+import { Suspense } from "react";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { AdminShell } from "@/features/admin/components/admin-shell.client";
-import { AdminCustomerDetail } from "@/features/admin/components/admin-customer-detail.client";
+import { AdminCustomerDetailRoute } from "./route.client";
 
 export const metadata = buildMetadata({
   title: "Customer · Admin",
@@ -9,11 +10,16 @@ export const metadata = buildMetadata({
   index: false, // noindex — internal staff tooling
 });
 
-export default async function Page({ params }) {
-  const { id } = await params;
+/*
+ * The record id arrives in `?id=`, so only the detail body depends on the client —
+ * the shell renders outside the boundary and the nav is up on first paint.
+ */
+export default function Page() {
   return (
     <AdminShell title="Customer">
-      <AdminCustomerDetail customerId={id} />
+      <Suspense fallback={null}>
+        <AdminCustomerDetailRoute />
+      </Suspense>
     </AdminShell>
   );
 }

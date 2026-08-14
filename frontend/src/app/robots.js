@@ -1,5 +1,14 @@
 import { SITE } from "@/config/site";
 
+/*
+ * Required by `output: "export"`. Next treats the metadata routes as Route Handlers, and
+ * a handler with no explicit mode is assumed dynamic — which a static export cannot
+ * produce, so the build fails outright rather than shipping the site without this file.
+ * Everything read here is committed data, so "force-static" is a statement of fact.
+ */
+export const dynamic = "force-static";
+
+
 /**
  * robots.txt (blueprint §28.4). Allow crawling broadly; only disallow no-value
  * paths. IMPORTANT: we do NOT disallow /checkout, /auth, /account — those are

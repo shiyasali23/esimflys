@@ -85,7 +85,7 @@ describe("who gets through", () => {
     useAgency.setState({ organizations: [ORG("active")] });
     render(<AgencySignIn />);
 
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/agency/org-1"));
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/agency/portal?org=org-1"));
   });
 
   /** The whole point of this gate. */
