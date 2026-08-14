@@ -18,9 +18,18 @@ EXPOSE 8000
 # healthcheck times out with nothing useful in the logs. The default keeps `docker run`
 # working locally, where PORT is unset.
 #
-# railway.json's startCommand overrides this for the web service; the worker service
-# overrides it with `python manage.py process_jobs`.
-CMD gunicorn config.wsgi:application \
+# migrate/collectstatic/createcachetable run here rather than as a Railway "pre-deploy"
+# step: that separate ephemeral phase was observed NOT reliably receiving the service's
+# environment variables (DJANGO_SECRET_KEY KeyError on every pre-deploy attempt, while the
+# main container — this CMD — has always had it, proven by /health/ready/ returning 200).
+# All three commands are idempotent (migrate no-ops with nothing to apply, collectstatic
+# --noinput overwrites, createcachetable no-ops if the table exists), so running them on
+# every boot is safe. `exec` hands off to gunicorn as PID 1 so it still receives signals
+# directly for a clean shutdown.
+CMD python manage.py migrate --noinput && \
+    python manage.py collectstatic --noinput && \
+    python manage.py createcachetable && \
+    exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \
     --workers 3 \
     --timeout 60 \
