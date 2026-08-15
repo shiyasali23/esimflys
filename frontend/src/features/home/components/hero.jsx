@@ -61,7 +61,27 @@ export function Hero({ chips, countries }) {
                 </div>
               </div>
             </div>
-            <div className="relative flex justify-center lg:justify-end">
+            {/*
+              Hidden below `lg`, so the illustration is not downloaded, not painted and not
+              an LCP candidate on a phone.
+
+              [MEASURED] /, DPR-2 phone, Slow 4G, cold: LCP 4524 ms with this image as the
+              LCP element, against FCP 1012 ms. The headline is already on screen at FCP —
+              LCP was being decided by a decorative illustration of which only 144 px of
+              276 px was even visible (top y=668 in an 812 px viewport). Its visible area
+              scored 43,200 against the headline's 26,284, so it won by a margin the user
+              never sees.
+
+              The same image with a warm cache resolved in 1228 ms, which is the proof that
+              this was contention, not the image: on a cold load it was sharing the link
+              with 335 KB of JS and fonts and getting about a quarter of it.
+
+              Not rendered rather than merely pushed down: phone viewports run 667-932 CSS
+              px, so spacing cannot put it below the fold on all of them, and on a tall
+              phone a lazy, low-priority image would arrive LATER than it does today —
+              worse, not better. `hidden` is the only form that holds on every device.
+            */}
+            <div className="relative hidden justify-center lg:flex lg:justify-end">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 m-auto h-[85%] w-[85%] rounded-full bg-gradient-to-br from-primary/15 via-highlight/10 to-cta/15 blur-[70px]"
@@ -102,9 +122,16 @@ export function Hero({ chips, countries }) {
                 fallback for a browser that ignores srcset, and 900 covers every real
                 device without handing that browser the heaviest file.
               */}
+              {/*
+                `media` is load-bearing, not decoration: a preload without it downloads the
+                337 KB image even where the <img> is `display: none`, which would make the
+                change above worse than useless. It must stay in step with the `lg:` on the
+                container.
+              */}
               <link
                 rel="preload"
                 as="image"
+                media="(min-width: 1024px)"
                 fetchPriority="high"
                 imageSrcSet="/images/hero-portal-600.webp 600w, /images/hero-portal-900.webp 900w, /images/hero-portal.webp 1040w"
                 imageSizes="(min-width: 1024px) 460px, (min-width: 640px) 360px, 300px"
