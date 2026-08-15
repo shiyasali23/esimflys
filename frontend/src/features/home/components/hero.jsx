@@ -150,6 +150,16 @@ export function Hero({ chips, countries }) {
                 width={1040}
                 height={958}
                 fetchPriority="high"
+                /*
+                  `loading="lazy"` is what actually keeps the bytes off phones.
+                  [MEASURED] hiding the container alone did NOT: Chrome fetches an <img>
+                  inside a `display: none` ancestor regardless, so the first version of this
+                  change fixed LCP (4524 -> 1388 ms) while still downloading all 127 KB.
+                  A lazy image has no layout box below `lg`, never intersects the viewport,
+                  and is therefore never requested. On desktop the media-gated preload above
+                  still fetches it at high priority, so `lazy` costs nothing there.
+                */
+                loading="lazy"
                 decoding="async"
                 className="relative h-auto w-full max-w-[300px] sm:max-w-[360px] lg:max-w-[460px]"
               />
