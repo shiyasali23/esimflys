@@ -176,6 +176,40 @@
  */
 :root[data-consent="1"] [data-consent-banner] { display: none; }
 
+/**
+ * Space for the consent banner, reserved in CSS so it is correct at FIRST PAINT.
+ *
+ * The buy bars on the plan and checkout screens sit above the banner using
+ * `bottom: var(--consent-banner-h)`. That variable used to be published by a
+ * ResizeObserver inside the banner, i.e. only after hydration — so the server HTML had it
+ * unset, the bar painted at the bottom of the viewport, and then jumped once JS ran.
+ *
+ * [MEASURED] /esim/turkey, cold, Slow 4G, 375px: three layout shifts totalling CLS 0.0624,
+ * of which one was 0.062 — the buy bar moving y 624 -> 495, a 129 px jump, at 3911 ms. The
+ * other two were font-swap reflow at 0.0003 and 0.0001.
+ *
+ * It also explains why CLS looked like noise: cold ~0.062, warm 0. On a warm load the
+ * reposition lands before first paint so nothing is recorded. Cold is what a first-time
+ * visitor and Googlebot get.
+ *
+ * The heights below are measured, not guessed — the banner is fixed copy, so its height is
+ * a function of viewport width only:
+ *
+ *     320px       column layout, 3 lines   149px
+ *     360-639px   column layout, 2 lines   129px
+ *     >=640px     row layout               77px
+ *
+ * The banner also carries matching `min-h` utilities, so it fills the reservation exactly
+ * rather than leaving a gap under the buy bar at widths where the text wraps short.
+ *
+ * `0px` when consent is already given, because the banner is `display: none` above and
+ * occupies nothing — this must stay in step with that rule or the bar floats.
+ */
+:root { --consent-banner-h: 149px; }
+@media (min-width: 360px) { :root { --consent-banner-h: 129px; } }
+@media (min-width: 640px) { :root { --consent-banner-h: 77px; } }
+:root[data-consent="1"] { --consent-banner-h: 0px; }
+
 .price [data-c] { display: none; }
 :root:not([data-currency]) .price [data-c="USD"],
 :root[data-currency="USD"] .price [data-c="USD"],

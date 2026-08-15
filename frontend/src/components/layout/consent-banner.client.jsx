@@ -1,15 +1,16 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Publishes its own height as `--consent-banner-h` so the buy bars pinned to the
- * bottom of the plan and checkout screens can sit above it instead of under it.
+ * The buy bars pinned to the bottom of the plan and checkout screens sit above this
+ * banner using `--consent-banner-h`, which is reserved in globals.css.
  *
- * Without this they collide: the banner is z-70 and the bars are z-30, so a
- * first-time visitor — exactly the person about to buy — sees a cookie notice where
- * the pay button should be. Raising the bars instead would only reverse who is
- * buried, so the two stack.
+ * Without that reservation they collide: the banner is z-70 and the bars are z-30, so a
+ * first-time visitor — exactly the person about to buy — sees a cookie notice where the
+ * pay button should be. Raising the bars instead would only reverse who is buried, so the
+ * two stack. The height used to be measured here at runtime; see the note below the
+ * cookie effect for why it no longer is.
  */
 export function ConsentBanner() {
   /*
@@ -35,30 +36,29 @@ export function ConsentBanner() {
    * with the server HTML and React would throw a hydration mismatch.
    */
   const [show, setShow] = useState(true);
-  const ref = useRef(null);
 
   useEffect(() => {
     const has = document.cookie.split("; ").some((c) => c.startsWith("consent="));
     if (has) setShow(false);
   }, []);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (!show || !ref.current) {
-      root.style.removeProperty("--consent-banner-h");
-      return undefined;
-    }
-    const publish = () =>
-      root.style.setProperty("--consent-banner-h", `${ref.current.offsetHeight}px`);
-    publish();
-    // The copy wraps to two lines on a narrow screen, so the height is not a constant.
-    const observer = new ResizeObserver(publish);
-    observer.observe(ref.current);
-    return () => {
-      observer.disconnect();
-      root.style.removeProperty("--consent-banner-h");
-    };
-  }, [show]);
+  /*
+   * There is deliberately NO ResizeObserver here any more.
+   *
+   * This component used to measure itself and publish `--consent-banner-h` on <html>. That
+   * could only happen after hydration, so the server HTML had the variable unset, the buy
+   * bar painted at the bottom of the viewport, and then jumped 129 px once JS ran —
+   * [MEASURED] CLS 0.062 on a cold load of /esim/turkey, at 3911 ms.
+   *
+   * The height is now reserved in globals.css, which is correct at first paint. It can be,
+   * because the banner is fixed copy: its height is a function of viewport width alone
+   * (149px / 129px / 77px at the three breakpoints), so nothing needs measuring at runtime.
+   *
+   * If the copy ever changes, re-measure and update BOTH the `min-h` utilities on the
+   * banner and the `--consent-banner-h` values in globals.css. Reserving too little puts
+   * the cookie notice on top of the pay button, which is the collision this whole
+   * arrangement exists to prevent.
+   */
 
   function choose(value) {
     document.cookie = `consent=${value}; path=/; max-age=31536000; samesite=lax`;
@@ -69,11 +69,17 @@ export function ConsentBanner() {
 
   return (
     <div
-      ref={ref}
       role="region"
       aria-label="Cookie consent"
       data-consent-banner=""
-      className="fixed inset-x-0 bottom-0 z-[70] border-t border-border bg-background/95 p-4 backdrop-blur"
+      /*
+        `min-h` matches the `--consent-banner-h` reservation in globals.css exactly. The
+        space is reserved in CSS at first paint; this pins the banner to fill it, so the
+        buy bar never sits above a short banner with a visible strip of page between them.
+        Measured heights: 149px at 320px wide, 129px from 360px, 77px from 640px. Change
+        one of these and you must change the other.
+      */
+      className="fixed inset-x-0 bottom-0 z-[70] min-h-[149px] border-t border-border bg-background/95 p-4 backdrop-blur min-[360px]:min-h-[129px] sm:min-h-[77px]"
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
@@ -82,8 +88,7 @@ export function ConsentBanner() {
         {/*
           `md` (h-11, 44 px), not `sm` (h-9, 36 px). These two are the only way to dismiss
           a banner pinned over the bottom of every page, so a missed tap leaves it covering
-          the buy bar — the exact collision the height-publishing effect above exists to
-          prevent.
+          the buy bar — the exact collision the height reservation exists to prevent.
         */}
         <div className="flex shrink-0 gap-2">
           <Button variant="ghost" size="md" onClick={() => choose("declined")}>
