@@ -28,39 +28,15 @@ import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
  * Both are variable fonts, so each is ONE self-hosted file covering every weight. The
  * previous pair shipped nine static instances.
  */
-/*
- * `preload: false` on both, deliberately.
- *
- * next/font preloads the latin subset of each family — 47 KB + 44 KB — at high priority,
- * which puts 91 KB into the same bandwidth window as the LCP image.
- *
- * [MEASURED] home page, DPR-2 phone, Slow 4G, cold: the hero (127 KB) downloaded over
- * 1182 -> 4474 ms, i.e. 3291 ms for what is ~640 ms of transfer on this link, because
- * 335 KB was in flight alongside it — JS 212 KB, fonts 92 KB, images 31 KB. The hero was
- * getting roughly a quarter of the pipe.
- *
- * Nothing about first paint needs these files. Both are `display: swap` and next/font
- * emits metric-matched fallback faces (`Inter Fallback`, `Inter Tight Fallback`), so text
- * paints immediately in the fallback and swaps without moving — measured font-swap layout
- * shifts on a country page were 0.0003 and 0.0001, i.e. nil. Dropping the preload does not
- * stop them loading; the inlined CSS still declares them and layout still requests them.
- * It only stops them being fetched at high priority *before* the image the page is judged on.
- *
- * The JS in that window is NOT reducible the same way: it is React plus the App Router
- * plus hydration code, a static export gives no supported hook to deprioritise it, and
- * deferring it would trade LCP for interactivity. Fonts were the one safe lever here.
- */
 const interTight = Inter_Tight({
   subsets: ["latin"],
   variable: "--font-inter-tight",
   display: "swap",
-  preload: false,
 });
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
-  preload: false,
 });
 
 export const metadata = {
