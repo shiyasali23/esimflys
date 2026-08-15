@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { CountryFlag } from "@/components/media/country-flag";
@@ -67,13 +66,65 @@ export function Hero({ chips, countries }) {
                 aria-hidden
                 className="pointer-events-none absolute inset-0 m-auto h-[85%] w-[85%] rounded-full bg-gradient-to-br from-primary/15 via-highlight/10 to-cta/15 blur-[70px]"
               />
-              <Image
-                src="/images/hero-portal.webp"
+              {/*
+                A hand-written <img> rather than next/image, and it has to be.
+
+                This is the LCP element of the home page. `output: "export"` forces
+                `images.unoptimized: true` (the /_next/image optimiser route does not exist
+                without a server), and unoptimized next/image emits NO srcset — verified:
+                zero `srcset` occurrences in the entire emitted HTML. The `sizes` prop it
+                used to carry was therefore dead code, and every device downloaded the full
+                1040x958 / 337 KB original.
+
+                [MEASURED] home page, mobile, Slow 4G, cold: LCP 5380 ms, this image is the
+                LCP element, page total 786 KB of which 372 KB is images.
+
+                Re-encoding was tried first and REFUTED: the source is a detailed
+                photographic composite with real alpha, so it is inherently ~0.3 bytes/px.
+                Quality 60 still weighed 288 KB and visibly degraded (RGB PSNR 33 dB). The
+                earlier "12x worse encoded than what-is-esim.webp" reading compared it
+                against a flat diagram — different content class, invalid comparison.
+
+                The waste is dimensional. The slot is 300 CSS px on mobile, so a DPR-2 phone
+                needs 600x552 and was being sent 1040x958:
+
+                    600x552   126 KB   DPR-2 phone   <- 63% less than today
+                    900x828   263 KB   DPR-3 phone, DPR-2 desktop
+                    1040x958  337 KB   large / high-DPR desktop (unchanged)
+
+                The explicit preload replaces what `priority` used to emit. It carries
+                imageSrcSet/imageSizes so the preload scanner resolves the SAME variant the
+                <img> will. A plain `rel=preload href=...` here would eagerly fetch the
+                337 KB original on every phone and make this change worse than useless.
+                React hoists the link into <head>.
+
+                `src` points at the 900 variant, not the 1040 original: it is only the
+                fallback for a browser that ignores srcset, and 900 covers every real
+                device without handing that browser the heaviest file.
+              */}
+              <link
+                rel="preload"
+                as="image"
+                fetchPriority="high"
+                imageSrcSet="/images/hero-portal-600.webp 600w, /images/hero-portal-900.webp 900w, /images/hero-portal.webp 1040w"
+                imageSizes="(min-width: 1024px) 460px, (min-width: 640px) 360px, 300px"
+              />
+              {/*
+                eslint-disable-next-line @next/next/no-img-element --
+                The rule says <img> "could result in slower LCP". Here the opposite is
+                measured: next/image under `unoptimized` emits no srcset, which is what made
+                this the 5380 ms LCP element. Suppressed with evidence, not preference.
+              */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/hero-portal-900.webp"
+                srcSet="/images/hero-portal-600.webp 600w, /images/hero-portal-900.webp 900w, /images/hero-portal.webp 1040w"
+                sizes="(min-width: 1024px) 460px, (min-width: 640px) 360px, 300px"
                 alt="Circular travel scene — mountains, a city skyline, a beach and a high-speed train framing a smartphone and suitcase, illustrating travel eSIM data on the go."
                 width={1040}
                 height={958}
-                priority
-                sizes="(min-width: 1024px) 460px, 300px"
+                fetchPriority="high"
+                decoding="async"
                 className="relative h-auto w-full max-w-[300px] sm:max-w-[360px] lg:max-w-[460px]"
               />
             </div>
