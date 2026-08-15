@@ -115,7 +115,6 @@ export function Hero({ chips, countries }) {
                 measured: next/image under `unoptimized` emits no srcset, which is what made
                 this the 5380 ms LCP element. Suppressed with evidence, not preference.
               */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/hero-portal-900.webp"
                 srcSet="/images/hero-portal-600.webp 600w, /images/hero-portal-900.webp 900w, /images/hero-portal.webp 1040w"
