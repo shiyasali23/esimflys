@@ -31,7 +31,16 @@ const emailBox = () => screen.getByLabelText(/email address/i);
 const buyCalls = () =>
   globalThis.fetch.mock.calls.filter(([url]) => !String(url).includes("/account/me/"));
 
+/**
+ * `signedInAs` also sets the session hint, because that is what a real signed-in browser
+ * carries. The component only probes `/account/me/` when the hint is present — a browser
+ * that has never signed in has nothing to prefill, and probing anyway cost an authenticated
+ * 403 on every country page. Setting the mock without the hint would test a browser state
+ * that cannot occur.
+ */
 function mockSession({ signedInAs = null, order } = {}) {
+  if (signedInAs) window.localStorage.setItem("esimflys-session", "1");
+  else window.localStorage.removeItem("esimflys-session");
   globalThis.fetch = vi.fn((url, init) => {
     const u = String(url);
     if (u.includes("/account/me/")) {
@@ -401,6 +410,18 @@ describe("buying straight from the plan page", () => {
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(buyCalls()).toHaveLength(0);
     expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  /** The probe is an authenticated round-trip; a browser that never signed in must not pay for it. */
+  it("does not probe the account API when the browser has never signed in", async () => {
+    mockSession();
+    render(<PlanSelector country={COUNTRY} plans={[PLAN]} />);
+    await screen.findByLabelText(/email address/i);
+
+    const probes = globalThis.fetch.mock.calls.filter(([url]) =>
+      String(url).includes("/account/me/"),
+    );
+    expect(probes).toHaveLength(0);
   });
 
   it("asks a signed-in customer for nothing at all", async () => {

@@ -7,10 +7,15 @@ import { useOfferedCurrencies } from "./rates-provider.client";
 /**
  * Applies the account's `preferred_currency` once a session is known.
  *
- * Deliberately **passive**: it reads the session store but never calls `load()`.
- * Public pages currently make no `/account/me/` request at all, and adding one here
- * would put an uncached, authenticated round-trip on every storefront page just to
- * pick a currency symbol.
+ * Deliberately **passive**: it reads the session store but never calls `load()`. Adding
+ * one here would put an uncached, authenticated round-trip on every storefront page just
+ * to pick a currency symbol.
+ *
+ * This block used to assert that public pages make no `/account/me/` request at all. That
+ * was FALSE for most of the site's life: `plan-selector.client.jsx` probed unconditionally
+ * on every country page — [MEASURED] a fresh browser with no session hint still fired it
+ * and took a 403. It is gated on `hasSessionHint()` now, so the invariant holds again, but
+ * it holds by enforcement in two places rather than by nobody having broken it yet.
  *
  * That costs nothing in practice. Signing in populates the store, this effect fires,
  * and the resulting cookie carries the preference to every later page — including

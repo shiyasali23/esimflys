@@ -2,6 +2,18 @@ import Image from "next/image";
 import Link from "next/link";
 import home from "@/content/home.json";
 
+/*
+ * No `sizes` props on the images below, deliberately.
+ *
+ * `output: "export"` forces `images.unoptimized: true`, and unoptimized next/image emits
+ * no srcset — verified: zero `srcset` occurrences in the emitted HTML before the hero was
+ * converted. With no candidate set to choose from, `sizes` is inert, and leaving it in
+ * implied responsive images that did not exist.
+ *
+ * These two are cheap (36 KB and 25 KB) and only one is shown per breakpoint, so neither
+ * justifies the hand-written srcset the hero needed. If that changes, follow the pattern
+ * in `hero.jsx`: variants plus a plain <img> with srcset AND a matching preload.
+ */
 export function WhatIsEsim() {
   const { whatIsEsim: w } = home;
   return (
@@ -12,7 +24,6 @@ export function WhatIsEsim() {
           alt="Travel eSIM journey — a suitcase and phone at departure linked by a flight path to a city skyline and a connected phone on arrival."
           width={1600}
           height={746}
-          sizes="(min-width: 1152px) 1152px, 100vw"
           className="w-full"
         />
         <div className="absolute inset-y-0 left-[45.5%] flex w-[36%] max-w-[430px] -translate-x-1/2 items-center">
@@ -41,7 +52,6 @@ export function WhatIsEsim() {
           alt="A smartphone showing a Wi-Fi signal in front of a city skyline with an airplane overhead — travel eSIM data on arrival."
           width={640}
           height={576}
-          sizes="300px"
           className="mx-auto mt-6 w-full max-w-[300px]"
         />
       </div>

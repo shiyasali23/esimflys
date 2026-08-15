@@ -9,6 +9,7 @@ import { useCart } from "@/features/cart/use-cart.client";
 import { useCurrency } from "@/components/currency/use-currency.client";
 import { checkoutDirect } from "@/lib/api/orders";
 import { fetchMeOrNull, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
+import { hasSessionHint } from "@/features/auth/use-session.client";
 import { saveOrderContext } from "@/features/checkout/order-context";
 import { GoogleLogo } from "@/components/media/google-logo";
 import { cn } from "@/lib/cn";
@@ -57,7 +58,25 @@ export function PlanSelector({ country, plans, belowPlans = null }) {
   /** One key per purchase ATTEMPT: a lost response must resolve to the same order. */
   const idempotencyKey = useRef(null);
 
+  /*
+   * The probe is gated on `hasSessionHint()`, the same guard `AccountNav` already uses.
+   *
+   * Its only job is to prefill `buyerEmail` for someone already signed in. A browser with
+   * no hint has never signed in, so there is nothing to prefill and the request can only
+   * come back 403 — which is what was happening on every country page, the site's main
+   * SEO landing surface.
+   *
+   * [MEASURED] fresh browser context, no session hint, no cookies beyond `recentCountries`:
+   * `/api/v1/account/me/` fired and 403'd, 328 ms on that sample. Median API latency
+   * through the proxy measured 885 ms across three endpoints, 5 samples each.
+   *
+   * This also makes true a claim that was already written down and was false: the comment
+   * in `account-currency-sync.client.jsx` states that public pages make no `/account/me/`
+   * request at all. That was the documented invariant; this effect had been quietly
+   * breaking it.
+   */
   useEffect(() => {
+    if (!hasSessionHint()) return;
     fetchMeOrNull()
       .then((me) => {
         if (me?.email) setAccount(me);
