@@ -559,7 +559,7 @@ export function CheckoutView() {
       <div
         data-checkout-bar
         style={{ bottom: "var(--consent-banner-h, 0px)" }}
-        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 pb-4 pt-3 shadow-l3 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 pb-4 pt-3 shadow-l3 lg:hidden"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-2 flex items-baseline justify-between gap-4">

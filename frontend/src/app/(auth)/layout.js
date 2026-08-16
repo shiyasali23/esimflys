@@ -8,7 +8,7 @@ export default function AuthLayout({ children }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="fixed inset-x-0 top-0 z-50 px-3">
-        <div className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/90 px-4 shadow-l2 backdrop-blur sm:px-6">
+        <div className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/90 px-4 shadow-l2 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <Image
               src="/images/logo-mark.webp"

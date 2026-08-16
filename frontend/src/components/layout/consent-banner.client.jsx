@@ -79,7 +79,7 @@ export function ConsentBanner() {
         Measured heights: 149px at 320px wide, 129px from 360px, 77px from 640px. Change
         one of these and you must change the other.
       */
-      className="fixed inset-x-0 bottom-0 z-[70] min-h-[149px] border-t border-border bg-background/95 p-4 backdrop-blur min-[360px]:min-h-[129px] sm:min-h-[77px]"
+      className="fixed inset-x-0 bottom-0 z-[70] min-h-[149px] border-t border-border bg-background/95 p-4 min-[360px]:min-h-[129px] sm:min-h-[77px]"
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">

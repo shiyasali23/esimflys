@@ -13,7 +13,7 @@ export function Header() {
     <header className="fixed inset-x-0 top-0 z-50 px-3">
       <nav
         aria-label="Primary"
-        className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/90 px-4 shadow-l2 backdrop-blur transition-all sm:px-6"
+        className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/90 px-4 shadow-l2 transition-all sm:px-6"
       >
         <Link href="/" className="flex items-center gap-2.5">
           <Image
