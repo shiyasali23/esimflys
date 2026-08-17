@@ -47,11 +47,34 @@ export function WhatIsEsim() {
         <Link href={w.href} className="mt-5 inline-block font-semibold text-cta hover:underline">
           Learn more about eSIMs →
         </Link>
+        {/*
+          `priority` on the MOBILE image only, and it is a bug fix rather than a tweak.
+
+          next/image defaults every image to `loading="lazy"` unless `priority` is passed.
+          Nobody wrote that attribute here — it is the framework default, and it was
+          confirmed present in the live HTML.
+
+          On Chrome the lazy threshold is generous enough that the image is already there
+          by the time you scroll to it. WebKit's is much tighter, and Chrome on iOS IS
+          WebKit, so on a real iPhone over a real connection the section paints as a blank
+          box, then the alt text, then finally the image — reported first-hand as "it comes
+          purely white and I have to wait".
+
+          The image is 25 KB, it sits inside `lg:hidden` so it only exists on phones, and
+          it is the one people actually see. Fetching it with the page instead of on
+          approach is worth 25 KB.
+
+          The DESKTOP image above is deliberately left lazy: it lives in `hidden lg:block`,
+          so on a phone it has no layout box, never intersects the viewport, and is
+          therefore never downloaded at all. Making that one eager would add 36 KB to every
+          mobile load for something no phone displays.
+        */}
         <Image
           src="/images/what-is-esim-mobile.webp"
           alt="A smartphone showing a Wi-Fi signal in front of a city skyline with an airplane overhead — travel eSIM data on arrival."
           width={640}
           height={576}
+          priority
           className="mx-auto mt-6 w-full max-w-[300px]"
         />
       </div>

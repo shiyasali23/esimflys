@@ -30,11 +30,13 @@ export function HowItWorks() {
     <section id="how-it-works" className="relative overflow-hidden bg-muted py-16 md:py-24">
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 top-10 h-80 w-80 rounded-full bg-primary/10 blur-[100px]"
+        className="pointer-events-none absolute -left-32 top-10 h-80 w-80 rounded-full"
+        style={{ backgroundImage: "radial-gradient(circle, rgb(37 99 235 / 0.10) 0%, transparent 70%)" }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-highlight/25 blur-[110px]"
+        className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full"
+        style={{ backgroundImage: "radial-gradient(circle, rgb(14 165 233 / 0.25) 0%, transparent 70%)" }}
       />
       <div className="relative mx-auto max-w-6xl px-6">
         <div className="grid items-start gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">

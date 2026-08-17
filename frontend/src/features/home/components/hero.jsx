@@ -8,13 +8,37 @@ export function Hero({ chips, countries }) {
   const { hero } = home;
   return (
     <section className="relative -mt-20 overflow-x-clip bg-background">
+      {/*
+        A radial gradient, not a blurred circle.
+
+        These were five decorative glows across the home page, each a tinted circle with a
+        large-radius CSS blur filter (100-120px). `filter: blur()` promotes an element to its
+        own composited layer and
+        forces the compositor to rasterize a large, expensive surface. On a 10,453 px page
+        that is five such layers held in memory at once.
+
+        That is the leading explanation for the symptom reported from a real iPhone:
+        scrolling back up shows white, then the content re-appears after a wait. WebKit
+        under memory pressure discards rasterized tiles and has to redraw them, and blurred
+        layers are among the most expensive things it can be asked to keep.
+
+        A radial gradient renders the same soft coloured halo with no filter, no layer
+        promotion and no raster cost. The design is preserved; only the mechanism changes.
+
+        NOT a measured fix. Chrome DevTools showed a frame-time delta of exactly zero when
+        these were disabled — but that was Blink on a Mac GPU, and the device with the
+        problem is WebKit on an A-series chip, which this tooling cannot reach. If the phone
+        reports no improvement, this can be reverted with no loss.
+      */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 top-10 h-96 w-96 rounded-full bg-primary/10 blur-[110px]"
+        className="pointer-events-none absolute -left-32 top-10 h-96 w-96 rounded-full"
+        style={{ backgroundImage: "radial-gradient(circle, rgb(37 99 235 / 0.10) 0%, transparent 70%)" }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-24 top-1/3 h-96 w-96 rounded-full bg-cta/10 blur-[120px]"
+        className="pointer-events-none absolute -right-24 top-1/3 h-96 w-96 rounded-full"
+        style={{ backgroundImage: "radial-gradient(circle, rgb(249 115 22 / 0.10) 0%, transparent 70%)" }}
       />
       <div className="relative mx-auto max-w-6xl px-6 pb-6 pt-[4.5rem] md:pb-8 md:pt-24">
         <div className="relative rounded-[2.5rem] border border-secondary-container bg-gradient-to-br from-secondary-container/50 via-white/80 to-white/80 p-6 shadow-xl sm:p-8 md:p-10">
@@ -84,7 +108,8 @@ export function Hero({ chips, countries }) {
             <div className="relative hidden justify-center lg:flex lg:justify-end">
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 m-auto h-[85%] w-[85%] rounded-full bg-gradient-to-br from-primary/15 via-highlight/10 to-cta/15 blur-[70px]"
+                className="pointer-events-none absolute inset-0 m-auto h-[85%] w-[85%] rounded-full"
+                style={{ backgroundImage: "radial-gradient(circle, rgb(37 99 235 / 0.15) 0%, rgb(14 165 233 / 0.10) 45%, transparent 70%)" }}
               />
               {/*
                 A hand-written <img> rather than next/image, and it has to be.
