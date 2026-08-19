@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Price } from "@/components/currency/price";
 import { ShieldCheck } from "lucide-react";
 import { CountryFlag } from "@/components/media/country-flag";
 import { HeroSearch } from "./hero-search.client";
@@ -77,7 +78,7 @@ export function Hero({ chips, countries }) {
                       <CountryFlag country={c} /> {c.name}
                       {c.perDayFrom ? (
                         <span className="font-semibold text-primary">
-                          ${c.perDayFrom.toFixed(2)}/d
+                          <Price usd={c.perDayFrom} />/d
                         </span>
                       ) : null}
                     </Link>

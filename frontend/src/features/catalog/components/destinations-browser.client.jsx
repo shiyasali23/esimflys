@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Price } from "@/components/currency/price";
 import { Search, ArrowRight, Star } from "lucide-react";
 import { CountryFlag } from "@/components/media/country-flag";
 import { cn } from "@/lib/cn";
@@ -34,7 +35,7 @@ function DestinationCard({ c }) {
       </span>
       {c.perDayFrom ? (
         <span className="shrink-0 text-sm font-semibold text-cta">
-          ${c.perDayFrom.toFixed(2)}/d
+          <Price usd={c.perDayFrom} />/d
         </span>
       ) : null}
       <ArrowRight

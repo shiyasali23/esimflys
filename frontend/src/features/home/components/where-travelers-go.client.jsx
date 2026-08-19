@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Price } from "@/components/currency/price";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CountryFlag } from "@/components/media/country-flag";
@@ -19,7 +20,7 @@ function DestCard({ c, badge }) {
       <p className="mt-1 text-sm text-muted-foreground">{c.region}</p>
       {c.perDayFrom ? (
         <p className="mt-3 text-sm font-semibold text-cta">
-          from ${c.perDayFrom.toFixed(2)} / day
+          from <Price usd={c.perDayFrom} /> / day
         </p>
       ) : null}
     </Link>
