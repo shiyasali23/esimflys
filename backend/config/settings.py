@@ -198,6 +198,35 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Django builds every absolute URL from the host it sees. Requests arrive from the
+# Cloudflare Worker proxy, which forwards the visitor's real host in X-Forwarded-Host;
+# without this Django used its own Railway hostname instead.
+#
+# That broke Google sign-in outright. The OAuth redirect_uri was built as
+# https://<service>.up.railway.app/accounts/google/login/callback/ rather than
+# https://esimflys.com/..., so Google rejected it as an unregistered redirect_uri. And
+# registering the Railway URL would NOT have fixed it: the callback would then complete
+# on the Railway domain, Django's session cookie would be set there, and the visitor
+# would return to esimflys.com signed out. Same-origin cookie delivery is the entire
+# reason the Worker proxies /accounts/ instead of the browser calling Railway directly.
+#
+# Companion to SECURE_PROXY_SSL_HEADER above, which trusts the same proxy for scheme.
+USE_X_FORWARDED_HOST = True
+
+# Trusting a client-supplied header is only safe while ALLOWED_HOSTS is an explicit
+# list. Django validates the forwarded host against it, and the Railway origin is
+# reachable from the internet directly — so with a wildcard anyone could forge the host
+# Django builds OAuth callbacks and password-reset links from.
+#
+# Checked at boot so a wildcard fails the deploy loudly, rather than leaving a
+# host-header injection that nothing surfaces until it is exploited.
+if not DEBUG and "*" in ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        "ALLOWED_HOSTS contains '*' while USE_X_FORWARDED_HOST is enabled. Django would "
+        "then trust any X-Forwarded-Host, letting a caller control the absolute URLs it "
+        "generates. List the real hosts explicitly instead."
+    )
 # Railway's internal healthcheck probe hits the container directly over plain HTTP,
 # bypassing the edge that sets X-Forwarded-Proto. Without this exemption Django 301s
 # the probe to https, the prober doesn't follow redirects, and the deploy times out
