@@ -3,7 +3,13 @@ venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
-.env
+# Every .env variant, allowlisting only the committed templates.
+#
+# This was previously just `.env`, which matches ONLY a file named exactly `.env` —
+# a `.env.prod` or `.env.staging` would have been committed on the next `git add -A`.
+.env*
+!.env.example
+!.env.prod.example
 staticfiles/
 *.sqlite3
 .DS_Store
