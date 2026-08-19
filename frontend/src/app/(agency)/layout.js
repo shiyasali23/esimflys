@@ -13,7 +13,16 @@ export default function AgencyLayout({ children }) {
     <div className="flex min-h-screen flex-col bg-muted/30">
       <header className="border-b border-border bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link href="/agency" className="font-display text-headline-sm uppercase text-foreground">
+          {/*
+            `text-xl font-bold tracking-tight`, matching the storefront wordmark exactly.
+
+            This read `text-headline-sm`, which is NOT a token — globals.css defines
+            headline-lg and headline-md only, so Tailwind emitted no rule for it and the
+            wordmark rendered at inherited 16px regular. It looked like a paragraph, not a
+            masthead, in a 64px header. Verified: the built agency.html carried the class
+            with no matching CSS rule.
+          */}
+          <Link href="/agency" className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
             eSIMFlys <span className="text-muted-foreground">Partners</span>
           </Link>
           <AgencySignOut />
