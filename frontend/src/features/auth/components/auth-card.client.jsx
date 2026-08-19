@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { GoogleLogo } from "@/components/media/google-logo";
 import { login, register, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
 import { useSession } from "@/features/auth/use-session.client";
 import { fieldErrors } from "@/lib/api/errors";
@@ -67,10 +68,26 @@ export function AuthCard({ mode = "signin" }) {
           : "Access your global data plans and trip history."}
       </p>
 
+      {/*
+        The logo was missing entirely — this rendered bare text while already carrying
+        `gap-3`, i.e. spacing reserved for an icon that was never added. `GoogleLogo`
+        already existed and was already in use on the plan page, so it was an omission
+        here rather than anything absent from the codebase. Google's branding guidelines
+        require the mark on a "Continue with Google" button, so it is a compliance point
+        as well as a visual one.
+
+        Radius aligned to `rounded-lg`. This was `rounded-md` while the inputs and submit
+        button were `rounded-sm` — three different radii in one card is the kind of
+        mismatch that reads as unfinished without the viewer being able to name why.
+
+        `focus-visible:ring` added: the whole form previously signalled focus only by
+        changing a 1px border colour, which is easy to miss and thin for WCAG 2.4.11.
+      */}
       <a
         href={GOOGLE_LOGIN_PATH}
-        className="mb-6 flex w-full items-center justify-center gap-3 rounded-md border border-border bg-white py-3 font-semibold text-foreground hover:bg-muted"
+        className="mb-6 flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-white py-3.5 font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
+        <GoogleLogo />
         Continue with Google
       </a>
 
@@ -91,7 +108,7 @@ export function AuthCard({ mode = "signin" }) {
             placeholder="name@company.com"
             aria-invalid={errors.email ? "true" : undefined}
             aria-describedby={errors.email ? "auth-email-error" : undefined}
-            className="w-full rounded-sm border border-border bg-muted px-4 py-3 text-body-md outline-none focus:border-primary"
+            className="w-full rounded-lg border border-border bg-muted px-4 py-3 text-body-md outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
           />
           {errors.email ? (
             <span id="auth-email-error" role="alert" className="mt-1 block text-body-sm text-destructive">
@@ -122,10 +139,10 @@ export function AuthCard({ mode = "signin" }) {
               type={showPw ? "text" : "password"}
               name="password"
               autoComplete={isSignup ? "new-password" : "current-password"}
-              placeholder="••••••••"
+              placeholder="Your password"
               aria-invalid={errors.password ? "true" : undefined}
               aria-describedby={errors.password ? "auth-password-error" : undefined}
-              className="w-full rounded-sm border border-border bg-muted px-4 py-3 pr-11 text-body-md outline-none focus:border-primary"
+              className="w-full rounded-lg border border-border bg-muted px-4 py-3 pr-11 text-body-md outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
             />
             <button
               type="button"
@@ -148,7 +165,7 @@ export function AuthCard({ mode = "signin" }) {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-sm bg-primary py-3.5 text-label-bold text-on-primary transition-all hover:bg-primary-container active:scale-[0.98] disabled:opacity-60"
+          className="w-full rounded-lg bg-primary py-3.5 text-label-bold text-on-primary transition-all hover:bg-primary-container active:scale-[0.98] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           {submitting ? "Please wait…" : isSignup ? "Create account" : "Sign in"}
         </button>
