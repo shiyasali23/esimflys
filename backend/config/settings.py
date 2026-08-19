@@ -62,6 +62,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    # Last, so it runs immediately before the view and after session/auth have read the
+    # real request. See apps/accounts/middleware.py — Railway's edge overwrites
+    # X-Forwarded-Host, so this is the only reliable way to give allauth the public host.
+    "apps.accounts.middleware.PublicHostMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
