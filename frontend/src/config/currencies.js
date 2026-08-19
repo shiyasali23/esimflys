@@ -68,6 +68,57 @@ export const CURRENCY_CODES = SUPPORTED_CURRENCIES.map((c) => c.code);
  * redirect, and it must never change the HTML the server emits, or a CDN would cache
  * one country's page and serve it to everyone including Googlebot.
  */
+/**
+ * IANA timezone -> display currency.
+ *
+ * The primary location signal, and it exists because `navigator.language` is a LANGUAGE,
+ * not a place. A visitor in Germany running an English browser reports `en-US` or `en-GB`,
+ * so locale alone put them on dollars or pounds. Their timezone says `Europe/Berlin`.
+ *
+ * Timezone is the best location signal obtainable BEFORE first paint: it is synchronous,
+ * needs no network, and no permission prompt. True IP geolocation would be more accurate
+ * still, but it is only knowable server-side — and this site is a static export served
+ * from a CDN, so there is no per-visitor server step to ask. Reaching for it would mean
+ * either a post-paint correction (the price visibly changes under the visitor) or running
+ * the Worker on every HTML request, which is the per-view server hop that removing
+ * OpenNext eliminated.
+ *
+ * Only the nine currencies the storefront actually quotes are mapped. Anything unlisted
+ * falls through to locale, then to DEFAULT_DISPLAY_CURRENCY. That is deliberate: a wrong
+ * guess here becomes a wrong CHARGE, because the currency on screen is the one sent to
+ * Stripe. Silence is safer than a near-miss.
+ */
+export const TIMEZONE_TO_CURRENCY = {
+  // India
+  "Asia/Kolkata": "INR", "Asia/Calcutta": "INR",
+  // United Kingdom
+  "Europe/London": "GBP", "Europe/Belfast": "GBP",
+  // Eurozone
+  "Europe/Berlin": "EUR", "Europe/Paris": "EUR", "Europe/Madrid": "EUR",
+  "Europe/Rome": "EUR", "Europe/Amsterdam": "EUR", "Europe/Dublin": "EUR",
+  "Europe/Lisbon": "EUR", "Europe/Athens": "EUR", "Europe/Vienna": "EUR",
+  "Europe/Brussels": "EUR", "Europe/Helsinki": "EUR", "Europe/Luxembourg": "EUR",
+  "Europe/Bratislava": "EUR", "Europe/Ljubljana": "EUR", "Europe/Tallinn": "EUR",
+  "Europe/Riga": "EUR", "Europe/Vilnius": "EUR", "Europe/Valletta": "EUR",
+  "Europe/Nicosia": "EUR", "Europe/Zagreb": "EUR", "Europe/Malta": "EUR",
+  // Gulf
+  "Asia/Dubai": "AED", "Asia/Riyadh": "SAR",
+  // Japan
+  "Asia/Tokyo": "JPY",
+  // Australia
+  "Australia/Sydney": "AUD", "Australia/Melbourne": "AUD", "Australia/Brisbane": "AUD",
+  "Australia/Perth": "AUD", "Australia/Adelaide": "AUD", "Australia/Hobart": "AUD",
+  "Australia/Darwin": "AUD",
+  // Canada
+  "America/Toronto": "CAD", "America/Vancouver": "CAD", "America/Edmonton": "CAD",
+  "America/Winnipeg": "CAD", "America/Halifax": "CAD", "America/St_Johns": "CAD",
+  "America/Montreal": "CAD", "America/Regina": "CAD",
+  // United States
+  "America/New_York": "USD", "America/Chicago": "USD", "America/Denver": "USD",
+  "America/Los_Angeles": "USD", "America/Phoenix": "USD", "America/Anchorage": "USD",
+  "Pacific/Honolulu": "USD", "America/Detroit": "USD", "America/Indiana/Indianapolis": "USD",
+};
+
 export const COUNTRY_TO_CURRENCY = {
   US: "USD",
   GB: "GBP",

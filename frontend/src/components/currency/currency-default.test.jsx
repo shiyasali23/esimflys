@@ -6,13 +6,23 @@ import { CurrencySelector } from "./currency-selector.client";
 import { RatesProvider } from "./rates-provider.client";
 
 /** Run the inline script exactly as the browser would, and read what it decided. */
-function resolve({ offered, cookie = "", language = "en-US" }) {
+function resolve({ offered, cookie = "", language = "en-US", timeZone = "UTC" }) {
   document.documentElement.removeAttribute("data-currency");
   Object.defineProperty(document, "cookie", { value: cookie, configurable: true });
   Object.defineProperty(navigator, "language", { value: language, configurable: true });
-  const { container } = render(<NoFlashCurrencyScript offered={offered} />);
-  new Function(container.querySelector("script").innerHTML)();
-  return document.documentElement.getAttribute("data-currency");
+  // The script reads the timezone as its primary location signal; jsdom reports the
+  // machine's, which would make these assertions depend on where the test runs.
+  const RealDTF = Intl.DateTimeFormat;
+  Intl.DateTimeFormat = function () {
+    return { resolvedOptions: () => ({ ...new RealDTF().resolvedOptions(), timeZone }) };
+  };
+  try {
+    const { container } = render(<NoFlashCurrencyScript offered={offered} />);
+    new Function(container.querySelector("script").innerHTML)();
+    return document.documentElement.getAttribute("data-currency");
+  } finally {
+    Intl.DateTimeFormat = RealDTF;
+  }
 }
 
 afterEach(() => document.documentElement.removeAttribute("data-currency"));
@@ -27,18 +37,62 @@ describe("default display currency", () => {
   });
 
   /**
-   * The default now outranks locale. The order is charged in whatever is on screen,
-   * and Stripe only offers UPI on an INR intent — so letting a recognised region
-   * silently pick GBP would also silently remove the payment method most of this
-   * storefront's customers use.
+   * DEFAULT is a FALLBACK, not an override. It used to sit above both detection signals
+   * and overwrite them, so every visitor on earth got INR — reported from Germany and
+   * London, and reproduced across de-DE, en-GB, en-US, fr-FR and ja-JP.
    */
-  it("outranks the visitor's region", () => {
-    expect(resolve({ offered: ["USD", "INR", "GBP"], language: "en-GB" })).toBe("INR");
+  it("does NOT outrank a recognised region", () => {
+    expect(resolve({ offered: ["USD", "INR", "GBP"], language: "en-GB" })).toBe("GBP");
   });
 
-  /** Locale survives one step below, for when the default is not quoted. */
-  it("falls back to the visitor's region when the default is unavailable", () => {
+  it("uses the region when the default is not quoted", () => {
     expect(resolve({ offered: ["USD", "GBP"], language: "en-GB" })).toBe("GBP");
+  });
+
+  /**
+   * Timezone outranks locale because `navigator.language` is a LANGUAGE, not a place.
+   * This is the case the user reported: an English browser physically in Germany.
+   */
+  it("prefers the timezone over the browser language", () => {
+    expect(
+      resolve({ offered: ["USD", "INR", "EUR"], language: "en-US", timeZone: "Europe/Berlin" }),
+    ).toBe("EUR");
+  });
+
+  it("keeps INR for an Indian visitor on an English browser, so UPI survives", () => {
+    expect(
+      resolve({ offered: ["USD", "INR"], language: "en-US", timeZone: "Asia/Kolkata" }),
+    ).toBe("INR");
+  });
+
+  it("falls back to locale when the timezone is unmapped", () => {
+    expect(
+      resolve({ offered: ["USD", "INR", "GBP"], language: "en-GB", timeZone: "Africa/Lagos" }),
+    ).toBe("GBP");
+  });
+
+  it("falls back to the default when neither signal is recognised", () => {
+    expect(
+      resolve({ offered: ["USD", "INR"], language: "xx", timeZone: "Africa/Lagos" }),
+    ).toBe("INR");
+  });
+
+  /**
+   * An unquoted detection falls through to the NEXT signal, it does not blank the page.
+   * `language: "en"` carries no region, so locale contributes nothing and the only
+   * remaining step below the timezone is the default.
+   */
+  it("ignores a detected currency the backend is not quoting", () => {
+    expect(
+      resolve({ offered: ["USD", "INR"], language: "en", timeZone: "Europe/Berlin" }),
+    ).toBe("INR");
+  });
+
+  /** With a usable locale below it, an unquoted timezone falls through to that instead. */
+  it("falls through an unquoted timezone to the locale", () => {
+    expect(
+      resolve({ offered: ["USD", "INR"], language: "en-US", timeZone: "Europe/Berlin" }),
+    ).toBe("USD");
   });
 
   it("still lets an explicit pick beat everything", () => {
