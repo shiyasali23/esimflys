@@ -10,9 +10,14 @@ export const metadata = buildMetadata({
 });
 
 export default function SignInPage() {
+  /*
+   `items-start`, not `items-stretch`. Stretch existed to make the two cards equal
+   height; the aside is no longer a card, so stretching it would only strand its
+   closing row at the bottom of an empty column.
+   */
   return (
-    <div className="grid w-full max-w-5xl items-stretch gap-8 md:grid-cols-12">
-      <div className="md:col-span-7">
+    <div className="grid w-full max-w-5xl items-start gap-8 md:grid-cols-12">
+      <div className="md:col-span-8">
         <AuthCard mode="signin" />
       </div>
       <GuestCheckoutAside />
