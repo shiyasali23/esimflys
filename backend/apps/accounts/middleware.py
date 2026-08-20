@@ -45,4 +45,8 @@ class PublicHostMiddleware:
     def __call__(self, request):
         if self.public_host and request.path.startswith("/accounts/"):
             request.META["HTTP_HOST"] = self.public_host
+            # build_absolute_uri() caches scheme+host on first use. Running first should
+            # mean nothing has read it yet, but dropping any cached value costs nothing
+            # and makes the rewrite correct regardless of middleware order.
+            request.__dict__.pop("_current_scheme_host", None)
         return self.get_response(request)

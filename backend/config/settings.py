@@ -46,6 +46,14 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    # FIRST, before anything reads the host.
+    #
+    # It was last (closest to the view) and had no effect in production despite being
+    # deployed. HttpRequest.build_absolute_uri() reads _current_scheme_host, a CACHED
+    # property — once SecurityMiddleware or CommonMiddleware touches it, the original
+    # hostname is frozen for the rest of the request and a later rewrite is ignored.
+    # Running first means nothing has read the host yet.
+    "apps.accounts.middleware.PublicHostMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Must sit immediately after SecurityMiddleware: it has to see the request before
     # anything else can redirect or reject it, and after the security headers are applied.
@@ -62,10 +70,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
-    # Last, so it runs immediately before the view and after session/auth have read the
-    # real request. See apps/accounts/middleware.py — Railway's edge overwrites
-    # X-Forwarded-Host, so this is the only reliable way to give allauth the public host.
-    "apps.accounts.middleware.PublicHostMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
