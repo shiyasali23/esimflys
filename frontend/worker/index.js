@@ -97,7 +97,24 @@ const handler = {
       301, because it is permanent and safe to cache. Path and query are preserved so a
       deep link keeps working.
     */
-    if (url.hostname === "www.esimflys.com") {
+    /*
+      NOT /api/v1/. Redirecting those broke checkout, and this is why:
+
+      A page loaded on www fires fetch() at www/api/v1/..., which is same-origin for it.
+      Sending back a 301 to the apex makes that request CROSS-origin, so the browser
+      demands a CORS preflight — and a redirect on a credentialed preflight is a hard
+      failure, not something fetch() can follow. fetch() throws, and the UI shows
+      "We couldn't reach the server. Check your connection and try again", which looks
+      like an outage rather than a redirect.
+
+      So XHR paths are proxied on www exactly as before, and only navigations move to the
+      apex. /accounts/ IS redirected deliberately: it is a top-level navigation, never an
+      XHR, so a 301 is safe there — and it is the path that must land on the apex, since
+      that is where Django will set the session cookie the OAuth callback needs.
+    */
+    const isApiCall = url.pathname.startsWith("/api/v1/");
+
+    if (url.hostname === "www.esimflys.com" && !isApiCall) {
       url.hostname = "esimflys.com";
       return Response.redirect(url.toString(), 301);
     }
