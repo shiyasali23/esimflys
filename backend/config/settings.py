@@ -256,7 +256,42 @@ EMAIL_BACKEND = env(
     if DEBUG
     else "django.core.mail.backends.smtp.EmailBackend",
 )
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="eSIMFlys <no-reply@esimflys.com>")
+
+# These five were NEVER read from the environment, and nothing said so.
+#
+# EMAIL_BACKEND above defaults to Django's SMTP backend in production, but with no host
+# configured Django falls back to its own default of localhost:25 — an SMTP server that
+# does not exist inside the container. Every send failed silently, which meant:
+#
+#   accounts/views.py:113      guest checkout OTP codes never arrived, so a guest could
+#                              not verify their email and could not receive their eSIM
+#   orders/notifications.py:74 order confirmations and eSIM QR delivery never arrived
+#
+# Setting the variables on the host alone would NOT have fixed it: without the lines
+# above, Django reads none of them and keeps dialling localhost.
+#
+# EMAIL_TIMEOUT is explicit because Django's default is None — no timeout at all. A
+# provider that accepts the connection and then stalls would hang the request thread,
+# and these sends happen inside the checkout path.
+if not DEBUG and EMAIL_BACKEND.endswith("smtp.EmailBackend") and not EMAIL_HOST:
+    # Refuse to boot rather than repeat the silent failure. The same pattern guards
+    # CACHE_URL and ALLOWED_HOSTS above; both exist because a quiet default cost real
+    # debugging time. A deploy that fails here is cheaper than a customer who pays and
+    # never receives an eSIM.
+    raise ImproperlyConfigured(
+        "EMAIL_BACKEND is the SMTP backend but EMAIL_HOST is empty, so Django would send "
+        "to localhost:25 and every email would fail silently. Set EMAIL_HOST (Resend: "
+        "smtp.resend.com), EMAIL_HOST_USER and EMAIL_HOST_PASSWORD — or set EMAIL_BACKEND "
+        "to django.core.mail.backends.console.EmailBackend if this deployment must not "
+        "send mail."
+    )
 
 FIELD_ENCRYPTION_KEY_VERSION = env.int("FIELD_ENCRYPTION_KEY_VERSION", default=1)
 # Retired keys stay in the ring as decrypt-only, so raising the active version never
