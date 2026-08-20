@@ -2,9 +2,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Zap } from "lucide-react";
-import { routes } from "@/config/routes";
 import { Button } from "@/components/ui/button";
 import { CurrencySelector } from "@/components/currency/currency-selector.client";
+import { AccountNav } from "./account-nav.client";
 import { MobileMenu } from "./mobile-menu.client";
 import nav from "@/content/nav.json";
 
@@ -42,9 +42,21 @@ export function Header() {
         </ul>
         <div className="flex items-center gap-2">
           <CurrencySelector className="hidden sm:inline-flex" />
-          <Button href={routes.signin()} variant="outline" size="sm" className="hidden sm:inline-flex">
-            Sign in
-          </Button>
+          {/*
+            AccountNav, not a hard-coded "Sign in".
+
+            This button used to be a literal <Button href={routes.signin()}>Sign in</Button>
+            that never consulted the session, so the header said "Sign in" to people who
+            were already signed in — on every page, forever. Clicking it sent them to
+            /auth/signin, Google re-authenticated them silently, and they landed back on
+            /account exactly where they started, which reads as a login that will not stick.
+
+            AccountNav already existed and was written for precisely this, probe guard and
+            all; it was simply never wired in here. Its signed-out branch renders this same
+            button with the same variant, size and classes, so nothing changes visually for
+            anonymous visitors.
+          */}
+          <AccountNav />
           <Button href="/destinations" variant="cta" size="sm" className="hidden gap-1.5 lg:inline-flex">
             <Zap className="h-3.5 w-3.5" aria-hidden />
             Get eSIM Now
