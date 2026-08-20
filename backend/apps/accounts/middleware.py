@@ -45,6 +45,13 @@ class PublicHostMiddleware:
     def __call__(self, request):
         if self.public_host and request.path.startswith("/accounts/"):
             request.META["HTTP_HOST"] = self.public_host
+            # X-Forwarded-Host too, and this is the line that actually mattered.
+            # settings.USE_X_FORWARDED_HOST is on, which makes Django's get_host() PREFER
+            # HTTP_X_FORWARDED_HOST over HTTP_HOST — and Railway's edge sets that header
+            # to its own hostname. So rewriting HTTP_HOST alone was silently discarded:
+            # [MEASURED] X-Public-Host: esimflys.com but X-Host-Seen:
+            # esimflys-production-512c.up.railway.app on the same response.
+            request.META["HTTP_X_FORWARDED_HOST"] = self.public_host
             # build_absolute_uri() caches scheme+host on first use. Running first should
             # mean nothing has read it yet, but dropping any cached value costs nothing
             # and makes the rewrite correct regardless of middleware order.
