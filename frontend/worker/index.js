@@ -71,6 +71,37 @@ const handler = {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    /*
+      www -> apex, FIRST, before the proxy and before any cookie can be issued.
+
+      Both hosts served 200, so the site was reachable at either — and that broke Google
+      sign-in for anyone who arrived on www. Django sets `sessionid` with NO Domain
+      attribute, making it host-only, so a login STARTED on www.esimflys.com stored
+      allauth's OAuth `state` in a cookie bound to www. The redirect_uri we hand Google is
+      built from FRONTEND_BASE_URL and is always the apex, so Google returned the visitor
+      to esimflys.com — where the browser does not send a www-scoped cookie. Django saw an
+      empty session, could not match the `state`, and allauth reported "Third-Party Login
+      Failure".
+
+      [MEASURED] https://www.esimflys.com/accounts/google/login/ issued
+        Set-Cookie: sessionid=...; Path=/; SameSite=Lax; Secure     (no Domain -> www only)
+      while sending
+        redirect_uri=https://esimflys.com/accounts/google/login/callback/
+      i.e. the cookie and the callback were on two different hosts by construction.
+
+      Redirecting rather than setting SESSION_COOKIE_DOMAIN=.esimflys.com: a domain-wide
+      cookie would be sent to every present and future subdomain, which is a wider blast
+      radius than this problem needs. The apex is already the canonical host in every
+      rel=canonical we serve, so this also stops the two hosts competing in search.
+
+      301, because it is permanent and safe to cache. Path and query are preserved so a
+      deep link keeps working.
+    */
+    if (url.hostname === "www.esimflys.com") {
+      url.hostname = "esimflys.com";
+      return Response.redirect(url.toString(), 301);
+    }
+
     if (PROXIED_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
       return proxyToBackend(request, url, env);
     }
