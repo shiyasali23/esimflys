@@ -35,13 +35,56 @@
 # Session-backed screens. The exported HTML is only an empty shell — every personal value
 # arrives later over fetch — but a shared cache holding the shell keyed by URL would still
 # let a stale build persist past a deploy on exactly the pages where that matters most.
+#
+# THREE rules per route, not one. `/checkout/*` does NOT match `/checkout`, and the export
+# writes each route as three sibling paths:
+#
+#     out/checkout.html        served at /checkout        <- the page itself
+#     out/checkout.txt         served at /checkout.txt    <- RSC payload, fetched on every
+#                                                            client-side navigation into it
+#     out/checkout/payment...  served at /checkout/*      <- the only one the old rule hit
+#
+# [MEASURED] against the live site, before this change:
+#     /checkout          public, max-age=0, must-revalidate   (cf-cache-status: HIT)
+#     /checkout.txt      public, max-age=0, must-revalidate
+#     /checkout/payment  private, no-store
+# i.e. the rule was landing on the one path it was not written for, and the two that
+# actually serve the checkout screen were public and edge-cached. Same for /account,
+# /admin, /agency and /auth.
+#
+# `/orders` has no bare page — only /orders/lookup — so the wildcard alone is right there.
+#
+# Enumerated rather than written as `/checkout*`: a mid-segment splat is not something
+# this file's behaviour has ever been verified against, and `_headers` cannot be tested
+# without deploying. Verify with `curl -sI https://esimflys.com/checkout.txt` after the
+# next deploy rather than trusting this comment.
+/account
+  Cache-Control: private, no-store
+/account.txt
+  Cache-Control: private, no-store
 /account/*
+  Cache-Control: private, no-store
+/admin
+  Cache-Control: private, no-store
+/admin.txt
   Cache-Control: private, no-store
 /admin/*
   Cache-Control: private, no-store
+/agency
+  Cache-Control: private, no-store
+/agency.txt
+  Cache-Control: private, no-store
 /agency/*
   Cache-Control: private, no-store
+/checkout
+  Cache-Control: private, no-store
+/checkout.txt
+  Cache-Control: private, no-store
 /checkout/*
+  Cache-Control: private, no-store
+/auth
+  Cache-Control: private, no-store
+/auth.txt
   Cache-Control: private, no-store
 /auth/*
   Cache-Control: private, no-store

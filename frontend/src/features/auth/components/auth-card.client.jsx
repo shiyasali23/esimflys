@@ -126,8 +126,18 @@ export function AuthCard({ mode = "signin" }) {
             <label htmlFor="auth-password" className="text-label-bold text-foreground">
               Password
             </label>
+            {/*
+              `min-h-11` grows the label ROW rather than hanging a 44px hit box off a
+              20px link. Negative margins were the obvious alternative and are wrong
+              here: the row sits 4px above the password field, so a hit area extended
+              12px downward would cover the top of the input on exactly the side the
+              link is on, stealing taps meant for the field.
+            */}
             {!isSignup ? (
-              <Link href={routes.forgotPassword()} className="text-label-bold text-primary hover:underline">
+              <Link
+                href={routes.forgotPassword()}
+                className="inline-flex min-h-11 items-center text-label-bold text-primary hover:underline"
+              >
                 Forgot password?
               </Link>
             ) : null}
@@ -142,15 +152,21 @@ export function AuthCard({ mode = "signin" }) {
               placeholder="Your password"
               aria-invalid={errors.password ? "true" : undefined}
               aria-describedby={errors.password ? "auth-password-error" : undefined}
-              className="w-full rounded-lg border border-border bg-muted px-4 py-3 pr-11 text-body-md outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="w-full rounded-lg border border-border bg-muted px-4 py-3 pr-12 text-body-md outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
             />
             <button
               type="button"
               aria-pressed={showPw}
               aria-label={showPw ? "Hide password" : "Show password"}
               onClick={() => setShowPw((v) => !v)}
-              /* sized to meet the WCAG 2.2 minimum touch target, not just the icon */
-              className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:text-primary"
+              /*
+                44px, not 36px. 36 cleared WCAG 2.2 AA's 24px floor, which is what the
+                note here used to claim, but the rest of this site standardised on 44 —
+                and this control sits inside a text field, where a missed tap puts the
+                caret in the password instead of revealing it. The field is 48px tall so
+                44 fits inside it, and `pr-12` on the input keeps the dots clear of it.
+              */
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-primary"
             >
               {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>

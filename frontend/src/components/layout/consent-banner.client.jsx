@@ -99,7 +99,15 @@ export function ConsentBanner() {
         Measured heights: 149px at 320px wide, 129px from 360px, 77px from 640px. Change
         one of these and you must change the other.
       */
-      className="fixed inset-x-0 bottom-0 z-[70] min-h-[149px] border-t border-border bg-background/95 p-4 min-[360px]:min-h-[129px] sm:min-h-[77px]"
+      /*
+        `bg-background`, not `bg-background/95`. This is pinned over the bottom of every
+        page, directly under the buy bar, so at 95% the plan grid and the order summary
+        scrolled visibly through the cookie notice and its two buttons. Opaque is also
+        the only option available: `backdrop-filter` is banned on fixed elements here
+        because it promotes them to their own composited layer, which is what caused the
+        iPhone scroll stalls.
+      */
+      className="fixed inset-x-0 bottom-0 z-[70] min-h-[149px] border-t border-border bg-background p-4 min-[360px]:min-h-[129px] sm:min-h-[77px]"
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
