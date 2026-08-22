@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession, hasSessionHint } from "@/features/auth/use-session.client";
 import { routes } from "@/config/routes";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,6 +11,15 @@ import { CurrencySelector } from "@/components/currency/currency-selector.client
 
 export function MobileMenu({ items, overHero }) {
   const [open, setOpen] = useState(false);
+  const user = useSession((s) => s.user);
+  const load = useSession((s) => s.load);
+
+  // Probe only when the browser has signed in before. An unconditional call would make
+  // every anonymous visitor take a 403 on /account/me/ from every page that renders the
+  // header — the exact problem AccountNav documents.
+  useEffect(() => {
+    if (hasSessionHint()) load();
+  }, [load]);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -63,14 +73,29 @@ export function MobileMenu({ items, overHero }) {
             <span className="text-sm font-medium text-muted-foreground">Display currency</span>
             <CurrencySelector />
           </div>
+          {/*
+            Same defect the desktop header had: a hard-coded "Sign in" that never consulted
+            the session, so someone already signed in was told to sign in again. Tapping it
+            sent them to /auth/signin, Google silently re-authenticated them, and they
+            landed back where they started — a login that appears not to stick.
+
+            Not AccountNav here: that component is `hidden sm:inline-flex` by design, so it
+            renders nothing inside this menu. The session is read directly instead and the
+            same full-width Button is reused for both states, keeping the sheet's layout
+            identical either way.
+
+            `user` is undefined until the probe answers. Showing "Sign in" during that gap
+            would flash the wrong label at someone who IS signed in, so the account label is
+            shown the moment a session hint exists and the probe only confirms it.
+          */}
           <Button
-            href={routes.signin()}
+            href={user ? routes.account() : routes.signin()}
             variant="destructive"
             size="lg"
             className="w-full"
             onClick={() => setOpen(false)}
           >
-            Sign in
+            {user ? user.first_name || "Your account" : "Sign in"}
           </Button>
         </Dialog.Content>
       </Dialog.Portal>

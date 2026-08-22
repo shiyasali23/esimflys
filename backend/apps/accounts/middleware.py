@@ -56,11 +56,4 @@ class PublicHostMiddleware:
             # mean nothing has read it yet, but dropping any cached value costs nothing
             # and makes the rewrite correct regardless of middleware order.
             request.__dict__.pop("_current_scheme_host", None)
-        response = self.get_response(request)
-        # Diagnostic. Four deploys shipped this middleware with no change in production
-        # behaviour, which cannot be explained by the code itself — the same code is
-        # correct locally. This header proves whether it is running at all: absent means
-        # the container is not executing this file, and no amount of editing it will help.
-        response["X-Public-Host"] = self.public_host or "unset"
-        response["X-Host-Seen"] = request.get_host()
-        return response
+        return self.get_response(request)
