@@ -288,8 +288,9 @@ describe("continuing to checkout", () => {
   });
 
   /**
-   * Coming back for a second country must not silently overwrite the first, and coming
-   * back for the SAME plan must raise its quantity rather than duplicate the row.
+   * Coming back for a second country must not silently overwrite the first. Coming back
+   * for the SAME plan is a no-op — see the store, which holds one eSIM per line now that
+   * checkout has no quantity control to correct a doubled one with.
    */
   it("keeps an earlier selection from another destination", async () => {
     useCart.getState().add({

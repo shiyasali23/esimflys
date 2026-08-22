@@ -20,7 +20,10 @@ export function TabsTrigger({ className, ...props }) {
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "rounded-full px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors data-[state=active]:bg-cta data-[state=active]:text-cta-foreground",
+        // min-h-11 (44px), not py-2 (36px). These are the segmented controls on the home
+        // page and the device checker, i.e. the only way to switch what a section shows,
+        // and they were 8px under the guideline on every phone.
+        "inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-muted-foreground transition-colors data-[state=active]:bg-cta data-[state=active]:text-cta-foreground",
         className,
       )}
       {...props}
@@ -31,7 +34,7 @@ export function TabsTrigger({ className, ...props }) {
 export function TabsContent({ className, ...props }) {
   return (
     <TabsPrimitive.Content
-      className={cn("mt-8 focus-visible:outline-none", className)}
+      className={cn("mt-6 focus-visible:outline-none md:mt-8", className)}
       {...props}
     />
   );

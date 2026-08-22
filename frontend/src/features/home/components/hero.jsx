@@ -42,14 +42,44 @@ export function Hero({ chips, countries }) {
         style={{ backgroundImage: "radial-gradient(circle, rgb(249 115 22 / 0.10) 0%, transparent 70%)" }}
       />
       <div className="relative mx-auto max-w-6xl px-6 pb-6 pt-[4.5rem] md:pb-8 md:pt-24">
-        <div className="relative rounded-[2.5rem] border border-secondary-container bg-gradient-to-br from-secondary-container/50 via-white/80 to-white/80 p-6 shadow-xl sm:p-8 md:p-10">
+        <div className="relative rounded-[2rem] border border-secondary-container bg-gradient-to-br from-secondary-container/50 via-white/80 to-white/80 p-5 shadow-xl min-[360px]:p-6 sm:rounded-[2.5rem] sm:p-8 md:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-2">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-secondary-container px-4 py-1.5 text-label-caps uppercase text-on-secondary-container">
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+            {/*
+              `min-w-0` is load-bearing, not defensive.
+
+              A grid item defaults to `min-width: auto`, so the column cannot shrink below
+              the item's min-content width — and the search box inside it contains a bare
+              `<input>`, whose intrinsic contribution is its default `size="20"`, about
+              200px. That floor made this column 348px wide inside a 292px card.
+
+              [MEASURED] 390px viewport: the column rendered 348px against a 292px slot, so
+              the badge, the h1, the search box and the country chips all ran 56px past the
+              card's right padding and were sliced off by the section's `overflow-x-clip`.
+              At 320px the overrun is 126px and most of the orange Search button is off the
+              screen. Setting `min-width: 0` here collapses the column to 292px and every
+              child reflows inside the card.
+            */}
+            <div className="min-w-0">
+              {/*
+                `items-start` and a balanced wrap. The label is 38 characters of tracked
+                caps — it cannot fit one line on any phone, so it always wraps, and with
+                `items-center` the shield centred itself against two lines while the
+                greedy wrap left "NUMBER" alone on the second. Balanced, it breaks after
+                the separator, and the icon sits on the first line where it reads as a
+                prefix rather than a bullet.
+              */}
+              <span className="inline-flex max-w-full items-start gap-2 text-balance rounded-3xl bg-secondary-container px-3.5 py-1.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.06em] text-on-secondary-container min-[360px]:rounded-full min-[360px]:px-4 min-[360px]:text-label-caps">
+                <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
                 No roaming fees · Keep your own number
               </span>
-              <h1 className="mt-5 max-w-3xl font-display text-4xl font-bold uppercase leading-[1.05] text-foreground sm:text-5xl md:text-6xl">
+              {/*
+                The designed size is `text-4xl` and it holds from 360px up. Below that the
+                card interior is 222px, which is narrower than "COUNTRIES." at 36px — the
+                headline took seven lines and pushed the search box off the first screen.
+                One step down at the narrowest widths, and nothing changes on a normal
+                phone.
+              */}
+              <h1 className="mt-4 max-w-3xl font-display text-[30px] font-bold uppercase leading-[1.05] text-foreground min-[360px]:mt-5 min-[360px]:text-4xl sm:text-5xl md:text-6xl">
                 {hero.titleLines.map((line) => (
                   <span
                     key={line}
@@ -66,14 +96,14 @@ export function Hero({ chips, countries }) {
               {hero.subtitle ? (
                 <p className="mt-6 max-w-xl text-lg text-muted-foreground">{hero.subtitle}</p>
               ) : null}
-              <div className="mt-8 flex flex-col items-start gap-5">
+              <div className="mt-7 flex flex-col items-start gap-4 min-[360px]:mt-8 min-[360px]:gap-5">
                 <HeroSearch countries={countries} />
                 <div className="flex flex-wrap items-center gap-2">
                   {chips.map((c) => (
                     <Link
                       key={c.slug}
                       href={`/esim/${c.slug}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-card hover:shadow-l2"
+                      className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-border bg-muted px-4 text-sm font-medium text-foreground transition-colors hover:bg-card hover:shadow-l2"
                     >
                       <CountryFlag country={c} /> {c.name}
                       {c.perDayFrom ? (

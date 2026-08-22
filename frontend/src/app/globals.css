@@ -82,6 +82,14 @@
      reads 4.13:1 there — below AA, on the message someone reads when something has
      gone wrong. This reads 5.54:1. Used by 22 call sites. */
   --color-destructive-text: #b91c1c;
+  /* Text-only companions to --color-cta and --color-highlight, on the same principle
+     as --color-destructive-text above: the brand orange reads 2.80:1 on white and the
+     sky accent 2.77:1, so neither may set type. These read 5.18:1 and 5.93:1, close
+     enough to --color-primary's 5.17:1 that a run of accent labels stays even.
+     Use these wherever an accent is the INK. `bg-cta`/`bg-highlight` are unchanged —
+     they are the fills, and their own foreground pairing is a separate question. */
+  --color-cta-text: #c2410c;
+  --color-highlight-text: #0369a1;
   --color-error: #dc2626;
   --color-on-error: #ffffff;
   --color-success: #d1fae5;
@@ -136,9 +144,24 @@
 }
 
 @layer utilities {
-  .text-display-xl { font-size: clamp(40px, 8vw, 80px); }
-  .text-display-lg { font-size: clamp(32px, 6vw, 64px); }
-  .text-headline-lg { font-size: clamp(28px, 5vw, 44px); }
+  /*
+   * These three fluid overrides replace only the FONT SIZE of the matching @theme token.
+   * The token's `--line-height` is an absolute pixel value tuned for the largest step, so
+   * without a line-height here it stayed at the desktop figure while the type shrank:
+   *
+   * [MEASURED] 320px viewport, /esim/saudi-arabia — `.text-display-lg` computed 32px text
+   * on a 68px line box, a ratio of 2.13. The h1 wrapped to "ESIM SAUDI" / "ARABIA" with
+   * 36px of empty space between the two lines and the flag stranded on a third, which is
+   * how the heading came to occupy a third of the screen on a small phone.
+   * `.text-headline-lg` was 28px on 48px (1.71) and `.text-display-xl` 40px on 60px (1.5).
+   *
+   * The ratios below are the tokens' own — 84/80, 68/64, 48/44 — so every size from the
+   * clamp floor to its ceiling now leads like the design does at the ceiling, and nothing
+   * changes on a desktop, where the clamp is already at its maximum.
+   */
+  .text-display-xl { font-size: clamp(40px, 8vw, 80px); line-height: 1.05; }
+  .text-display-lg { font-size: clamp(32px, 6vw, 64px); line-height: 1.0625; }
+  .text-headline-lg { font-size: clamp(28px, 5vw, 44px); line-height: 1.09; }
   .animate-marquee { animation: marquee 32s linear infinite; }
   .pause-on-hover:hover .animate-marquee { animation-play-state: paused; }
 }
@@ -224,8 +247,23 @@
   display: inline;
 }
 
+/*
+ * Clearance under the pinned buy bar, so the last thing on the page is never buried by it.
+ *
+ * The bar is `position: fixed`, so it takes no space in flow — without this the footer's
+ * legal links and copyright sit underneath it and cannot be read or tapped. The footer
+ * carries the reservation rather than each page, which is why neither the plan page nor
+ * checkout adds a matching `pb-*` of its own: doing both is what left ~180px of empty
+ * background between the order summary and the footer.
+ *
+ * 9.5rem covers the taller of the two bars (the plan bar measures 152px at 390px; the
+ * checkout bar 119px). `env(safe-area-inset-bottom)` matches the same term in the bars'
+ * own padding, so the clearance still holds on a device with a home indicator.
+ */
 @media (max-width: 1023.98px) {
-  body:has([data-checkout-bar]) footer { padding-bottom: 9.5rem; }
+  body:has([data-checkout-bar]) footer {
+    padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

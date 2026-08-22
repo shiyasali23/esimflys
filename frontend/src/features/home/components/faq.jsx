@@ -17,7 +17,7 @@ export function Faq() {
         {faq.stillCurious.map((l, i) => (
           <span key={l.href}>
             {i > 0 ? " · " : ""}
-            <Link href={l.href} className="text-cta hover:underline">
+            <Link href={l.href} className="text-cta-text hover:underline">
               {l.label}
             </Link>
           </span>

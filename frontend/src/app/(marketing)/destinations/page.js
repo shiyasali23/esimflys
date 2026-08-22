@@ -14,12 +14,18 @@ export default async function DestinationsPage() {
 
   return (
     <div className="bg-muted">
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-label-caps uppercase text-white">
-          <span className="h-1.5 w-1.5 rounded-full bg-highlight" aria-hidden />
+      {/*
+        `py-10` below `md`. With the shell's own `pt-20` for the fixed header on top of it,
+        `py-16` opened 144px of empty background above the first thing on the page.
+      */}
+      <div className="mx-auto max-w-6xl px-6 py-10 md:py-16">
+        {/* `items-start` so the dot stays on the first line when the label wraps — it
+            does at every phone width, on "every region covered". */}
+        <span className="inline-flex max-w-full items-start gap-2 text-balance rounded-full bg-foreground px-4 py-2 text-label-caps uppercase text-white">
+          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-highlight" aria-hidden />
           {SITE.countryCount} destinations · every region covered
         </span>
-        <h1 className="mt-5 font-display text-4xl font-bold uppercase leading-[1.05] md:text-5xl">
+        <h1 className="mt-5 font-display text-[32px] font-bold uppercase leading-[1.08] sm:text-4xl md:text-5xl">
           Stay online in {SITE.countryCount} countries
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground">

@@ -32,13 +32,24 @@ const ORDER = {
   status: "pending_payment",
 };
 
+/** One eSIM per line — the store has no way to produce anything else. */
 const ITEM = {
   productCode: "SA-10GB-30D-V1",
   displayName: "10 GB",
   countryName: "Saudi Arabia",
   countrySlug: "saudi-arabia",
   usd: 14.99,
-  quantity: 2,
+  quantity: 1,
+};
+
+/** A second destination, for the cases that need more than one eSIM in the order. */
+const ITEM_2 = {
+  productCode: "TH-5GB-30D-V1",
+  displayName: "5 GB",
+  countryName: "Thailand",
+  countrySlug: "thailand",
+  usd: 9.5,
+  quantity: 1,
 };
 
 /** The anonymous /account/me/ probe, plus whatever checkout should answer. */
@@ -120,8 +131,8 @@ describe("with a selection", () => {
     select(ITEM);
     render(<CheckoutView />);
     await ready();
-    // 2 × $14.99, priced from the committed catalogue.
-    expect(screen.getAllByText("$29.98").length).toBeGreaterThan(0);
+    // Priced from the committed catalogue.
+    expect(screen.getAllByText("$14.99").length).toBeGreaterThan(0);
   });
 
   /** An internal SKU means nothing to a shopper and competes with the plan name. */
@@ -133,44 +144,44 @@ describe("with a selection", () => {
     expect(screen.queryByText("SA-10GB-30D-V1")).toBeNull();
   });
 
-  it("pluralises the eSIM count from the total units, not the line count", async () => {
+  it("pluralises the eSIM count across destinations", async () => {
     mockApi();
-    select(ITEM);
+    select(ITEM, ITEM_2);
     render(<CheckoutView />);
     await ready();
     expect(screen.getAllByText(/2 eSIMs/).length).toBeGreaterThan(0);
   });
 
-  it("says eSIM singular for one unit", async () => {
+  it("says eSIM singular for one", async () => {
     mockApi();
-    select({ ...ITEM, quantity: 1 });
+    select(ITEM);
     render(<CheckoutView />);
     await ready();
     expect(screen.getAllByText(/1 eSIM(?!s)/).length).toBeGreaterThan(0);
   });
 
-  it("gives the quantity controls per-item accessible names", async () => {
+  /**
+   * There is no quantity stepper: one plan is one eSIM, and the only edit available on
+   * a line is removing it. Asserted as an absence because the controls existed here
+   * until they were taken out, and a revert would otherwise pass silently.
+   */
+  it("offers no quantity controls", async () => {
     mockApi();
     select(ITEM);
     render(<CheckoutView />);
     await ready();
-    expect(screen.getByRole("button", { name: /increase quantity of 10 GB/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /decrease quantity of 10 GB/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /increase quantity/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /decrease quantity/i })).toBeNull();
     expect(screen.getByRole("button", { name: /remove 10 GB/i })).toBeTruthy();
   });
 
-  /** Editing the selection is local now — it must not reach the network. */
-  it("changes quantity without a request", async () => {
+  /** A second destination is picked from the catalogue, not from inside checkout. */
+  it("does not offer to add another destination from here", async () => {
     mockApi();
     select(ITEM);
     render(<CheckoutView />);
     await ready();
-
-    await userEvent.click(screen.getByRole("button", { name: /increase quantity of 10 GB/i }));
-
-    expect(useCart.getState().items[0].quantity).toBe(3);
-    expect(screen.getAllByText("$44.97").length).toBeGreaterThan(0);
-    expect(checkoutCalls()).toHaveLength(0);
+    expect(screen.queryByRole("link", { name: /add another destination/i })).toBeNull();
   });
 
   it("removes a line locally and falls back to the empty state", async () => {
@@ -197,7 +208,7 @@ describe("the pinned mobile bar", () => {
     await ready();
 
     expect(payButtons()).toHaveLength(2);
-    expect(screen.getAllByText("$29.98").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("$14.99").length).toBeGreaterThanOrEqual(2);
   });
 
   it("places the same order from either button", async () => {
@@ -417,7 +428,7 @@ describe("what the order request carries", () => {
 
     await waitFor(() => expect(checkoutCalls()).toHaveLength(1));
     expect(body()).toMatchObject({
-      items: [{ product_code: "SA-10GB-30D-V1", quantity: 2 }],
+      items: [{ product_code: "SA-10GB-30D-V1", quantity: 1 }],
       customer_email: "traveller@example.com",
     });
     expect(checkoutCalls()[0][1].headers["X-Cart-Token"]).toBeUndefined();
@@ -523,12 +534,13 @@ describe("the idempotency key", () => {
    */
   it("mints a fresh key once the selection is edited", async () => {
     mockApi({ checkout: () => jsonResponse({ error: { code: "internal_error", message: "Boom." } }, 500) });
-    select(ITEM);
+    select(ITEM, ITEM_2);
     render(<CheckoutView />);
     await submitAsGuest();
     await screen.findByRole("alert");
 
-    await userEvent.click(screen.getByRole("button", { name: /increase quantity of 10 GB/i }));
+    // Dropping a line is the only edit the screen still offers.
+    await userEvent.click(screen.getByRole("button", { name: /remove 5 GB/i }));
     await pay();
 
     await waitFor(() => expect(checkoutCalls()).toHaveLength(2));

@@ -101,13 +101,14 @@ export function PlanSelector({ country, plans, belowPlans = null }) {
     setAdding(true);
     setError(null);
     try {
+      // No `quantity`: the store fixes it at 1 and ignores a repeat add, so pressing
+      // this twice for the same plan leaves one line at one eSIM.
       addSelection({
         productCode: selected.product_id,
         displayName: label(selected),
         countryName: country.name,
         countrySlug: country.slug,
         usd: selected.retail_price_usd,
-        quantity: 1,
       });
       router.push(routes.checkout());
     } catch {
@@ -294,8 +295,23 @@ export function PlanSelector({ country, plans, belowPlans = null }) {
 
         <div
           data-checkout-bar
-          style={{ bottom: "var(--consent-banner-h, 0px)" }}
-          className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 pb-4 pt-3 shadow-l3 lg:hidden"
+          style={{
+            bottom: "var(--consent-banner-h, 0px)",
+            paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+          }}
+          /*
+            `bg-background`, not `bg-background/95`. The bar is the only thing between a
+            shopper and a payment, and at 95% the plan grid scrolled visibly through the
+            total and the button — legible enough to read two prices at once. Opaque is
+            also the only option available: `backdrop-filter` is banned here because it
+            promotes a fixed element to its own composited layer, which is what caused
+            the iPhone scroll stalls.
+
+            The safe-area inset is added to the padding rather than the offset so the
+            bar's background still reaches the bottom of the screen on a device with a
+            home indicator, instead of leaving a strip of page under it.
+          */
+          className="fixed inset-x-0 z-30 border-t border-border bg-background px-4 pt-3 shadow-l3 lg:hidden"
         >
           <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between gap-4">

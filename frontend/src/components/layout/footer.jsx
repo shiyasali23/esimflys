@@ -23,12 +23,22 @@ export function Footer({ compact = false }) {
     const legal = nav.footer.find((col) => col.title?.toLowerCase() === "legal")?.links || [];
     return (
       <footer className="border-t border-border bg-background">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-4 text-body-sm text-muted-foreground sm:flex-row">
-          <p>© {year} {site.brand}</p>
+        {/*
+          `min-h-11` on the links here for the same reason the sitemap columns carry it:
+          at `text-body-sm` these render 17px tall, and on the checkout footer they are
+          the refund and terms links someone reaches for when a purchase has gone wrong.
+          `-my-2` keeps the visual height of the strip unchanged while the target grows.
+        */}
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-1 px-6 py-3 text-body-sm text-muted-foreground sm:flex-row sm:gap-2 sm:py-4">
+          <p className="py-2 sm:py-0">© {year} {site.brand}</p>
           {legal.length ? (
-            <nav aria-label="Legal" className="flex gap-4">
+            <nav aria-label="Legal" className="-my-2 flex gap-1">
               {legal.map((l) => (
-                <Link key={l.label} href={l.href} className="transition-colors hover:text-primary">
+                <Link
+                  key={l.label}
+                  href={l.href}
+                  className="inline-flex min-h-11 items-center px-2 transition-colors hover:text-primary"
+                >
                   {l.label}
                 </Link>
               ))}
@@ -41,12 +51,12 @@ export function Footer({ compact = false }) {
 
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
+      <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-5 md:gap-10">
           <div className="col-span-2 md:col-span-1">
             <div className="font-display text-2xl font-bold uppercase text-primary">{site.brand}</div>
             <p className="mt-3 max-w-xs text-body-sm text-muted-foreground">{site.tagline}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-3">
               {site.appStores.map((a) => {
                 const Badge = APP_STORE_BADGES[a.label];
                 return Badge ? <Badge key={a.label} /> : null;
@@ -88,12 +98,16 @@ export function Footer({ compact = false }) {
         </div>
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-6 text-body-sm text-muted-foreground md:flex-row">
-          <p>© {year} {site.brand}. All rights reserved.</p>
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-1 px-6 py-4 text-body-sm text-muted-foreground md:flex-row md:gap-3 md:py-6">
+          <p className="py-2 md:py-0">© {year} {site.brand}. All rights reserved.</p>
           {site.social.length > 0 ? (
-            <div className="flex gap-4">
+            <div className="-my-2 flex gap-1">
               {site.social.map((s) => (
-                <a key={s.label} href={s.href} className="hover:text-primary">
+                <a
+                  key={s.label}
+                  href={s.href}
+                  className="inline-flex min-h-11 items-center px-2 hover:text-primary"
+                >
                   {s.label}
                 </a>
               ))}

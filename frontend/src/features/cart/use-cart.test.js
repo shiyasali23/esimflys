@@ -5,7 +5,6 @@ import {
   cartIsEmpty,
   totalUnits,
   subtotalUsd,
-  MAX_UNITS,
 } from "@/features/cart/use-cart.client";
 
 /**
@@ -102,12 +101,23 @@ describe("add", () => {
     expect(JSON.parse(store.get(STORAGE_KEY))).toEqual([PLAN]);
   });
 
-  it("raises the quantity instead of duplicating the same plan", () => {
+  /**
+   * One eSIM per plan. This used to raise the quantity to 2, which was right while
+   * checkout had a stepper to see and undo it with. Without one, a second press of
+   * "Continue to checkout" on the same country page would silently double the bill
+   * with nothing on screen to correct it.
+   */
+  it("keeps a repeat pick at one line and one eSIM", () => {
     useCart.getState().add(PLAN);
     useCart.getState().add(PLAN);
     const { items } = useCart.getState();
     expect(items).toHaveLength(1);
-    expect(items[0].quantity).toBe(2);
+    expect(items[0].quantity).toBe(1);
+  });
+
+  it("does not let a caller ask for more than one", () => {
+    useCart.getState().add({ ...PLAN, quantity: 7 });
+    expect(useCart.getState().items[0].quantity).toBe(1);
   });
 
   it("keeps different plans as separate lines", () => {
@@ -117,30 +127,22 @@ describe("add", () => {
   });
 });
 
-describe("setQuantity", () => {
-  it("applies the new quantity and persists it", () => {
-    useCart.getState().add(PLAN);
-    useCart.getState().setQuantity(PLAN.productCode, 4);
-    expect(useCart.getState().items[0].quantity).toBe(4);
-    expect(JSON.parse(store.get(STORAGE_KEY))[0].quantity).toBe(4);
+/**
+ * sessionStorage outlives a deploy, so a tab that picked the same plan twice under the
+ * build that still had a stepper holds `{quantity: 2}`. Adopting that would show a
+ * doubled price and "2 eSIMs" on a screen with no control to correct it.
+ */
+describe("quantities left over from an older build", () => {
+  it("normalises a stored quantity down to one", () => {
+    store.set(STORAGE_KEY, JSON.stringify([{ ...PLAN, quantity: 3 }]));
+    useCart.getState().hydrate();
+    expect(useCart.getState().items[0].quantity).toBe(1);
   });
 
-  /**
-   * The server enforces the ceiling too and answers `cart_limit_exceeded`. Capping
-   * here keeps the stepper honest rather than letting someone reach checkout and be
-   * refused.
-   */
-  it("caps at the 50-unit ceiling the backend enforces", () => {
-    useCart.getState().add(PLAN);
-    useCart.getState().setQuantity(PLAN.productCode, MAX_UNITS + 10);
-    expect(useCart.getState().items[0].quantity).toBe(MAX_UNITS);
-  });
-
-  // Dropping to zero is a removal, not a zero-quantity line.
-  it("removes the line when quantity falls below one", () => {
-    useCart.getState().add(PLAN);
-    useCart.getState().setQuantity(PLAN.productCode, 0);
-    expect(useCart.getState().items).toEqual([]);
+  it("rewrites storage, so the next read is already correct", () => {
+    store.set(STORAGE_KEY, JSON.stringify([{ ...PLAN, quantity: 3 }]));
+    useCart.getState().hydrate();
+    expect(JSON.parse(store.get(STORAGE_KEY))[0].quantity).toBe(1);
   });
 });
 

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, ArrowRight, Minus, Plus, Trash2, Tag, CheckCircle2 } from "lucide-react";
+import { ShoppingBag, ArrowRight, Trash2, Tag, CheckCircle2 } from "lucide-react";
 import { useCart, cartIsEmpty, subtotalUsd, totalUnits } from "@/features/cart/use-cart.client";
 import { useCurrency } from "@/components/currency/use-currency.client";
 import { checkoutDirect } from "@/lib/api/orders";
@@ -58,7 +58,7 @@ function persistGuestEmail(value) {
  */
 export function CheckoutView() {
   const router = useRouter();
-  const { items, hydrate, setQuantity, remove, reset } = useCart();
+  const { items, hydrate, remove, reset } = useCart();
   /**
    * The order is created in the currency on screen, not in USD. Two reasons: a total
    * the customer never saw is not a total they agreed to, and Stripe only offers UPI
@@ -78,6 +78,7 @@ export function CheckoutView() {
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const identityRef = useRef(null);
+  const submitErrorRef = useRef(null);
   /**
    * One key per purchase ATTEMPT, reused on every retry of that attempt. If a response
    * is lost in flight the order still exists, and retrying with the same key returns
@@ -128,6 +129,30 @@ export function CheckoutView() {
   function revealIdentitySoon() {
     setTimeout(revealIdentity, 0);
   }
+
+  /**
+   * Brings the phone to the submit error, which renders in the summary card next to the
+   * total. Below `lg` the button that produces it is the pinned bar's, and that bar
+   * follows the viewport — so the failure was being written into a card that could be
+   * most of a page away from wherever the shopper was actually looking.
+   *
+   * An effect keyed on a counter, NOT the `setTimeout` that `revealIdentitySoon` uses.
+   * That one can afford a timeout because `identityRef` is on a section that is always
+   * mounted; this ref is on the paragraph the very same state update creates, and React
+   * schedules its render through the scheduler, which can land after a `setTimeout(0)`.
+   * [MEASURED] the timeout version read `submitErrorRef.current === null` and scrolled
+   * nowhere: window.scrollY stayed 0 with the alert at y=887 on an 844px viewport. An
+   * effect runs after commit by definition, so the node is always there.
+   */
+  const [errorReveal, setErrorReveal] = useState(0);
+  useEffect(() => {
+    if (!errorReveal) return;
+    const el = submitErrorRef.current;
+    if (!el) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    // Optional call: jsdom does not implement it, and neither do some older WebViews.
+    el.scrollIntoView?.({ behavior: reduced ? "auto" : "smooth", block: "center" });
+  }, [errorReveal]);
 
   function revealIdentity() {
     const section = identityRef.current;
@@ -234,6 +259,9 @@ export function CheckoutView() {
           "A plan in this order is no longer available. Review your selection and try again.",
         );
       } else setSubmitError(error?.message || "We couldn't place your order. Please try again.");
+      // Field errors already send the phone to the identity card. Everything else reports
+      // into the summary card, which on a phone is nowhere near the pinned pay button.
+      if (!Object.keys(fields).length) setErrorReveal((n) => n + 1);
       setSubmitting(false);
     }
   }
@@ -268,11 +296,28 @@ export function CheckoutView() {
 
 
 
+  /*
+   * No `pb-44` on the Container. The footer already reserves space for the pinned bar
+   * (`body:has([data-checkout-bar]) footer` in globals.css), so reserving it a second
+   * time here left ~180px of empty background between the order summary and the footer
+   * on every phone.
+   */
   return (
-    <Container className="pt-6 pb-44 lg:pb-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="font-display text-headline-md uppercase text-foreground">Secure checkout</h1>
-        <span className="rounded-full border border-success-text/20 bg-success-text/10 px-3 py-1 text-label-caps uppercase text-success-text">
+    <Container className="pt-6 pb-10 lg:pb-4">
+      {/*
+        The badge never breaks mid-phrase, and is small enough that the heading does not
+        have to either.
+
+        [MEASURED] 390px: the row is 342px and "Secure checkout" needs 224px on one line.
+        At `text-label-caps` with `px-3` the badge is 109px, which left the heading 221px
+        — three pixels short, so the title wrapped to two lines to make room for a
+        decorative trust mark. At 11px with `px-2.5` the badge is ~96px and the heading
+        keeps its 234px. Below `sm` only; nothing changes from 640px up, where both have
+        always fitted.
+      */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="min-w-0 font-display text-headline-md uppercase text-foreground">Secure checkout</h1>
+        <span className="shrink-0 whitespace-nowrap rounded-full border border-success-text/20 bg-success-text/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-success-text sm:px-3 sm:text-label-caps">
           Secure SSL
         </span>
       </div>
@@ -284,66 +329,44 @@ export function CheckoutView() {
             <ul className="divide-y divide-border">
               {items.map((item) => (
                 /*
-                  Stacked below sm. Side by side, the stepper, price and bin left the
-                  title about 80px on a 375px screen and "Saudi Arabia · 10 GB" broke
-                  across four lines.
+                  Stacked below sm. Side by side, the price and bin still leave the title
+                  about 170px on a 375px screen, and "Saudi Arabia · 10 GB" needs ~200px
+                  at `text-headline-md` before it breaks across lines.
                 */
                 <li
                   key={item.productCode}
-                  className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                  className="flex flex-col gap-2 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
                   <p className="min-w-0 font-display text-headline-md text-foreground">
                     {item.countryName} · {item.displayName}
                   </p>
                   <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-                    <div className="flex items-center gap-1 rounded-full border border-border">
-                      <button
-                        type="button"
-                        aria-label={`Decrease quantity of ${item.displayName}`}
-                        onClick={() => setQuantity(item.productCode, item.quantity - 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-foreground"
-                      >
-                        <Minus size={14} aria-hidden />
-                      </button>
-                      <span aria-live="polite" className="min-w-6 text-center text-body-sm tabular-nums">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`Increase quantity of ${item.displayName}`}
-                        onClick={() => setQuantity(item.productCode, item.quantity + 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-foreground"
-                      >
-                        <Plus size={14} aria-hidden />
-                      </button>
-                    </div>
                     {/*
                       min-width, not width. A fixed 24 (96px) was cut for "$14.99";
                       "₹1,359.00" overruns it and lands on top of the delete button.
                       The floor still keeps prices aligned across rows, and tabular
-                      figures stop the digits shifting as a quantity changes.
+                      figures keep the digits from shifting between currencies.
+
+                      Still `usd * quantity` rather than `usd`, even though `quantity`
+                      is invariantly 1: it is the same arithmetic `subtotalUsd` does, so
+                      a line can never disagree with the total it feeds.
                     */}
                     <div className="whitespace-nowrap text-right font-display text-headline-md tabular-nums text-primary sm:min-w-24">
                       <Price usd={item.usd * item.quantity} />
                     </div>
+                    {/* 44px. The only control left on the row, and it empties it. */}
                     <button
                       type="button"
                       aria-label={`Remove ${item.displayName}`}
                       onClick={() => remove(item.productCode)}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-destructive-text"
                     >
-                      <Trash2 size={16} aria-hidden />
+                      <Trash2 size={18} aria-hidden />
                     </button>
                   </div>
                 </li>
               ))}
             </ul>
-            <Link
-              href={routes.destinations()}
-              className="mt-3 inline-block text-label-bold text-primary hover:underline"
-            >
-              Add another destination
-            </Link>
           </section>
 
           <section
@@ -379,7 +402,7 @@ export function CheckoutView() {
                 <button
                   type="button"
                   onClick={account ? signOut : editGuest}
-                  className="shrink-0 rounded text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="-my-2 flex min-h-11 shrink-0 items-center rounded px-1 text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {account ? "Use another account" : "Change"}
                 </button>
@@ -504,7 +527,7 @@ export function CheckoutView() {
                       autoCapitalize="characters"
                       autoComplete="off"
                       spellCheck={false}
-                      className="w-full rounded-md border border-border bg-muted px-3 py-2.5 text-body-sm uppercase tracking-wide outline-none placeholder:tracking-normal placeholder:text-muted-foreground focus:border-primary"
+                      className="h-11 w-full rounded-md border border-border bg-muted px-3 text-body-md uppercase tracking-wide outline-none placeholder:tracking-normal placeholder:text-muted-foreground focus:border-primary sm:text-body-sm"
                     />
                   </label>
                   <p className="mt-1.5 text-body-sm text-muted-foreground">
@@ -515,7 +538,7 @@ export function CheckoutView() {
                 <button
                   type="button"
                   onClick={() => setPromoOpen(true)}
-                  className="flex items-center gap-2 rounded text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="flex min-h-11 items-center gap-2 rounded text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <Tag size={15} aria-hidden />
                   Have a promo code?
@@ -529,22 +552,39 @@ export function CheckoutView() {
                 <Price usd={subtotal} />
               </dd>
             </dl>
-            <form id={FORM_ID} onSubmit={placeOrder} className="mt-6">
+            {/*
+              The form element stays mounted at every width — the pinned bar's button
+              submits it by `form={FORM_ID}` — but its own button is hidden below `lg`,
+              where the pinned bar already carries one. Two identical "Proceed to
+              payment" buttons 40px apart is what shipped: one pinned, one in the card
+              right behind it, and no way to tell which one was the real one.
+            */}
+            <form id={FORM_ID} onSubmit={placeOrder} className="lg:mt-6">
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-cta px-6 py-4 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110 disabled:opacity-60"
+                className="hidden w-full items-center justify-center gap-2 rounded-full bg-cta px-6 py-4 text-body-lg font-semibold text-cta-foreground transition-colors hover:brightness-110 disabled:opacity-60 lg:flex"
               >
                 {submitting ? "Placing order…" : "Proceed to payment"}
                 {submitting ? null : <ArrowRight size={20} aria-hidden />}
               </button>
             </form>
+            {/*
+              One alert node, at every width — two would announce the same failure twice.
+              It lives here beside the total, and `revealSummarySoon` brings the phone to
+              it: below `lg` the button that produced it is the pinned bar's, which can be
+              most of a page away from this card.
+            */}
             {submitError ? (
-              <p role="alert" className="mt-3 text-center text-body-sm text-destructive">
+              <p
+                ref={submitErrorRef}
+                role="alert"
+                className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-center text-body-sm text-destructive-text lg:bg-transparent lg:px-0 lg:py-0"
+              >
                 {submitError}
               </p>
             ) : null}
-            <p className="mt-3 text-center text-body-sm text-muted-foreground">
+            <p className="mt-4 text-center text-body-sm text-muted-foreground lg:mt-3">
               Charged in {currency}. Your card or bank may add its own conversion fee.
             </p>
           </div>
@@ -558,8 +598,18 @@ export function CheckoutView() {
       */}
       <div
         data-checkout-bar
-        style={{ bottom: "var(--consent-banner-h, 0px)" }}
-        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 pb-4 pt-3 shadow-l3 lg:hidden"
+        style={{
+          bottom: "var(--consent-banner-h, 0px)",
+          paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+        }}
+        /*
+          `bg-background`, not `bg-background/95`. At 95% the identity card and the order
+          summary scrolled visibly through the total and the pay button — "Already have an
+          account? Sign in" read straight through the bar. Opaque is also the only option:
+          `backdrop-filter` is banned here, it promotes a fixed element to its own
+          composited layer and that is what caused the iPhone scroll stalls.
+        */
+        className="fixed inset-x-0 z-30 border-t border-border bg-background px-4 pt-3 shadow-l3 lg:hidden"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mb-2 flex items-baseline justify-between gap-4">

@@ -140,7 +140,7 @@ export default async function CountryPage({ params }) {
                   <ul className="mt-4 grid max-w-2xl gap-x-6 gap-y-2 text-body-sm text-muted-foreground sm:grid-cols-2">
                     {CONFIDENCE.map((c) => (
                       <li key={c} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-cta" aria-hidden />
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-cta-text" aria-hidden />
                         <span>{c}</span>
                       </li>
                     ))}

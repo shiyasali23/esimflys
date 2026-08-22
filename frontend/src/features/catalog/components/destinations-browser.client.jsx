@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 
 function badgeFor(c) {
   if (c.homepageBadge === "popular") return { label: "Popular", className: "fill-highlight text-highlight" };
-  if (c.homepageBadge === "best_value") return { label: "Best value", className: "fill-cta text-cta" };
+  if (c.homepageBadge === "best_value") return { label: "Best value", className: "fill-cta-text text-cta-text" };
   return null;
 }
 
@@ -17,7 +17,7 @@ function DestinationCard({ c }) {
   return (
     <Link
       href={`/esim/${c.slug}`}
-      className="group flex w-full items-center gap-2 rounded-full border border-border bg-card py-2 pl-3 pr-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-l2"
+      className="group flex min-h-12 w-full items-center gap-2 rounded-full border border-border bg-card py-2 pl-3 pr-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-l2"
     >
       {/*
         Flag, name and badge take the free space; the price and arrow are pinned to the
@@ -34,7 +34,7 @@ function DestinationCard({ c }) {
         ) : null}
       </span>
       {c.perDayFrom ? (
-        <span className="shrink-0 text-sm font-semibold text-cta">
+        <span className="shrink-0 text-sm font-semibold text-cta-text">
           <Price usd={c.perDayFrom} />/d
         </span>
       ) : null}
@@ -78,7 +78,7 @@ export function DestinationsBrowser({ countries }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by country or code (e.g. JP)"
             aria-label="Search destinations"
-            className="w-full rounded-full border border-border bg-card py-2.5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-4 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm"
           />
         </div>
         <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -86,7 +86,7 @@ export function DestinationsBrowser({ countries }) {
             type="button"
             onClick={() => setRegion("all")}
             className={cn(
-              "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+              "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors",
               region === "all"
                 ? "border-cta bg-cta text-cta-foreground"
                 : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -100,7 +100,7 @@ export function DestinationsBrowser({ countries }) {
               type="button"
               onClick={() => setRegion(r)}
               className={cn(
-                "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+                "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors",
                 region === r
                   ? "border-cta bg-cta text-cta-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",

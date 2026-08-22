@@ -32,19 +32,32 @@ export function WhatIsEsim() {
               {w.title}
             </h2>
             <p className="mt-4 text-muted-foreground">{w.body}</p>
-            <Link href={w.href} className="mt-5 inline-block font-semibold text-cta hover:underline">
+            <Link href={w.href} className="mt-5 inline-block font-semibold text-cta-text hover:underline">
               Learn more about eSIMs →
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-xl px-6 py-16 text-center lg:hidden">
+      {/*
+        Left-aligned below `sm`, centred above it.
+
+        Two reasons, and they point the same way. The paragraph runs eight lines on a
+        390px screen, and centred copy that long starts every line at a different x, so
+        the eye has to re-find the left edge on each one — centring is only free at two or
+        three lines, which is what it becomes at `sm`. And every other section heading on
+        this page ("Where travelers go", "Buy it. Scan it.") is left-aligned on a phone, so
+        this was the only one breaking the column.
+      */}
+      <div className="mx-auto max-w-xl px-6 py-12 text-left sm:py-16 sm:text-center lg:hidden">
         <h2 className="font-display text-2xl font-bold uppercase text-foreground sm:text-3xl">
           {w.title}
         </h2>
         <p className="mt-4 text-muted-foreground">{w.body}</p>
-        <Link href={w.href} className="mt-5 inline-block font-semibold text-cta hover:underline">
+        <Link
+          href={w.href}
+          className="mt-4 inline-flex min-h-11 items-center font-semibold text-cta-text hover:underline"
+        >
           Learn more about eSIMs →
         </Link>
         {/*

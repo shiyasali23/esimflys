@@ -31,7 +31,7 @@ export default async function HelpCategoryPage({ params }) {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <Link href="/help" className="text-sm text-cta hover:underline">
+      <Link href="/help" className="text-sm text-cta-text hover:underline">
         ← Help center
       </Link>
       <h1 className="mt-4 font-display text-4xl font-bold uppercase md:text-5xl">{cat.title}</h1>

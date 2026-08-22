@@ -60,8 +60,28 @@ export function ConsentBanner() {
    * arrangement exists to prevent.
    */
 
+  /*
+   * The `data-consent` attribute is updated here as well as in `NoFlashConsentScript`,
+   * and that second write is load-bearing rather than tidy-up.
+   *
+   * `--consent-banner-h` in globals.css is keyed on `:root[data-consent="1"]`, and the
+   * buy bars on the plan and checkout screens sit at `bottom: var(--consent-banner-h)`.
+   * The pre-paint script only runs on a FULL page load, so on the load where someone
+   * actually accepts, the attribute stays "0" — the banner unmounts on the line below,
+   * but 129px of space stays reserved underneath it for a banner that is no longer
+   * there. Every soft navigation after that keeps the stale value, because the App
+   * Router never re-runs the inline script.
+   *
+   * [MEASURED] 390x844, accept the banner, then open /esim/saudi-arabia or /checkout:
+   * the buy bar renders with `bottom: 129px`, floating in the middle of the screen with
+   * a strip of page scrolling underneath it. Reproduced from the reported iPhone
+   * screenshots, where the gap under the bar measured 129 CSS px exactly.
+   *
+   * Writing the attribute here makes the two paths agree without a second full load.
+   */
   function choose(value) {
     document.cookie = `consent=${value}; path=/; max-age=31536000; samesite=lax`;
+    document.documentElement.setAttribute("data-consent", "1");
     setShow(false);
   }
 

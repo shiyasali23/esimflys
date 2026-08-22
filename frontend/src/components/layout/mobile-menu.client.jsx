@@ -37,9 +37,24 @@ export function MobileMenu({ items, overHero }) {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[80] bg-background" />
-        <Dialog.Content className="fixed inset-0 z-[80] flex flex-col bg-background p-6">
+        {/*
+          Safe-area padding, and the sheet is allowed to scroll.
+
+          It is `inset-0` on a phone, so a flat `p-6` put the logo row under the status
+          bar and the account button under the home indicator on any notched device. The
+          nav also had no way to scroll: five items at `text-3xl` plus the currency row
+          and the button come to ~530px, which fits a 568px screen with 38px to spare and
+          overflows the moment a sixth link is added or the text scales up.
+        */}
+        <Dialog.Content
+          style={{
+            paddingTop: "calc(1.5rem + env(safe-area-inset-top))",
+            paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))",
+          }}
+          className="fixed inset-0 z-[80] flex flex-col overflow-y-auto bg-background px-6"
+        >
           <Dialog.Title className="sr-only">Menu</Dialog.Title>
-          <div className="flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between">
             <span className="flex items-center gap-2.5">
               <Image
                 src="/images/logo-mark.webp"
@@ -50,26 +65,33 @@ export function MobileMenu({ items, overHero }) {
               />
               <span className="font-display text-xl font-bold uppercase text-primary">eSIMFlys</span>
             </span>
+            {/* 44px, matching the trigger that opened it. The open button was already
+                raised off 40px for this reason; the close button was missed. */}
             <Dialog.Close
               aria-label="Close menu"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground"
+              className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-foreground"
             >
               <X className="h-6 w-6" aria-hidden />
             </Dialog.Close>
           </div>
-          <nav aria-label="Mobile" className="mt-10 flex flex-1 flex-col gap-6">
+          {/*
+            The tap target is the row, not the glyph. At `text-3xl` these links were 36px
+            of touchable height separated by 24px of dead gap; `min-h-14` with no gap
+            makes the whole 56px pitch hittable and keeps the same rhythm on screen.
+          */}
+          <nav aria-label="Mobile" className="mt-8 flex flex-1 flex-col">
             {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="font-display text-3xl font-semibold uppercase text-foreground transition-colors hover:text-primary"
+                className="flex min-h-14 items-center font-display text-3xl font-semibold uppercase text-foreground transition-colors hover:text-primary"
               >
                 {item.label}
               </Link>
             ))}
           </nav>
-          <div className="mb-5 flex items-center justify-between border-t border-border pt-6">
+          <div className="mt-8 flex shrink-0 items-center justify-between gap-4 border-t border-border pt-6">
             <span className="text-sm font-medium text-muted-foreground">Display currency</span>
             <CurrencySelector />
           </div>
@@ -88,11 +110,17 @@ export function MobileMenu({ items, overHero }) {
             would flash the wrong label at someone who IS signed in, so the account label is
             shown the moment a session hint exists and the probe only confirms it.
           */}
+          {/*
+            `cta`, not `destructive`. This is the sign-in / your-account button and it was
+            rendering in the site's error red — the one colour reserved for refunds,
+            deletions and failures. It is the sheet's primary action, so it takes the
+            primary action colour used everywhere else.
+          */}
           <Button
             href={user ? routes.account() : routes.signin()}
-            variant="destructive"
+            variant="cta"
             size="lg"
-            className="w-full"
+            className="mt-4 w-full shrink-0"
             onClick={() => setOpen(false)}
           >
             {user ? user.first_name || "Your account" : "Sign in"}

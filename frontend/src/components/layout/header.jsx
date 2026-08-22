@@ -13,9 +13,19 @@ export function Header() {
     <header className="fixed inset-x-0 top-0 z-50 px-3">
       <nav
         aria-label="Primary"
-        className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background/90 px-4 shadow-l2 transition-all sm:px-6"
+        /*
+          `bg-background`, not `bg-background/90`. The nav is a fixed pill floating over
+          the page, so at 90% every heading and price it passed showed through it —
+          "Add another destination" and a plan chip were both legible straight through
+          the logo on real phone screenshots. There is no `backdrop-filter` alternative:
+          it is banned on fixed elements here because it promotes them to their own
+          composited layer, which is what caused the iPhone scroll stalls.
+        */
+        className="mx-auto mt-3 flex h-14 max-w-6xl items-center justify-between rounded-full border border-border bg-background px-4 shadow-l2 transition-all sm:px-6"
       >
-        <Link href="/" className="flex items-center gap-2.5">
+        {/* `-my-2` + `py-2`: the anchor grows to the full 44px guideline without moving
+            the logo, which stays optically centred in the 56px bar. */}
+        <Link href="/" className="-my-2 flex min-h-11 items-center gap-2.5 py-2">
           <Image
             src="/images/logo-mark.webp"
             alt=""

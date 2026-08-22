@@ -26,14 +26,14 @@ export function TripQuiz() {
 
   if (done) {
     return (
-      <section className="mx-auto max-w-4xl px-6 py-20">
-        <div className="rounded-card border border-border bg-card p-8 text-center md:p-10">
-          <p className="text-label-caps uppercase text-cta">Your recommendation</p>
+      <section className="mx-auto max-w-4xl px-6 py-14 md:py-20">
+        <div className="rounded-card border border-border bg-card p-6 text-center sm:p-8 md:p-10">
+          <p className="text-label-caps uppercase text-cta-text">Your recommendation</p>
           <p className="mx-auto mt-4 max-w-2xl text-lg">{recommend(answers)}</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href={quiz.cta.href}
-              className="rounded-full bg-cta px-6 py-3 text-sm font-semibold text-cta-foreground transition hover:brightness-110"
+              className="inline-flex min-h-11 items-center rounded-full bg-cta px-6 text-sm font-semibold text-cta-foreground transition hover:brightness-110"
             >
               Browse destinations
             </Link>
@@ -44,7 +44,7 @@ export function TripQuiz() {
                 setStep(0);
                 setAnswers({});
               }}
-              className="rounded-full px-5 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground"
+              className="inline-flex min-h-11 items-center rounded-full px-5 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               Start over
             </button>
@@ -55,13 +55,21 @@ export function TripQuiz() {
   }
 
   return (
-    <section className="mx-auto max-w-4xl px-6 py-20">
-      <div className="text-center">
-        <h2 className="font-display text-3xl font-bold uppercase md:text-4xl">{quiz.intro.title}</h2>
-        <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">{quiz.intro.subtitle}</p>
+    <section className="mx-auto max-w-4xl px-6 py-14 md:py-20">
+      {/* Left-aligned below `sm`, for the same two reasons as the "What is an eSIM"
+          block: four lines of centred copy on a phone gives every line a different
+          starting edge, and every other section heading on this page is left-aligned
+          there. Centred again from `sm`, where the copy is two or three lines. */}
+      <div className="text-left sm:text-center">
+        <h2 className="font-display text-[26px] font-bold uppercase leading-[1.1] sm:text-3xl md:text-4xl">
+          {quiz.intro.title}
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-muted-foreground sm:mt-4">
+          {quiz.intro.subtitle}
+        </p>
       </div>
-      <div className="mt-10 rounded-card border border-border bg-card p-6 md:p-8">
-        <p className="text-label-caps uppercase text-cta">
+      <div className="mt-8 rounded-card border border-border bg-card p-5 sm:p-6 md:mt-10 md:p-8">
+        <p className="text-label-caps uppercase text-cta-text">
           Step {step + 1} of {quiz.steps.length}
         </p>
         <h3 className="mt-2 font-display text-2xl font-semibold">{s.question}</h3>
@@ -88,7 +96,7 @@ export function TripQuiz() {
             type="button"
             onClick={() => setStep((n) => Math.max(0, n - 1))}
             disabled={step === 0}
-            className="rounded-full px-5 py-2 text-sm font-semibold text-muted-foreground disabled:opacity-40"
+            className="inline-flex min-h-11 items-center rounded-full px-5 text-sm font-semibold text-muted-foreground disabled:opacity-40"
           >
             Back
           </button>
@@ -97,7 +105,7 @@ export function TripQuiz() {
               type="button"
               onClick={() => setDone(true)}
               disabled={!answers[s.key]}
-              className="rounded-full bg-cta px-6 py-2.5 text-sm font-semibold text-cta-foreground transition hover:brightness-110 disabled:opacity-40"
+              className="inline-flex min-h-11 items-center rounded-full bg-cta px-6 text-sm font-semibold text-cta-foreground transition hover:brightness-110 disabled:opacity-40"
             >
               See my recommendation
             </button>
@@ -106,7 +114,7 @@ export function TripQuiz() {
               type="button"
               onClick={() => setStep((n) => Math.min(quiz.steps.length - 1, n + 1))}
               disabled={!answers[s.key]}
-              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary-container disabled:opacity-40"
+              className="inline-flex min-h-11 items-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition hover:bg-primary-container disabled:opacity-40"
             >
               Next
             </button>

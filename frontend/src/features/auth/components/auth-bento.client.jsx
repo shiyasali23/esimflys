@@ -52,7 +52,7 @@ export function AuthBento() {
         </form>
         <p className="mt-4 text-sm text-muted-foreground">
           Need an account?{" "}
-          <Link href="/auth/signup" className="font-semibold text-cta hover:underline">Create one</Link>
+          <Link href="/auth/signup" className="font-semibold text-cta-text hover:underline">Create one</Link>
         </p>
       </div>
       <div className="rounded-card border border-border bg-muted p-8">
