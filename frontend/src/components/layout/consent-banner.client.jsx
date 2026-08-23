@@ -37,9 +37,23 @@ export function ConsentBanner() {
    */
   const [show, setShow] = useState(true);
 
+  /*
+   * Sets `data-consent` as well as hiding the banner, and that is not belt-and-braces.
+   *
+   * `--consent-banner-h` is keyed on `:root[data-consent="1"]`, so the attribute and this
+   * banner's visibility are one fact stored in two places. `NoFlashConsentScript` sets it
+   * before paint on a full load, which is why the two normally agree — but if that inline
+   * script ever fails to run (a script-src CSP, a throw, an extension), this effect would
+   * still hide the banner while 129px stayed reserved underneath it, and the buy bar would
+   * float in the middle of the screen over a strip of scrolling page. That is exactly the
+   * bug this file already carries one fix for, in `choose()` below.
+   */
   useEffect(() => {
     const has = document.cookie.split("; ").some((c) => c.startsWith("consent="));
-    if (has) setShow(false);
+    if (has) {
+      document.documentElement.setAttribute("data-consent", "1");
+      setShow(false);
+    }
   }, []);
 
   /*
@@ -96,8 +110,21 @@ export function ConsentBanner() {
         `min-h` matches the `--consent-banner-h` reservation in globals.css exactly. The
         space is reserved in CSS at first paint; this pins the banner to fill it, so the
         buy bar never sits above a short banner with a visible strip of page between them.
-        Measured heights: 149px at 320px wide, 129px from 360px, 77px from 640px. Change
-        one of these and you must change the other.
+
+        [MEASURED] natural height of this banner, min-h removed, on the live markup:
+            300px  113px   column, text 2 lines   <- max of the <360 bucket
+            320px  113px   column, text 2 lines
+            360px   79px   row,    text 3 lines   <- max of the 360-639 bucket
+            390px   79px
+            430px   79px
+            640px   69px   row,    text 1 line    <- max of the >=640 bucket
+        Each bucket reserves the TALLEST width inside it, because reserving less would put
+        the cookie notice over the pay button. Column below 360 is deliberate: forcing the
+        row there measured 115px against the column's 113px, since the buttons leave the
+        text only 113px to wrap in.
+
+        Change one of these and you must change the other, and re-measure rather than
+        adjusting by eye — see the note in globals.css.
       */
       /*
         `bg-background`, not `bg-background/95`. This is pinned over the bottom of every
@@ -107,22 +134,42 @@ export function ConsentBanner() {
         because it promotes them to their own composited layer, which is what caused the
         iPhone scroll stalls.
       */
-      className="fixed inset-x-0 bottom-0 z-[70] min-h-[149px] border-t border-border bg-background p-4 min-[360px]:min-h-[129px] sm:min-h-[77px]"
+      className="fixed inset-x-0 bottom-0 z-[70] min-h-[113px] border-t border-border bg-background p-3 min-[360px]:min-h-[79px] sm:min-h-[69px]"
     >
-      <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          We use an essential cookie to remember your currency. Analytics stays off unless you accept.
+      {/*
+        A row from 360px, not from 640px.
+
+        Stacked, this banner was 129px tall on a phone. Above it sits a 152px buy bar and
+        above that a 68px header: 349px of fixed chrome on an 844px viewport, 41% of the
+        screen, and the buy bar pushed 129px clear of the bottom — which reads as a bar
+        floating in the middle of the page rather than one pinned to it. Reported as
+        exactly that from a real iPhone.
+
+        Turning the row on at 360px puts the two buttons beside the text instead of under
+        it, so the banner's height becomes the button height rather than text + gap +
+        buttons. The copy is unchanged: it is the consent wording, and trimming it to save
+        pixels is not a layout decision.
+      */}
+      <div className="mx-auto flex max-w-6xl flex-col items-start gap-2 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between min-[360px]:gap-3">
+        <p className="text-[13px] leading-[18px] text-muted-foreground">
+          We use one essential cookie. Analytics stays off unless you accept.
         </p>
         {/*
           `md` (h-11, 44 px), not `sm` (h-9, 36 px). These two are the only way to dismiss
           a banner pinned over the bottom of every page, so a missed tap leaves it covering
           the buy bar — the exact collision the height reservation exists to prevent.
         */}
-        <div className="flex shrink-0 gap-2">
-          <Button variant="ghost" size="md" onClick={() => choose("declined")}>
+        {/*
+          `px-4`, overriding size `md`'s `px-6`. The height stays 44px — these two are the
+          only way to dismiss a banner pinned over the bottom of every page, so a missed
+          tap leaves it covering the buy bar. Only the horizontal padding gives way, to buy
+          the text enough width to wrap short beside them.
+        */}
+        <div className="flex shrink-0 gap-2 self-end min-[360px]:self-auto">
+          <Button variant="ghost" size="md" className="px-4" onClick={() => choose("declined")}>
             Decline
           </Button>
-          <Button variant="cta" size="md" onClick={() => choose("accepted")}>
+          <Button variant="cta" size="md" className="px-4" onClick={() => choose("accepted")}>
             Accept
           </Button>
         </div>

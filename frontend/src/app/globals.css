@@ -218,9 +218,16 @@
  * The heights below are measured, not guessed — the banner is fixed copy, so its height is
  * a function of viewport width only:
  *
- *     320px       column layout, 3 lines   149px
- *     360-639px   column layout, 2 lines   129px
- *     >=640px     row layout               77px
+ *     <360px      column layout, 2 lines   113px   (measured at 300 and 320)
+ *     360-639px   row layout,    3 lines    79px   (measured at 360, 390, 430)
+ *     >=640px     row layout,    1 line     69px   (measured at 640)
+ *
+ * These dropped from 149/129/77 when the banner was compacted: the row layout now starts
+ * at 360px instead of 640px, padding went p-4 -> p-3, the text is 13px, and the copy was
+ * shortened from 91 characters to 67. On a phone that is 129px -> 79px, which is 50px the
+ * buy bar is no longer pushed up by. It was reported from a real iPhone as the buy bar
+ * "floating" in the middle of the screen — it was correctly offset by this reservation,
+ * but a 152px bar sitting 129px clear of the bottom does not read as pinned to anything.
  *
  * The banner also carries matching `min-h` utilities, so it fills the reservation exactly
  * rather than leaving a gap under the buy bar at widths where the text wraps short.
@@ -228,9 +235,9 @@
  * `0px` when consent is already given, because the banner is `display: none` above and
  * occupies nothing — this must stay in step with that rule or the bar floats.
  */
-:root { --consent-banner-h: 149px; }
-@media (min-width: 360px) { :root { --consent-banner-h: 129px; } }
-@media (min-width: 640px) { :root { --consent-banner-h: 77px; } }
+:root { --consent-banner-h: 113px; }
+@media (min-width: 360px) { :root { --consent-banner-h: 79px; } }
+@media (min-width: 640px) { :root { --consent-banner-h: 69px; } }
 :root[data-consent="1"] { --consent-banner-h: 0px; }
 
 .price [data-c] { display: none; }
