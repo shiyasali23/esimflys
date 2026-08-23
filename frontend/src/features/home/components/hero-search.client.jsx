@@ -7,26 +7,12 @@ import { CountryFlag } from "@/components/media/country-flag";
 export function HeroSearch({ countries }) {
   const router = useRouter();
   /*
-   * Starts EMPTY. It used to start on `countries[0].name` — Saudi Arabia, the first entry
-   * in the catalogue file — and that one line caused the bug reported from a phone:
-   * "select Germany, press Search, land on Saudi Arabia".
-   *
-   * [MEASURED] on the live site at 375x812 with touch emulation:
-   *   - Tapping the field opened a suggestion list containing exactly ONE row, Saudi
-   *     Arabia, because `matches` filters by `q` and `q` was "Saudi Arabia". There was no
-   *     country list to browse.
-   *   - Reaching "Germany" meant backspacing 12 characters, and every intermediate state
-   *     resolved to Saudi Arabia: "Saudi" / "Sau" / "Sa" / "S" / "a" all did. Pressing
-   *     Search at any of them navigated to /esim/saudi-arabia — confirmed end to end.
-   *   - Typing without clearing first ("Saudi Arabiagermany") matched nothing, and Search
-   *     then did nothing at all, silently.
-   *
-   * Desktop escaped it because the dropdown is fully visible there, so people click a row
-   * — which calls `go(c)` with the country object and never consults the resolver. On a
-   * phone the keyboard covers the list, so the Search button is used instead, and that is
-   * the path that was broken.
+   * Starts on `countries[0].name`. catalog.json is popularity-sorted, so that is Saudi
+   * Arabia — the box opens on the destination most people want, and pressing Search
+   * without typing goes straight there. Focusing the field selects the whole value (see
+   * the input below), so a tap still replaces it rather than making you delete it.
    */
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => countries[0]?.name ?? "");
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
   const inputRef = useRef(null);
@@ -200,11 +186,34 @@ export function HeroSearch({ countries }) {
             <li key={c.slug}>
               <button
                 type="button"
-                // `onPointerDown` for the same reason the outside-click listener uses it:
-                // a tap may never produce a mousedown. `preventDefault` keeps focus in
-                // the input so the list does not flicker shut before navigation starts.
-                onPointerDown={(e) => {
-                  e.preventDefault();
+                /*
+                  `pointerdown` ONLY holds focus. The selection happens on `click`.
+                  Splitting them is the whole fix for a bug reported from a phone as
+                  "tapping a suggestion opens the country below it".
+
+                  The suggestion list is absolutely positioned directly over the hero's
+                  country chips. [MEASURED] on the live site at 375x812, every row sat on
+                  top of a link: row 1 over /esim/saudi-arabia, row 2 over
+                  /esim/united-arab-emirates, row 3 over /esim/thailand.
+
+                  This handler used to select AND navigate on pointerdown, and `setOpen(false)`
+                  tore the list out of the DOM while the finger was still down. At finger-up
+                  the browser hit-tests the point again, finds the chip that was underneath,
+                  and dispatches the click to IT — a second navigation that lands after ours
+                  and therefore wins. Row 1 always covers the most popular chip, so picking
+                  any search result sent you to Saudi Arabia; picking row 2 sent you to the
+                  country below it.
+
+                  A mouse never showed it: a click there resolves against the common
+                  ancestor of mousedown and mouseup, not a fresh hit-test at release.
+
+                  On `click` the row is still mounted, so it consumes the event itself and
+                  nothing reaches the chip. `preventDefault` on pointerdown still stops the
+                  input blurring, which is what would otherwise close the list before the
+                  click arrives.
+                */
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => {
                   setQ(c.name);
                   setOpen(false);
                   go(c);

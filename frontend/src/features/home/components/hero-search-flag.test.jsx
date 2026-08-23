@@ -12,14 +12,9 @@ const flag = (c) => c.querySelector('[role="img"]');
 const icon = (c) => c.querySelector("svg");
 
 describe("hero search flag", () => {
-  /*
-   * The box starts empty now, so there is no initial destination to flag — see the note
-   * on `q` in the component. The magnifier is the correct resting state.
-   */
-  it("starts on the magnifier, because an empty box has no destination", () => {
+  it("shows the initial destination's flag, not a magnifier", () => {
     const { container } = render(<HeroSearch countries={COUNTRIES} />);
-    expect(flag(container)).toBeNull();
-    expect(icon(container)).toBeTruthy();
+    expect(flag(container).textContent).toBe("🇸🇦");
   });
 
   /** The flag must not advertise a guess the Search button would not honour. */
@@ -83,9 +78,8 @@ describe("hero search flag", () => {
     expect(icon(container)).toBeTruthy();
   });
 
-  it("the flag is decorative, not announced twice", async () => {
+  it("the flag is decorative, not announced twice", () => {
     const { container } = render(<HeroSearch countries={COUNTRIES} />);
-    await userEvent.type(input(), "Thailand");
     expect(flag(container).closest('[aria-hidden="true"]')).toBeTruthy();
   });
 });

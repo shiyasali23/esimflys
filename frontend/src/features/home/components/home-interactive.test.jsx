@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HeroSearch } from "./hero-search.client";
 import { TripQuiz } from "./trip-quiz.client";
@@ -31,19 +31,49 @@ const AMBIGUOUS = [
 ];
 
 describe("hero search", () => {
-  /*
-   * Inverted deliberately. Seeding the box with `countries[0].name` filtered the
-   * suggestion list down to that one country, so the first tap on a phone offered nothing
-   * to browse, and every partial deletion on the way to another name still resolved to it
-   * — "Sa" + Search went to /esim/saudi-arabia, confirmed on the live site.
-   */
-  it("starts empty, so the first tap offers the whole catalogue", async () => {
+  /** catalog.json is popularity-sorted, so the box opens on the most-wanted destination. */
+  it("starts on the most popular destination", () => {
+    render(<HeroSearch countries={COUNTRIES} />);
+    expect(screen.getByLabelText(/search destinations/i).value).toBe(COUNTRIES[0].name);
+  });
+
+  /** So a tap replaces the default instead of making you delete it character by character. */
+  it("selects the whole value on focus", async () => {
     render(<HeroSearch countries={COUNTRIES} />);
     const input = screen.getByLabelText(/search destinations/i);
-    expect(input.value).toBe("");
 
     await userEvent.click(input);
+
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe(COUNTRIES[0].name.length);
+  });
+
+  /*
+   * The regression guard for the ghost click.
+   *
+   * The suggestion list is positioned over the hero's country chips. Selecting on
+   * pointerdown tore the list out of the DOM while the finger was still down, so at
+   * finger-up the browser hit-tested again and delivered the click to the chip
+   * underneath — a second navigation that landed after ours and won. Row 1 covers the
+   * most popular chip, which is why every pick ended on Saudi Arabia.
+   *
+   * Asserted as "pointerdown alone changes nothing": as long as that holds, the row is
+   * still mounted when the click arrives and consumes it itself.
+   */
+  it("does not select or navigate on pointerdown alone", async () => {
+    render(<HeroSearch countries={COUNTRIES} />);
+    const input = screen.getByLabelText(/search destinations/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, "thai");
+
+    const row = screen.getAllByRole("button", { name: /Thailand/ })[0];
+    fireEvent.pointerDown(row);
+
+    expect(routerMock.push).not.toHaveBeenCalled();
     expect(screen.getAllByRole("button", { name: /Thailand/ }).length).toBeGreaterThan(0);
+
+    fireEvent.click(row);
+    expect(routerMock.push).toHaveBeenCalledWith("/esim/thailand");
   });
 
   /**

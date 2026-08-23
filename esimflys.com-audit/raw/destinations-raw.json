@@ -1,0 +1,57 @@
+{
+  "url": "https://esimflys.com/destinations",
+  "status_code": 200,
+  "content": "<!DOCTYPE html><html lang=\"en\" class=\"inter_tight_9e018311-module__PbWn6a__variable inter_a869fe2d-module__Nl2jCG__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/ab57efd000576a30-s.p.3fofz6dws3mg0.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"pr...",
+  "raw_content": "<!DOCTYPE html><html lang=\"en\" class=\"inter_tight_9e018311-module__PbWn6a__variable inter_a869fe2d-module__Nl2jCG__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-wi...",
+  "is_spa": false,
+  "extracted_text": "Every supported destination, searchable and filterable by region. Tap a country to see plans, activation rules, and what to expect on arrival.\n68 destinations\nWe use one essential cookie. Analytics stays off unless you accept.",
+  "publication_date": "2026-01-01",
+  "accessibility_tree": null,
+  "headers": {
+    "Date": "Sun, 23 Aug 2026 18:41:18 GMT",
+    "Content-Type": "text/html",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive",
+    "CF-Cache-Status": "HIT",
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "content-security-policy": "frame-ancestors 'none'",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(self \"https://js.stripe.com\")",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=lJCwW7llSDZ7MJzWoJu3HsEmcZvpYiDFN0eU3IL0hjJqdr%2BpZz4Hs6brPglPxVt%2FJ6Yft%2BRTTJUEyBBZCN47r2a9U0HghpyXQQxY6n%2BsiKOfoVjVFn3TUzC6y0Y5nsM%3D\"}]}",
+    "Content-Encoding": "br",
+    "Server": "cloudflare",
+    "CF-RAY": "a2fc4027989378f2-LHR",
+    "alt-svc": "h3=\":443\"; ma=86400"
+  },
+  "redirect_chain": [],
+  "console_errors": [],
+  "render_diagnostics": [],
+  "render_engine": null,
+  "render_ms": null,
+  "mode_used": "raw",
+  "error": null,
+  "structured_data": {
+    "block_count": 1,
+    "processed_count": 1,
+    "total_bytes": 450,
+    "truncated": false,
+    "blocks": [
+      {
+        "index": 1,
+        "size_bytes": 450,
+        "valid": true,
+        "types": [
+          "EntryPoint",
+          "Organization",
+          "SearchAction",
+          "WebSite"
+        ],
+        "types_truncated": false
+      }
+    ]
+  }
+}

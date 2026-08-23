@@ -1,0 +1,141 @@
+{
+  "block_count": 2,
+  "processed_count": 2,
+  "total_bytes": 2762,
+  "truncated": false,
+  "blocks": [
+    {
+      "index": 1,
+      "size_bytes": 450,
+      "valid": true,
+      "types": [
+        "EntryPoint",
+        "Organization",
+        "SearchAction",
+        "WebSite"
+      ],
+      "types_truncated": false,
+      "data": [
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "eSIMFlys",
+          "url": "https://esimflys.com",
+          "logo": "https://esimflys.com/icons/logo-512.png"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "eSIMFlys",
+          "url": "https://esimflys.com",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://esimflys.com/destinations?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "size_bytes": 2312,
+      "valid": true,
+      "types": [
+        "AggregateOffer",
+        "Answer",
+        "Brand",
+        "BreadcrumbList",
+        "FAQPage",
+        "ListItem",
+        "Product",
+        "Question"
+      ],
+      "types_truncated": false,
+      "data": [
+        {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://esimflys.com/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Destinations",
+              "item": "https://esimflys.com/destinations"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Turkey",
+              "item": "https://esimflys.com/esim/turkey"
+            }
+          ]
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "eSIM Turkey",
+          "description": "Prepaid travel eSIM data plans for Turkey. Fast 4G/5G data, install by QR, keep your number.",
+          "brand": {
+            "@type": "Brand",
+            "name": "eSIMFlys"
+          },
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "USD",
+            "lowPrice": "5.99",
+            "highPrice": "22.99",
+            "offerCount": "8",
+            "availability": "https://schema.org/InStock"
+          }
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Which networks will my eSIM use in Turkey, and will my phone work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "In Turkey the eSIM connects through TÃ¼rk Telekom, Aycell, and Vodafone. It works on eSIM-capable, carrier-unlocked phones, including most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer. Dial *#06# to check that your phone shows an EID."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "When does my Turkey plan start?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Most plans begin when the eSIM first connects to a local network in Turkey, not at the time of purchase. This lets you install it on Wi-Fi before you leave, with the plan starting once you arrive and switch the line on."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I keep my phone number while using the eSIM?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. The eSIM is data-only, so your existing SIM stays active for calls and texts on your usual number. The eSIM only carries your mobile data in Turkey. Just switch on data roaming for the eSIM line so it can connect to a local network."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Which data size should I pick for Turkey?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "It comes down to your usage. Fixed bundles run from 1 GB up to 50 GB over 5 to 30 days, from $0.30/day, while the unlimited-daily plan provides 2 GB per day. Light users can take a smaller tier, and heavier or longer trips suit a larger bundle or unlimited-daily. Some plans support top-ups."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

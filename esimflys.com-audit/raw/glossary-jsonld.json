@@ -1,0 +1,116 @@
+{
+  "block_count": 2,
+  "processed_count": 2,
+  "total_bytes": 2911,
+  "truncated": false,
+  "blocks": [
+    {
+      "index": 1,
+      "size_bytes": 450,
+      "valid": true,
+      "types": [
+        "EntryPoint",
+        "Organization",
+        "SearchAction",
+        "WebSite"
+      ],
+      "types_truncated": false,
+      "data": [
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "eSIMFlys",
+          "url": "https://esimflys.com",
+          "logo": "https://esimflys.com/icons/logo-512.png"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "eSIMFlys",
+          "url": "https://esimflys.com",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://esimflys.com/destinations?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "size_bytes": 2461,
+      "valid": true,
+      "types": [
+        "DefinedTerm",
+        "DefinedTermSet"
+      ],
+      "types_truncated": false,
+      "data": {
+        "@context": "https://schema.org",
+        "@type": "DefinedTermSet",
+        "name": "eSIM Glossary",
+        "url": "https://esimflys.com/glossary",
+        "hasDefinedTerm": [
+          {
+            "@type": "DefinedTerm",
+            "name": "APN",
+            "description": "Access Point Name. The setting that tells your device how to reach a mobile-data network. Travel eSIMs normally configure it for you, so you rarely need to change it."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "eSIM",
+            "description": "Embedded SIM. A SIM built into your device as software rather than a plastic card. You add a plan by downloading a profile, so there's nothing to insert or swap."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "EID",
+            "description": "Embedded Identifier. The permanent serial number of the eSIM chip inside your device. Dial *#06#, and if an EID appears your device can use an eSIM."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "ICCID",
+            "description": "Integrated Circuit Card Identifier. The unique ID of a single SIM profile â physical or eSIM â that tells the network which plan is installed on your device."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "IMEI",
+            "description": "International Mobile Equipment Identity. A unique number that identifies your phone itself, separate from any SIM. Dial *#06# to see it."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "LTE",
+            "description": "Long-Term Evolution. The technical name for 4G mobile data â the fast, widely available standard most travel eSIMs use for browsing, maps, and streaming."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "MNO",
+            "description": "Mobile Network Operator. A company that owns the towers and radio network in a country. Your travel eSIM connects through these local operators abroad."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "MVNO",
+            "description": "Mobile Virtual Network Operator. A mobile brand that sells service without owning towers, renting capacity from an operator instead. Many eSIM providers work this way."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "Roaming",
+            "description": "Using a network other than your home carrier's while you travel. A travel eSIM gives you local data directly, so you skip your home carrier's roaming charges."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "VPN",
+            "description": "Virtual Private Network. A tool that encrypts your connection and hides your location, adding privacy on public Wi-Fi and mobile data while you're away."
+          },
+          {
+            "@type": "DefinedTerm",
+            "name": "VoLTE",
+            "description": "Voice over LTE. A way to place calls over a 4G network instead of older voice channels, giving clearer audio and quicker connections where it's supported."
+          }
+        ]
+      }
+    }
+  ]
+}

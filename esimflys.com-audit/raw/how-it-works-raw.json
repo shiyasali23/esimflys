@@ -1,0 +1,57 @@
+{
+  "url": "https://esimflys.com/how-it-works",
+  "status_code": 200,
+  "content": "<!DOCTYPE html><html lang=\"en\" class=\"inter_tight_9e018311-module__PbWn6a__variable inter_a869fe2d-module__Nl2jCG__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/ab57efd000576a30-s.p.3fofz6dws3mg0.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"pr...",
+  "raw_content": "<!DOCTYPE html><html lang=\"en\" class=\"inter_tight_9e018311-module__PbWn6a__variable inter_a869fe2d-module__Nl2jCG__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-wi...",
+  "is_spa": false,
+  "extracted_text": "How eSIMFlys works\nA travel eSIM is a digital SIM you install by scanning a QR code \u00e2 no physical card, no swapping, no roaming bills. Here's the whole process.\n1. Choose your plan\nPick a destination from 68 countries and select the data amount and validity that fit your trip.\n2. Receive your QR code\nAfter checkout we email you an eSIM QR code, usually within minutes.\n3. Scan & install\nOpen your phone's settings, add an eSIM, and scan the QR code. Install before you travel while on Wi-Fi.\n4. Con...",
+  "publication_date": "2026-01-01",
+  "accessibility_tree": null,
+  "headers": {
+    "Date": "Sun, 23 Aug 2026 18:41:23 GMT",
+    "Content-Type": "text/html",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive",
+    "CF-Cache-Status": "HIT",
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "content-security-policy": "frame-ancestors 'none'",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(self \"https://js.stripe.com\")",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=76diKA373mi0YzCFAfGyi7IwdqEFYLNtDMGEqwDp%2FY%2Bblqkyix%2FjJpzev6ugmyFXRfCw7WAb%2FzS9Y88%2FVZJEmtLsMu%2FLrzY8vXi3iST4HzxvTzSzU2v9CW3yGk5Jdks%3D\"}]}",
+    "Content-Encoding": "br",
+    "Server": "cloudflare",
+    "CF-RAY": "a2fc4048df50bd91-LHR",
+    "alt-svc": "h3=\":443\"; ma=86400"
+  },
+  "redirect_chain": [],
+  "console_errors": [],
+  "render_diagnostics": [],
+  "render_engine": null,
+  "render_ms": null,
+  "mode_used": "raw",
+  "error": null,
+  "structured_data": {
+    "block_count": 1,
+    "processed_count": 1,
+    "total_bytes": 450,
+    "truncated": false,
+    "blocks": [
+      {
+        "index": 1,
+        "size_bytes": 450,
+        "valid": true,
+        "types": [
+          "EntryPoint",
+          "Organization",
+          "SearchAction",
+          "WebSite"
+        ],
+        "types_truncated": false
+      }
+    ]
+  }
+}

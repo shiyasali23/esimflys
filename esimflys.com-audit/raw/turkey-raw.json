@@ -1,0 +1,73 @@
+{
+  "url": "https://esimflys.com/esim/turkey",
+  "status_code": 200,
+  "content": "<!DOCTYPE html><html lang=\"en\" class=\"inter_tight_9e018311-module__PbWn6a__variable inter_a869fe2d-module__Nl2jCG__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/ab57efd000576a30-s.p.3fofz6dws3mg0.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"pr...",
+  "raw_content": "<!DOCTYPE html><html lang=\"en\" class=\"inter_tight_9e018311-module__PbWn6a__variable inter_a869fe2d-module__Nl2jCG__variable\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-wi...",
+  "is_spa": false,
+  "extracted_text": "eSIM Turkey\nChoose your plan\nPrepaid travel data from $0.300,99\u00c2 \u00e2\u00ac\u00c2\u00a30.99\u00e2\u00b929.00AED\u00c2 1.50SAR\u00c2 1.50\u00ef\u00bf\u00a550$0.99$0.99/day. Install by QR code and keep your number for calls and texts.\n- QR code emailed to you instantly\n- Data-only \u00e2 your number stays\n- Runs on local 4G/5G networks\n- No contracts, no deposits\nYour plan\n10 GB \u00c2\u00b7 30 days\nSecure encrypted payment\nAbout eSIM in Turkey\nThis page helps you arrange mobile data for your trip to Turkey with a travel eSIM. The plan is data-only, so your normal...",
+  "publication_date": "2026-01-01",
+  "accessibility_tree": null,
+  "headers": {
+    "Date": "Sun, 23 Aug 2026 18:33:57 GMT",
+    "Content-Type": "text/html",
+    "Transfer-Encoding": "chunked",
+    "Connection": "keep-alive",
+    "CF-Cache-Status": "HIT",
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "content-security-policy": "frame-ancestors 'none'",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(self \"https://js.stripe.com\")",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=jLvoBZA0f3zHznPxIwYAhwvZvjQGm4yk%2Bauj47MwCLZ6I%2BwfWzabnDK53c7aY80ZXY4Ip2d0SEdD0If9v98rtxcaXWWuYe9XSCIgfeYK1HmotY%2FlXAUP5gegnEmK7k8%3D\"}]}",
+    "Content-Encoding": "br",
+    "Server": "cloudflare",
+    "CF-RAY": "a2fc35680ed48e0d-LHR",
+    "alt-svc": "h3=\":443\"; ma=86400"
+  },
+  "redirect_chain": [],
+  "console_errors": [],
+  "render_diagnostics": [],
+  "render_engine": null,
+  "render_ms": null,
+  "mode_used": "raw",
+  "error": null,
+  "structured_data": {
+    "block_count": 2,
+    "processed_count": 2,
+    "total_bytes": 2762,
+    "truncated": false,
+    "blocks": [
+      {
+        "index": 1,
+        "size_bytes": 450,
+        "valid": true,
+        "types": [
+          "EntryPoint",
+          "Organization",
+          "SearchAction",
+          "WebSite"
+        ],
+        "types_truncated": false
+      },
+      {
+        "index": 2,
+        "size_bytes": 2312,
+        "valid": true,
+        "types": [
+          "AggregateOffer",
+          "Answer",
+          "Brand",
+          "BreadcrumbList",
+          "FAQPage",
+          "ListItem",
+          "Product",
+          "Question"
+        ],
+        "types_truncated": false
+      }
+    ]
+  }
+}
