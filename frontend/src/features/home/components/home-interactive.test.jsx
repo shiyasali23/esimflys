@@ -19,10 +19,64 @@ import { routerMock } from "../../../../vitest.setup";
 
 afterEach(() => vi.restoreAllMocks());
 
+/**
+ * Three countries chosen for their collisions: "ge" is Georgia's ISO2 code AND the first
+ * two letters of Germany, and Singapore merely CONTAINS a "g". Catalogue order puts
+ * Singapore first on purpose, so a test that passes by accident of ordering fails here.
+ */
+const AMBIGUOUS = [
+  { slug: "singapore", iso2: "SG", name: "Singapore", flagEmoji: "\u{1F1F8}\u{1F1EC}", region: "Asia" },
+  { slug: "georgia", iso2: "GE", name: "Georgia", flagEmoji: "\u{1F1EC}\u{1F1EA}", region: "Europe" },
+  { slug: "germany", iso2: "DE", name: "Germany", flagEmoji: "\u{1F1E9}\u{1F1EA}", region: "Europe" },
+];
+
 describe("hero search", () => {
-  it("starts on a real destination rather than an empty box", () => {
+  /*
+   * Inverted deliberately. Seeding the box with `countries[0].name` filtered the
+   * suggestion list down to that one country, so the first tap on a phone offered nothing
+   * to browse, and every partial deletion on the way to another name still resolved to it
+   * — "Sa" + Search went to /esim/saudi-arabia, confirmed on the live site.
+   */
+  it("starts empty, so the first tap offers the whole catalogue", async () => {
     render(<HeroSearch countries={COUNTRIES} />);
-    expect(screen.getByLabelText(/search destinations/i).value).toBe("Saudi Arabia");
+    const input = screen.getByLabelText(/search destinations/i);
+    expect(input.value).toBe("");
+
+    await userEvent.click(input);
+    expect(screen.getAllByRole("button", { name: /Thailand/ }).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The reported bug, as a test: a query that has not narrowed to one country is not a
+   * destination. "ge" is both Georgia's ISO2 code and the start of Germany, which is the
+   * collision that used to send people typing "germany" to Georgia.
+   */
+  it("does not navigate while the query still matches several countries", async () => {
+    render(<HeroSearch countries={AMBIGUOUS} />);
+    const input = screen.getByLabelText(/search destinations/i);
+
+    await userEvent.type(input, "ge{Enter}");
+
+    expect(routerMock.push).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("button", { name: /Germany/ }).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * Ranking, not catalogue order. The old version kept the catalogue's order, so the first
+   * suggestion for "g" was whichever country sat highest in the file — walking the target
+   * through Singapore and Georgia on the way to Germany.
+   */
+  it("ranks a prefix match above a mere substring match", async () => {
+    render(<HeroSearch countries={AMBIGUOUS} />);
+    const input = screen.getByLabelText(/search destinations/i);
+
+    await userEvent.type(input, "ge");
+
+    // Scoped to the suggestion list — getAllByRole("button") would return the submit
+    // button first, which is not a suggestion.
+    const rows = within(screen.getByRole("list")).getAllByRole("button");
+    expect(rows[0].textContent).toMatch(/Georgia|Germany/);
+    expect(rows.map((r) => r.textContent).join(" ")).not.toMatch(/Singapore/);
   });
 
   it("suggests matches as the user types", async () => {
@@ -68,7 +122,8 @@ describe("hero search", () => {
     expect(routerMock.push).toHaveBeenCalledWith("/esim/iceland");
   });
 
-  it("falls back to the best suggestion for a partial query", async () => {
+  /** A partial query still navigates when it narrows the catalogue to exactly one. */
+  it("navigates on a partial query that matches only one country", async () => {
     render(<HeroSearch countries={COUNTRIES} />);
     const input = screen.getByLabelText(/search destinations/i);
 

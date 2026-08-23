@@ -6,9 +6,30 @@ import { CountryFlag } from "@/components/media/country-flag";
 
 export function HeroSearch({ countries }) {
   const router = useRouter();
-  const [q, setQ] = useState(() => countries[0]?.name ?? "");
+  /*
+   * Starts EMPTY. It used to start on `countries[0].name` — Saudi Arabia, the first entry
+   * in the catalogue file — and that one line caused the bug reported from a phone:
+   * "select Germany, press Search, land on Saudi Arabia".
+   *
+   * [MEASURED] on the live site at 375x812 with touch emulation:
+   *   - Tapping the field opened a suggestion list containing exactly ONE row, Saudi
+   *     Arabia, because `matches` filters by `q` and `q` was "Saudi Arabia". There was no
+   *     country list to browse.
+   *   - Reaching "Germany" meant backspacing 12 characters, and every intermediate state
+   *     resolved to Saudi Arabia: "Saudi" / "Sau" / "Sa" / "S" / "a" all did. Pressing
+   *     Search at any of them navigated to /esim/saudi-arabia — confirmed end to end.
+   *   - Typing without clearing first ("Saudi Arabiagermany") matched nothing, and Search
+   *     then did nothing at all, silently.
+   *
+   * Desktop escaped it because the dropdown is fully visible there, so people click a row
+   * — which calls `go(c)` with the country object and never consults the resolver. On a
+   * phone the keyboard covers the list, so the Search button is used instead, and that is
+   * the path that was broken.
+   */
+  const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     // `pointerdown`, not `mousedown`. A touch only produces a synthetic mouse event
@@ -22,35 +43,85 @@ export function HeroSearch({ countries }) {
     return () => document.removeEventListener("pointerdown", onDown);
   }, []);
 
+  /**
+   * Ranked, not filtered in catalogue order.
+   *
+   * The old version kept the catalogue's own order, so the first suggestion for a partial
+   * query was whichever country happened to sit highest in the file. Typing g-e-r-m-a-n-y
+   * one key at a time walked the target through Singapore ("g"), then Georgia ("ge"),
+   * before reaching Germany — so pressing Search a keystroke early landed on Georgia.
+   *
+   * Exact name or ISO2 first, then names that START with the query, then names that merely
+   * contain it. `sort` is stable, so catalogue order still breaks ties within a rank.
+   */
   const matches = useMemo(() => {
     const query = q.trim().toLowerCase();
-    const list = query
-      ? countries.filter(
-          (c) => c.name.toLowerCase().includes(query) || c.iso2.toLowerCase().includes(query),
-        )
-      : countries;
-    return list.slice(0, 6);
+    if (!query) return countries.slice(0, 6);
+    const ranked = [];
+    for (const c of countries) {
+      const name = c.name.toLowerCase();
+      const iso = c.iso2.toLowerCase();
+      let rank;
+      if (name === query || iso === query) rank = 0;
+      else if (name.startsWith(query)) rank = 1;
+      else if (name.includes(query)) rank = 2;
+      else continue;
+      ranked.push({ c, rank });
+    }
+    ranked.sort((a, b) => a.rank - b.rank);
+    return ranked.slice(0, 6).map((r) => r.c);
   }, [q, countries]);
 
   /**
-   * The country submitting would actually navigate to. An exact name beats the first
-   * suggestion, so typing "Oman" does not land on Romania — which contains "oman".
-   * `null` for an empty box or a query nothing matches, so neither the flag nor a
-   * submit invents a destination.
+   * The country a submit would navigate to, or `null` when the box does not identify one
+   * UNIQUELY.
+   *
+   * This used to fall back to `matches[0]` — the best guess. A guess is fine for ordering
+   * a list and wrong for a destination: it is what sent "ge" to Georgia and every partial
+   * deletion of the old default to Saudi Arabia. Now it resolves only when the answer is
+   * unambiguous: an exact name, an exact ISO2 code, or a query that narrowed the
+   * catalogue to exactly one country ("icel" -> Iceland). Anything else is not a
+   * destination, it is a choice, and `onSubmit` opens the list to let it be made.
+   *
+   * The flag beside the box reads from this too, so it shows a country only when Search
+   * would actually go there, instead of advertising a guess.
+   *
+   * An exact ISO2 code is deliberately NOT a shortcut here, though it still ranks first in
+   * the list. Two-letter codes collide with two-letter name prefixes, and the collisions
+   * are exactly the dangerous ones: "ge" is Georgia's code and also the first two letters
+   * of Germany, so treating the code as decisive would send someone typing "germany" to
+   * Georgia — the same class of wrong-destination bug this change exists to remove. A code
+   * still navigates when it leaves only one country standing, which is the case that
+   * matters ("AE" -> United Arab Emirates); it just goes through the same uniqueness test
+   * as everything else.
    */
-  const resolved = useMemo(() => {
+  const target = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return null;
-    return countries.find((c) => c.name.toLowerCase() === query) || matches[0] || null;
+    const exact = countries.find((c) => c.name.toLowerCase() === query);
+    if (exact) return exact;
+    return matches.length === 1 ? matches[0] : null;
   }, [q, countries, matches]);
 
   const go = (c) => {
     if (c) router.push(`/esim/${c.slug}`);
   };
 
+  /*
+   * Submitting without a unique target opens the suggestions rather than navigating or —
+   * as it did before — doing nothing at all. An empty box shows the whole list, a partial
+   * query shows what it narrowed to, and a query nothing matches falls through to the
+   * "No countries match" panel below. Every press of Search now produces a visible result.
+   */
   const onSubmit = (e) => {
     e.preventDefault();
-    go(resolved);
+    if (target) {
+      setOpen(false);
+      go(target);
+      return;
+    }
+    setOpen(true);
+    inputRef.current?.focus();
   };
 
   return (
@@ -68,8 +139,8 @@ export function HeroSearch({ countries }) {
           className="flex h-5 w-5 shrink-0 items-center justify-center"
           aria-hidden="true"
         >
-          {resolved?.flagEmoji ? (
-            <CountryFlag country={resolved} className="text-xl" />
+          {target?.flagEmoji ? (
+            <CountryFlag country={target} className="text-xl" />
           ) : (
             <Search className="h-5 w-5 text-muted-foreground" />
           )}
@@ -85,6 +156,7 @@ export function HeroSearch({ countries }) {
           under 16px, and a zoomed hero does not zoom back out on blur.
         */}
         <input
+          ref={inputRef}
           type="text"
           size={1}
           value={q}
@@ -92,7 +164,18 @@ export function HeroSearch({ countries }) {
             setQ(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          /*
+            Selects whatever is already in the box on focus, so a tap REPLACES the last
+            search instead of dropping a caret into the middle of it. On a phone that was
+            the difference between typing "germany" and typing "Saudi Arabiagermany" —
+            which matched nothing and made Search a no-op. Guarded on a non-empty value:
+            calling select() on an empty field fights the browser's own caret placement
+            for no benefit.
+          */
+          onFocus={(e) => {
+            if (e.target.value) e.target.select();
+            setOpen(true);
+          }}
           placeholder="Search a country…"
           aria-label="Search destinations"
           autoComplete="off"
