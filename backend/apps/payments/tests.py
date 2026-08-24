@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.utils import timezone
@@ -554,3 +555,63 @@ class PaymentReconciliationTests(APITestCase):
 
         self.assertEqual(payment_services.reconcile_stuck_payments(limit=2), 2)
         self.assertEqual(payment_services.reconcile_stuck_payments(limit=2), 1)
+
+
+@override_settings(PAYMENTS_GATEWAY="stripe", STRIPE_SECRET_KEY="sk_test_x")
+class StripeResourceMappingTests(TestCase):
+    """Guards the seam `FakeGateway` cannot reach.
+
+    Every other payment test runs against the fake, which RETURNS the plain dict
+    `retrieve_payment_intent` produces — so nothing exercised the code that consumes a
+    real stripe-python resource. [MEASURED] in production that code called `.get()` on a
+    PaymentIntent and raised "'get' is a dict method, but a PaymentIntent is not a dict"
+    on every pass, recovering nothing, while the suite stayed green.
+
+    These stand-ins deliberately support ONLY attribute access, exactly like the real
+    resources, so a regression to dict access fails here instead of in production.
+    """
+
+    class _Charge:
+        def __init__(self, amount_refunded=0, refunded=False):
+            self.amount_refunded = amount_refunded
+            self.refunded = refunded
+
+    class _Intent:
+        def __init__(self, latest_charge=None):
+            self.id = "pi_live"
+            self.status = "succeeded"
+            self.amount = 1500
+            self.currency = "usd"
+            self.metadata = {"order_id": "abc"}
+            self.latest_charge = latest_charge
+
+    def _gateway_returning(self, intent):
+        from apps.payments.stripe import StripeGateway
+
+        gateway = StripeGateway()
+        gateway._stripe = SimpleNamespace(
+            PaymentIntent=SimpleNamespace(retrieve=lambda _id, **kw: intent)
+        )
+        return gateway
+
+    def test_maps_a_real_stripe_resource(self):
+        result = self._gateway_returning(self._Intent(self._Charge())).retrieve_payment_intent("pi_live")
+        self.assertEqual(result["id"], "pi_live")
+        self.assertEqual(result["status"], "succeeded")
+        self.assertEqual(result["amount"], 1500)
+        self.assertEqual(result["metadata"], {"order_id": "abc"})
+        self.assertEqual(result["amount_refunded"], 0)
+        self.assertFalse(result["refunded"])
+
+    def test_reports_a_refunded_charge(self):
+        intent = self._Intent(self._Charge(amount_refunded=1500, refunded=True))
+        result = self._gateway_returning(intent).retrieve_payment_intent("pi_live")
+        self.assertEqual(result["amount_refunded"], 1500)
+        self.assertTrue(result["refunded"])
+
+    def test_survives_an_unexpanded_or_absent_charge(self):
+        """`latest_charge` is a bare id when expand is dropped, and None before a charge."""
+        for latest in ("ch_123", None):
+            result = self._gateway_returning(self._Intent(latest)).retrieve_payment_intent("pi_live")
+            self.assertEqual(result["amount_refunded"], 0)
+            self.assertFalse(result["refunded"])

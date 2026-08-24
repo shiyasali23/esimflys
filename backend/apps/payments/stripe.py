@@ -55,17 +55,30 @@ class StripeGateway:
         intent = self._stripe.PaymentIntent.retrieve(
             payment_intent_id, expand=["latest_charge"]
         )
-        charge = intent.get("latest_charge") or {}
-        if isinstance(charge, str):  # not expanded (older API versions)
-            charge = {}
+        # ATTRIBUTE access, not `.get()`. A stripe-python resource is not a dict —
+        # `intent.get(...)` raises "'get' is a dict method, but a PaymentIntent is not a
+        # dict". [MEASURED] in production: every reconciliation pass logged that and
+        # recovered nothing. No test could catch it, because `FakeGateway` returns the
+        # plain dict this method PRODUCES, so the fake never exercised the mapping that
+        # consumes the real object. `test_maps_a_real_stripe_resource` does.
+        #
+        # `latest_charge` is a bare id string when the expand is dropped or unsupported,
+        # and None before any charge exists — neither carries refund state, so both fall
+        # back to "not refunded" and the intent is treated on its own terms.
+        charge = getattr(intent, "latest_charge", None)
+        if charge is None or isinstance(charge, str):
+            amount_refunded, refunded = 0, False
+        else:
+            amount_refunded = getattr(charge, "amount_refunded", 0) or 0
+            refunded = bool(getattr(charge, "refunded", False))
         return {
             "id": intent.id,
             "status": intent.status,
             "amount": intent.amount,
             "currency": intent.currency,
             "metadata": dict(intent.metadata or {}),
-            "amount_refunded": charge.get("amount_refunded") or 0,
-            "refunded": bool(charge.get("refunded")),
+            "amount_refunded": amount_refunded,
+            "refunded": refunded,
         }
 
     def create_refund(self, *, payment_intent_id, amount_minor, idempotency_key):
