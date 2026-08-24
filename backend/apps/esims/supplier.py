@@ -189,8 +189,8 @@ class EsimAccessGateway:
         package = {"packageCode": package_code, "count": count}
         if period_num:
             package["periodNum"] = period_num  # day count for daily plans
-        # UNVERIFIED: their docs are inconsistent about an `amount`/`price` field here.
-        # Confirm on the first live order and add it if the API rejects this body.
+        # [VERIFIED] against the live API on 2026-08-24: this exact body was accepted
+        # and returned an orderNo. No `amount`/`price` field is needed.
         obj = self._post(
             "/esim/order",
             {"transactionId": transaction_id, "packageInfoList": [package]},
@@ -206,7 +206,24 @@ class EsimAccessGateway:
         Ready 3–10 s after ordering, so a not-yet-ready answer raises
         :class:`SupplierNotReady` and the job is re-polled rather than failed.
         """
-        payload = {}
+        # `pager` is REQUIRED and its absence is not a soft failure.
+        #
+        # [MEASURED] against the live API on 2026-08-24. A real order was placed
+        # (orderNo B26082418250016, $0.91 of wallet) and every /esim/query for it
+        # answered:
+        #
+        #     {"success": false, "errorMsg": "pager:must not be null"}
+        #
+        # `_post` maps that to a bare SupplierError, which is RETRYABLE — so the job
+        # retried, failed identically every time, and parked in manual review. The
+        # order had already succeeded, so each attempt spent wallet money and
+        # delivered nothing: the eSIM existed at the supplier and we could never
+        # fetch it. Re-sent with the pager below, the same orderNo returned the
+        # profile immediately (iccid, ac, qrCodeUrl, smdpStatus RELEASED).
+        #
+        # Phase 1 (`order_esim`) was fine all along — the UNVERIFIED note there was a
+        # false alarm, confirmed by the same live order.
+        payload = {"pager": {"pageNum": 1, "pageSize": 20}}
         if order_no:
             payload["orderNo"] = order_no
         if transaction_id:

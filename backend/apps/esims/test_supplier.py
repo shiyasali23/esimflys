@@ -170,6 +170,27 @@ class MoneyAndPayloadTests(TestCase):
         )
         self.assertEqual(seen["packageInfoList"][0]["periodNum"], 7)
 
+
+    def test_query_esim_sends_the_required_pager(self):
+        """The live API rejects /esim/query without a pager.
+
+        [MEASURED] 2026-08-24 against a real order: omitting it answered
+        {"success": false, "errorMsg": "pager:must not be null"}, which `_post` maps
+        to a retryable SupplierError. The order had already been placed and paid for,
+        so every retry burned wallet money and still returned no profile. Asserted on
+        the request body because that is the thing the supplier actually validates.
+        """
+        seen = {}
+
+        def handler(request):
+            seen.update(json.loads(request.content))
+            return ok({"esimList": [{"iccid": "89320", "ac": "LPA:1$smdp.example$X"}]})
+
+        gateway_with(handler).query_esim(order_no="o1")
+
+        self.assertEqual(seen["pager"], {"pageNum": 1, "pageSize": 20})
+        self.assertEqual(seen["orderNo"], "o1")
+
     def test_query_maps_supplier_fields_to_ours(self):
         profile = {
             "esimTranNo": "etn_1", "iccid": "8944000000000001234", "ac": "ACT123",
