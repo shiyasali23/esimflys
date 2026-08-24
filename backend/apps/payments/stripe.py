@@ -14,6 +14,20 @@ class SignatureVerificationError(PaymentGatewayError):
     pass
 
 
+def _plain(resource):
+    """A stripe-python resource as ordinary nested dicts.
+
+    `to_dict_recursive` is the only form that also flattens EXPANDED sub-resources, which
+    is the whole point here — `latest_charge` arrives as another StripeObject. The
+    fallbacks keep this working against a stub or a future client that drops the method.
+    """
+    for method in ("to_dict_recursive", "to_dict"):
+        converter = getattr(resource, method, None)
+        if callable(converter):
+            return converter()
+    return dict(resource)
+
+
 class StripeGateway:
     def __init__(self):
         import stripe
@@ -43,42 +57,41 @@ class StripeGateway:
         The reconciler needs this because a webhook is best-effort: if the delivery is
         lost, rejected or delayed, nothing else in the system ever learns the payment
         succeeded. Shaped to match the `data.object` of a `payment_intent.succeeded`
-        event so `_handle_succeeded` can consume either source unchanged — including
-        `amount`, `currency` and `metadata`, which it reconciles against the order before
-        marking anything paid.
+        event so `_handle_succeeded` can consume either source unchanged.
+
+        Converted to plain data ONCE, at the boundary, and never touched as a resource
+        again. stripe-python objects are neither dicts nor mappings, and each way of
+        reaching into them fails differently:
+
+            intent.get("latest_charge")   -> "'get' is a dict method, but a PaymentIntent
+                                              is not a dict"
+            dict(intent.metadata)         -> "StripeObject is not iterable or a mapping"
+
+        [MEASURED] both were hit in production, on consecutive deploys, because
+        `FakeGateway` returns the plain dict this method PRODUCES and so never exercised
+        the code that CONSUMES a resource. Converting up front removes the whole class of
+        error rather than the two instances of it that happened to bite.
+
+        `latest_charge` is expanded because a REFUND DOES NOT CHANGE `status`: a refunded
+        intent reads "succeeded" for ever. Without the refund figures, reconciling a
+        charge already refunded by hand would buy an eSIM and give it away.
         """
-        # `latest_charge` is expanded because a REFUND DOES NOT CHANGE `status`: a
-        # refunded intent still reads "succeeded" for ever. Without this, reconciling a
-        # charge that was already refunded — by hand, in the dashboard, before the webhook
-        # was ever fixed — would provision an eSIM and give the goods away. The two orders
-        # stranded by the webhook outage are exactly that shape.
         intent = self._stripe.PaymentIntent.retrieve(
             payment_intent_id, expand=["latest_charge"]
         )
-        # ATTRIBUTE access, not `.get()`. A stripe-python resource is not a dict —
-        # `intent.get(...)` raises "'get' is a dict method, but a PaymentIntent is not a
-        # dict". [MEASURED] in production: every reconciliation pass logged that and
-        # recovered nothing. No test could catch it, because `FakeGateway` returns the
-        # plain dict this method PRODUCES, so the fake never exercised the mapping that
-        # consumes the real object. `test_maps_a_real_stripe_resource` does.
-        #
-        # `latest_charge` is a bare id string when the expand is dropped or unsupported,
-        # and None before any charge exists — neither carries refund state, so both fall
-        # back to "not refunded" and the intent is treated on its own terms.
-        charge = getattr(intent, "latest_charge", None)
-        if charge is None or isinstance(charge, str):
-            amount_refunded, refunded = 0, False
-        else:
-            amount_refunded = getattr(charge, "amount_refunded", 0) or 0
-            refunded = bool(getattr(charge, "refunded", False))
+        raw = _plain(intent)
+        # A bare id string when the expand is dropped or unsupported; absent before any
+        # charge exists. Neither carries refund state, so both mean "nothing refunded".
+        charge = raw.get("latest_charge")
+        charge = charge if isinstance(charge, dict) else {}
         return {
-            "id": intent.id,
-            "status": intent.status,
-            "amount": intent.amount,
-            "currency": intent.currency,
-            "metadata": dict(intent.metadata or {}),
-            "amount_refunded": amount_refunded,
-            "refunded": refunded,
+            "id": raw.get("id"),
+            "status": raw.get("status"),
+            "amount": raw.get("amount"),
+            "currency": raw.get("currency"),
+            "metadata": dict(raw.get("metadata") or {}),
+            "amount_refunded": charge.get("amount_refunded") or 0,
+            "refunded": bool(charge.get("refunded")),
         }
 
     def create_refund(self, *, payment_intent_id, amount_minor, idempotency_key):

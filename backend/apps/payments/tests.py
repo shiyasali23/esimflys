@@ -562,28 +562,56 @@ class StripeResourceMappingTests(TestCase):
     """Guards the seam `FakeGateway` cannot reach.
 
     Every other payment test runs against the fake, which RETURNS the plain dict
-    `retrieve_payment_intent` produces — so nothing exercised the code that consumes a
-    real stripe-python resource. [MEASURED] in production that code called `.get()` on a
-    PaymentIntent and raised "'get' is a dict method, but a PaymentIntent is not a dict"
-    on every pass, recovering nothing, while the suite stayed green.
+    `retrieve_payment_intent` produces — so nothing exercised the code that CONSUMES a
+    real stripe-python resource. That seam broke twice in production on consecutive
+    deploys, each time differently:
 
-    These stand-ins deliberately support ONLY attribute access, exactly like the real
-    resources, so a regression to dict access fails here instead of in production.
+        intent.get("latest_charge")  -> "'get' is a dict method, but a PaymentIntent is
+                                         not a dict"
+        dict(intent.metadata)        -> "StripeObject is not iterable or a mapping"
+
+    The first fix was written against a stand-in whose `metadata` was a plain dict, so the
+    suite went green and production failed again. `_Resource` below is therefore
+    deliberately HOSTILE: it raises on `.get()`, on iteration and on `dict()`, exactly as
+    the real objects do, and yields plain data only through `to_dict_recursive`. Any
+    attempt to treat a resource as a mapping now fails here rather than in production.
     """
 
-    class _Charge:
-        def __init__(self, amount_refunded=0, refunded=False):
-            self.amount_refunded = amount_refunded
-            self.refunded = refunded
+    class _Resource:
+        def __init__(self, **data):
+            self._data = data
 
-    class _Intent:
-        def __init__(self, latest_charge=None):
-            self.id = "pi_live"
-            self.status = "succeeded"
-            self.amount = 1500
-            self.currency = "usd"
-            self.metadata = {"order_id": "abc"}
-            self.latest_charge = latest_charge
+        def __getattr__(self, name):
+            try:
+                return self._data[name]
+            except KeyError as exc:
+                raise AttributeError(name) from exc
+
+        def get(self, *_a, **_k):
+            raise TypeError(
+                "'get' is a dict method, but a PaymentIntent is not a dict."
+            )
+
+        def __iter__(self):
+            raise TypeError("StripeObject is not iterable or a mapping")
+
+        def keys(self):
+            raise TypeError("StripeObject is not iterable or a mapping")
+
+        def to_dict_recursive(self):
+            return {
+                k: v.to_dict_recursive() if isinstance(v, type(self)) else v
+                for k, v in self._data.items()
+            }
+
+    def _intent(self, latest_charge=None, **over):
+        data = {
+            "id": "pi_live", "status": "succeeded", "amount": 1500, "currency": "usd",
+            "metadata": self._Resource(order_id="abc"),
+            "latest_charge": latest_charge,
+        }
+        data.update(over)
+        return self._Resource(**data)
 
     def _gateway_returning(self, intent):
         from apps.payments.stripe import StripeGateway
@@ -595,7 +623,8 @@ class StripeResourceMappingTests(TestCase):
         return gateway
 
     def test_maps_a_real_stripe_resource(self):
-        result = self._gateway_returning(self._Intent(self._Charge())).retrieve_payment_intent("pi_live")
+        charge = self._Resource(amount_refunded=0, refunded=False)
+        result = self._gateway_returning(self._intent(charge)).retrieve_payment_intent("pi_live")
         self.assertEqual(result["id"], "pi_live")
         self.assertEqual(result["status"], "succeeded")
         self.assertEqual(result["amount"], 1500)
@@ -604,14 +633,14 @@ class StripeResourceMappingTests(TestCase):
         self.assertFalse(result["refunded"])
 
     def test_reports_a_refunded_charge(self):
-        intent = self._Intent(self._Charge(amount_refunded=1500, refunded=True))
-        result = self._gateway_returning(intent).retrieve_payment_intent("pi_live")
+        charge = self._Resource(amount_refunded=1500, refunded=True)
+        result = self._gateway_returning(self._intent(charge)).retrieve_payment_intent("pi_live")
         self.assertEqual(result["amount_refunded"], 1500)
         self.assertTrue(result["refunded"])
 
     def test_survives_an_unexpanded_or_absent_charge(self):
         """`latest_charge` is a bare id when expand is dropped, and None before a charge."""
         for latest in ("ch_123", None):
-            result = self._gateway_returning(self._Intent(latest)).retrieve_payment_intent("pi_live")
+            result = self._gateway_returning(self._intent(latest)).retrieve_payment_intent("pi_live")
             self.assertEqual(result["amount_refunded"], 0)
             self.assertFalse(result["refunded"])
