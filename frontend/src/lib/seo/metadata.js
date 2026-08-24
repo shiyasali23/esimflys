@@ -1,5 +1,9 @@
 import { SITE } from "@/config/site";
 
+/** Site-wide social card. Regenerate with `node scripts/generate-og-image.mjs`. */
+export const OG_CARD = `${SITE.baseUrl}/og-card.png`;
+export const OG_CARD_ALT = `${SITE.name} — ${SITE.tagline}. Prepaid data-only travel eSIMs.`;
+
 /**
  * Build a Next.js Metadata object with a self-referential canonical + OG/Twitter
  * (blueprint §28.1). `title` runs through the root template `%s | eSIMFlys`.
@@ -28,8 +32,32 @@ export function buildMetadata({
       title,
       description,
       siteName: SITE.name,
-      images: ogImage ? [{ url: ogImage }] : undefined,
+      /*
+        Always an image, and stated explicitly rather than inherited.
+
+        A page-level `openGraph` object REPLACES the parent's wholesale — it is not merged
+        key by key — so neither the root layout's openGraph nor an `app/opengraph-image.png`
+        file convention survives on any route that calls this helper. Both were tried:
+
+        [MEASURED] with the file convention and no explicit key, og:image reached 3 of 126
+        emitted pages — the home page, 404 and _not-found, i.e. exactly the three routes
+        that declare no openGraph of their own.
+
+        Naming the URL here is what makes it reach all of them. `OG_CARD` is a plain public
+        asset so the URL carries no build hash and stays stable across deploys.
+      */
+      images: [{ url: ogImage || OG_CARD, width: 1200, height: 630, alt: OG_CARD_ALT }],
     },
-    twitter: { card: "summary_large_image", title, description },
+    /*
+      Twitter needs the image named too: declaring `summary_large_image` while supplying no
+      image was the original defect — the card reserved a large slot and rendered nothing on
+      every share, across all 127 pages.
+    */
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage || OG_CARD],
+    },
   };
 }

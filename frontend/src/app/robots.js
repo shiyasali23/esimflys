@@ -20,7 +20,9 @@ export default function robots() {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/search"],
+      // `/search` used to be listed here and no such route has ever existed under
+      // src/app — a stale rule that only ever confused the next reader.
+      disallow: ["/api/"],
     },
     sitemap: `${SITE.baseUrl}/sitemap.xml`,
   };

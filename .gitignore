@@ -77,3 +77,6 @@ claude/*
 /.claude/
 # Separate project copy kept locally (1.2 GB incl. node_modules/.next). Never commit.
 /flyesim-main/
+
+# Raw SEO audit output (~1.8 MB). Working artefacts, not source.
+esimflys.com-audit/

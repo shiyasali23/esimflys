@@ -61,33 +61,50 @@ export function WhatIsEsim() {
           Learn more about eSIMs →
         </Link>
         {/*
-          `priority` on the MOBILE image only, and it is a bug fix rather than a tweak.
+          A media-gated preload plus a lazy <img>, mirroring `hero.jsx` — and it replaces a
+          bare next/image `priority`, for a measured reason.
 
-          next/image defaults every image to `loading="lazy"` unless `priority` is passed.
-          Nobody wrote that attribute here — it is the framework default, and it was
-          confirmed present in the live HTML.
+          The problem `priority` was solving is real: next/image defaults to
+          `loading="lazy"`, and WebKit's lazy threshold is tight enough that on a real
+          iPhone this section painted as a blank box, then alt text, then the image.
 
-          On Chrome the lazy threshold is generous enough that the image is already there
-          by the time you scroll to it. WebKit's is much tighter, and Chrome on iOS IS
-          WebKit, so on a real iPhone over a real connection the section paints as a blank
-          box, then the alt text, then finally the image — reported first-hand as "it comes
-          purely white and I have to wait".
+          But `priority` emits `<link rel="preload" as="image">` with NO `media` attribute,
+          so every DESKTOP visitor downloaded a phone-only image sitting inside `lg:hidden`.
+          [MEASURED] desktop Lighthouse at 1350px, production: this file appears in the
+          network log as `isLinkPreload: true, transferSize: 25232, statusCode: 200` — 24.6 KB
+          fetched to be displayed to nobody.
 
-          The image is 25 KB, it sits inside `lg:hidden` so it only exists on phones, and
-          it is the one people actually see. Fetching it with the page instead of on
-          approach is worth 25 KB.
+          The pair below gets both halves right, and it is the inverse of the hero's gating
+          because this image is the phone-only one:
 
-          The DESKTOP image above is deliberately left lazy: it lives in `hidden lg:block`,
-          so on a phone it has no layout box, never intersects the viewport, and is
-          therefore never downloaded at all. Making that one eager would add 36 KB to every
-          mobile load for something no phone displays.
+            - phones  -> the preload matches, so the bytes are in flight with the document
+                         and WebKit never shows the blank box.
+            - desktop -> the preload does not match, and a lazy image inside a
+                         `display: none` ancestor has no layout box, so it never intersects
+                         the viewport and is never requested at all.
+
+          A plain eager <img> cannot express that: Chrome fetches eager images inside
+          `display: none` regardless, which is the same trap documented in `hero.jsx`.
         */}
-        <Image
+        <link
+          rel="preload"
+          as="image"
+          media="(max-width: 1023px)"
+          fetchPriority="high"
+          href="/images/what-is-esim-mobile.webp"
+        />
+        {/*
+          eslint-disable-next-line @next/next/no-img-element --
+          next/image cannot emit a media-gated preload, and its `priority` prop is precisely
+          what caused the desktop waste measured above.
+        */}
+        <img
           src="/images/what-is-esim-mobile.webp"
           alt="A smartphone showing a Wi-Fi signal in front of a city skyline with an airplane overhead — travel eSIM data on arrival."
           width={640}
           height={576}
-          priority
+          loading="lazy"
+          decoding="async"
           className="mx-auto mt-6 w-full max-w-[300px]"
         />
       </div>

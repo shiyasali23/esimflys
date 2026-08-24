@@ -30,9 +30,9 @@ export function CountryFaq({ country, faqs }) {
   return (
     <section className="mt-16 border-t border-border pt-12">
       <h2 className="font-display text-2xl font-bold uppercase">{country.name} eSIM — FAQ</h2>
-      <Accordion type="single" collapsible className="mt-6">
+      <Accordion className="mt-6">
         {items.map((it, i) => (
-          <AccordionItem key={i} value={`c-${i}`}>
+          <AccordionItem key={i} name="country-faq">
             <AccordionTrigger>{it.q}</AccordionTrigger>
             <AccordionContent>{it.a}</AccordionContent>
           </AccordionItem>

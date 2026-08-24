@@ -65,7 +65,15 @@ export function Footer({ compact = false }) {
           </div>
           {nav.footer.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <h2 className="mb-4 text-label-caps uppercase text-muted-foreground">{col.title}</h2>
+              {/*
+                A <p>, not an <h2>. These four column labels were headings on all 127 pages,
+                so every document outline ended with "eSIMFlys / Top destinations / Resources
+                / Legal" — and on the thin help pages that was half the headings on the page,
+                describing chrome rather than content. The <nav> already carries
+                `aria-label={col.title}`, so the landmark stays named for screen readers
+                without spending a heading level on it.
+              */}
+              <p className="mb-4 text-label-caps uppercase text-muted-foreground">{col.title}</p>
               {/*
                 The tap target is the link box, not the text. At `text-body-sm` these
                 render 17 px tall, and the old `gap-3` put 12 px of dead space between

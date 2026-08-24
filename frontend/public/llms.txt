@@ -8,8 +8,10 @@ data-only: the eSIM adds mobile data on a local network while the traveller's us
 SIM stays active for their own number. Delivery is a QR code, installed once on an
 eSIM-capable phone.
 
-All prices are authored and charged in USD. Prices shown in other currencies are an
-indicative conversion for display only.
+All prices are authored in USD. Checkout charges in the currency the visitor is shown
+whenever a live exchange rate exists for it and the converted total clears the payment
+provider's minimum; otherwise the charge falls back to USD. Structured data on the site
+declares USD as the canonical listing currency.
 
 ## Key pages
 

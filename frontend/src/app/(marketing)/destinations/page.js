@@ -1,6 +1,8 @@
 import { DestinationsBrowser } from "@/features/catalog/components/destinations-browser.client";
 import { getAllDestinations } from "@/server/catalog/repository";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/components/seo/json-ld";
+import { destinationsItemListJsonLd } from "@/lib/seo/jsonld";
 import { SITE } from "@/config/site";
 
 export const metadata = buildMetadata({
@@ -14,6 +16,7 @@ export default async function DestinationsPage() {
 
   return (
     <div className="bg-muted">
+      <JsonLd data={destinationsItemListJsonLd(countries)} />
       {/*
         `py-10` below `md`. With the shell's own `pt-20` for the fixed header on top of it,
         `py-16` opened 144px of empty background above the first thing on the page.

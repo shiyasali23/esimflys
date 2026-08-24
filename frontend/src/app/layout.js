@@ -10,6 +10,7 @@ import { ConsentBanner } from "@/components/layout/consent-banner.client";
 import { NoFlashConsentScript } from "@/components/layout/no-flash-consent-script";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
+import { OG_CARD, OG_CARD_ALT } from "@/lib/seo/metadata";
 
 /**
  * Inter Tight for display, Inter for text.
@@ -53,8 +54,11 @@ export const metadata = {
     title: `${SITE.tagline} for 60+ Countries | ${SITE.name}`,
     description: SITE.description,
     url: SITE.baseUrl,
+    // The home page and the 404 declare no openGraph of their own, so they inherit this
+    // one. Every other route goes through buildMetadata, which names the same card.
+    images: [{ url: OG_CARD, width: 1200, height: 630, alt: OG_CARD_ALT }],
   },
-  twitter: { card: "summary_large_image" },
+  twitter: { card: "summary_large_image", images: [OG_CARD] },
   appleWebApp: { title: SITE.name },
 };
 

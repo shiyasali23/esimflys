@@ -15,8 +15,14 @@ import { useRates, useOfferedCurrencies } from "./rates-provider.client";
  *   Googlebot cannot be served a page in a currency it did not ask for. This is why
  *   currency is never resolved server-side or put in a URL.
  *
- * The USD span is marked canonical: it is the price in the structured data and, until
- * the backend denominates orders locally, the price actually charged.
+ * The USD span is marked canonical: it is the price carried in the structured data and
+ * the listing currency the catalogue is authored in. It is NOT necessarily the amount
+ * charged — `_resolve_charge_currency` in the backend denominates the order in whatever
+ * currency the visitor was shown, provided a rate exists and the total clears the payment
+ * provider's minimum, and only falls back to USD when it cannot. An earlier version of this
+ * comment claimed USD was always the charged currency; that stopped being true when local
+ * denomination shipped, and `public/llms.txt` was repeating the same stale claim to AI
+ * crawlers until it was corrected alongside this.
  *
  * @param {{ usd: number, className?: string }} props
  */

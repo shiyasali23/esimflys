@@ -59,6 +59,27 @@ function legacyRedirect(url) {
     return new URL("/destinations", url.origin);
   }
 
+  /*
+    /auth is handled HERE rather than by a page, because a static export cannot run one.
+    The route used to be `src/app/(auth)/auth/page.js` calling `redirect(routes.signin())`.
+    `next dev` executed that on the server and 307'd correctly, so it looked fine — but
+    `output: "export"` has no server, so the build emitted a client-side-only redirect
+    shell instead:
+
+        HTTP/2 200, 185,888 bytes
+        <meta name="robots" content="index, follow">      <- the only auth route not noindex
+        <title>Instant Travel eSIM Data for 60+ Countries | eSIMFlys</title>   <- homepage title
+        body: <div hidden></div> + scripts, ZERO words of visible text
+
+    i.e. Google was offered a contentless page carrying the homepage's exact title and
+    description, competing with the home page on the brand term. Verified on production
+    before this change. The page had no internal links — it exists only for old emails and
+    external links — so a Worker redirect covers every real caller.
+  */
+  if (pathname === "/auth" || pathname === "/auth/") {
+    return new URL("/auth/signin", url.origin);
+  }
+
   const slugged = /^\/(?:plans|destinations)\/([^/]+)\/?$/.exec(pathname);
   if (slugged) {
     return new URL(`/esim/${slugged[1]}`, url.origin);

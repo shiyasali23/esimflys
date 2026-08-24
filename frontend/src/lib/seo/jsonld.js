@@ -1,4 +1,5 @@
 import { SITE } from "@/config/site";
+import { routes } from "@/config/routes";
 
 /**
  * JSON-LD builders — supported types only, mirroring visible content (blueprint §27).
@@ -77,7 +78,32 @@ export function countryProductJsonLd(country, plans) {
     name: `eSIM ${country.name}`,
     description: `Prepaid travel eSIM data plans for ${country.name}. Fast 4G/5G data, install by QR, keep your number.`,
     brand: { "@type": "Brand", name: SITE.name },
+    /*
+      `image` is required for the Product rich result. Without it Search Console reports
+      "Missing field 'image'" and the whole price-range decoration is withheld — which was
+      the state on all ten indexable country pages, discarding the most valuable structured
+      data on the site for one absent field.
+
+      This points at the shared hero illustration rather than a per-country photograph
+      because no per-country product imagery exists. It is the site's own artwork depicting
+      the product context, so it is accurate, if generic. Swap it for a per-country asset
+      when one exists.
+    */
+    image: [`${SITE.baseUrl}/images/hero-portal.webp`],
+    url: new URL(routes.country(country.slug), SITE.baseUrl).toString(),
   };
+  /*
+    Deliberately NOT emitted, having been checked rather than assumed:
+
+    - `sku`: this node aggregates every plan for the country, so there is no single stock
+      unit it could name. Inventing one would be fabricated data.
+    - `hasMerchantReturnPolicy` / `shippingDetails`: Google added these as prerequisites for
+      the merchant-listing price decoration, but /legal/refund grants a CONDITIONAL 14-day
+      withdrawal right, and schema.org's return model cannot express the conditions. Marking
+      it `MerchantReturnNotPermitted` would be false and a finite-window value would overstate
+      the certainty. An eSIM also has no shipping to describe. Encoding either inaccurately is
+      worse than omitting it — this needs a legal read, not an engineering guess.
+  */
   if (prices.length) {
     product.offers = {
       "@type": "AggregateOffer",
@@ -102,6 +128,35 @@ export function glossaryJsonLd(terms) {
       "@type": "DefinedTerm",
       name: t.term,
       description: t.definition,
+    })),
+  };
+}
+
+/**
+ * ItemList for the /destinations index — mirrors the country links visible on the page.
+ *
+ * Google maps no rich result to a bare ItemList, so this is not decoration for the SERP: it
+ * is here because /destinations is the catalogue's index page and it previously offered a
+ * machine reader nothing but 68 anchors and ~35 words of prose. The list is what the page
+ * IS, so stating it lets an answer engine enumerate coverage without scraping link text.
+ *
+ * Every country the page renders is included, including the noindex ones. The rule followed
+ * here is "markup mirrors visible content" — the links are on the page and crawlable, and
+ * omitting them would describe a page that does not exist.
+ *
+ * @param {{ slug: string, name: string }[]} countries
+ */
+export function destinationsItemListJsonLd(countries) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Travel eSIM destinations",
+    numberOfItems: countries.length,
+    itemListElement: countries.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      url: new URL(routes.country(c.slug), SITE.baseUrl).toString(),
     })),
   };
 }

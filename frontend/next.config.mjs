@@ -149,6 +149,7 @@ const nextConfig = {
          */
         async redirects() {
           return [
+            { source: "/auth", destination: "/auth/signin", permanent: true },
             { source: "/plans", destination: "/destinations", permanent: true },
             { source: "/plans/:slug", destination: "/esim/:slug", permanent: true },
             { source: "/destinations/:slug", destination: "/esim/:slug", permanent: true },
