@@ -70,6 +70,15 @@ class DirectCheckoutItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1, default=1)
 
 
+class DirectPromoPreviewSerializer(serializers.Serializer):
+    """What a promo would do to this payload. Identifies the goods, never the price."""
+
+    items = DirectCheckoutItemSerializer(many=True, allow_empty=False)
+    promo_code = serializers.CharField()
+    customer_email = serializers.EmailField(required=False, allow_blank=True)
+    currency = serializers.CharField(required=False, allow_blank=True, max_length=3)
+
+
 class DirectCheckoutSerializer(serializers.Serializer):
     """Buy without a cart.
 

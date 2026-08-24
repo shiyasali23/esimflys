@@ -12,6 +12,7 @@ from apps.catalog.models import CatalogPlan, Country, Supplier
 from apps.common.exceptions import Conflict, PlanUnavailable, PromoUsageExceeded
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile
+from apps.common.exceptions import PromoInvalid
 from apps.orders import services
 from apps.orders.models import Cart, Notification, Order, OrderItem, PromoCode, PromoRedemption
 from apps.orders.notifications import queue_notification, send_pending_notifications
@@ -39,6 +40,71 @@ class CheckoutServiceTests(TestCase):
         cart, _ = services.create_cart(user=None)
         services.add_item(cart, product_code=plan.product_code, quantity=qty)
         return cart
+
+    # -- promo preview ------------------------------------------------------------------
+
+    def _items(self, qty=2):
+        return [{"product_code": self.plan.product_code, "quantity": qty}]
+
+    def test_preview_matches_the_order_it_predicts(self):
+        """The figure shown and the figure charged must be the same number.
+
+        The preview reimplements `create_order`'s arithmetic — price in USD, discount in
+        USD, resolve the charge currency from the DISCOUNTED base, convert, cap the
+        converted discount at the converted subtotal. Any step done differently is a
+        customer quoted one total and billed another, which is the whole reason this
+        assertion compares against a real order rather than hard-coded numbers.
+        """
+        PromoCode.objects.create(
+            code="PREVIEW20", discount_type="percentage_bps", discount_value=2000,
+        )
+        preview = services.preview_direct_promo(
+            items=self._items(), promo_code="preview20", customer_email="a@b.com"
+        )
+        order = services.checkout_direct(
+            items=self._items(), customer_email="a@b.com", promo_code="preview20"
+        )
+        self.assertEqual(preview["subtotal_minor"], order.subtotal_minor)
+        self.assertEqual(preview["discount_minor"], order.discount_minor)
+        self.assertEqual(preview["total_minor"], order.total_minor)
+        self.assertEqual(preview["currency"], order.currency)
+
+    def test_preview_does_not_consume_a_usage_slot(self):
+        """Previewing must be free. It uses `_validate_promo`, never `_reserve_promo`.
+
+        A shopper who types a code, reconsiders and retypes it would otherwise burn two
+        uses of a limited code — and could exhaust it without ever buying anything.
+        """
+        PromoCode.objects.create(
+            code="ONESHOT", discount_type="percentage_bps", discount_value=5000, usage_limit=1,
+        )
+        for _ in range(3):
+            services.preview_direct_promo(
+                items=self._items(), promo_code="ONESHOT", customer_email="a@b.com"
+            )
+        self.assertEqual(PromoRedemption.objects.count(), 0)
+
+        order = services.checkout_direct(
+            items=self._items(), customer_email="a@b.com", promo_code="ONESHOT"
+        )
+        self.assertEqual(order.discount_minor, order.subtotal_minor // 2)
+
+    def test_preview_rejects_an_unknown_code(self):
+        with self.assertRaises(PromoInvalid):
+            services.preview_direct_promo(
+                items=self._items(), promo_code="NOPE", customer_email="a@b.com"
+            )
+
+    def test_preview_prices_a_full_discount_to_zero(self):
+        """The 100%% case, which is what makes a zero-total order settle without Stripe."""
+        PromoCode.objects.create(
+            code="ALLFREE", discount_type="percentage_bps", discount_value=10000,
+        )
+        preview = services.preview_direct_promo(
+            items=self._items(), promo_code="ALLFREE", customer_email="a@b.com"
+        )
+        self.assertEqual(preview["total_minor"], 0)
+        self.assertEqual(preview["discount_minor"], preview["subtotal_minor"])
 
     def test_quantity_expands_into_individual_order_items(self):
         cart = self._guest_cart_with(self.plan, 3)

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { ShoppingBag, ArrowRight, Trash2, Tag, CheckCircle2 } from "lucide-react";
 import { useCart, cartIsEmpty, subtotalUsd, totalUnits } from "@/features/cart/use-cart.client";
 import { useCurrency } from "@/components/currency/use-currency.client";
-import { checkoutDirect } from "@/lib/api/orders";
+import { checkoutDirect, previewPromo } from "@/lib/api/orders";
 import { fetchMeOrNull, logout, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
 import { fieldErrors } from "@/lib/api/errors";
 import { saveOrderContext } from "@/features/checkout/order-context";
+import { Money } from "@/components/currency/money";
 import { Price } from "@/components/currency/price";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -74,6 +75,17 @@ export function CheckoutView() {
   const [guestConfirmed, setGuestConfirmed] = useState(false);
   const [promo, setPromo] = useState("");
   const [promoOpen, setPromoOpen] = useState(false);
+  /**
+   * The server's verdict on the typed code: `{code, currency, subtotal_minor,
+   * discount_minor, total_minor}` or null when nothing is applied.
+   *
+   * Held in CHARGE-currency minor units because that is what the server priced, so it
+   * renders with `<Money>`. Rendering it with `<Price>` would convert an already-converted
+   * figure and show an INR shopper a total roughly 88x too large.
+   */
+  const [promoApplied, setPromoApplied] = useState(null);
+  const [promoError, setPromoError] = useState(null);
+  const [promoChecking, setPromoChecking] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -118,6 +130,17 @@ export function CheckoutView() {
   useEffect(() => {
     idempotencyKey.current = null;
   }, [items, email, currency]);
+
+  /*
+   * A preview is priced against a specific basket in a specific currency. Change either
+   * and the discount on screen no longer describes what would be charged, so it is
+   * dropped rather than left to mislead — the shopper re-applies against the new basket.
+   * The typed code is kept so re-applying is one tap, not a retype.
+   */
+  useEffect(() => {
+    setPromoApplied(null);
+    setPromoError(null);
+  }, [items, currency]);
 
   /**
    * Sends focus to the problem rather than leaving an error nobody scrolled to.
@@ -205,6 +228,41 @@ export function CheckoutView() {
     setGuestConfirmed(false);
     setSubmitError(null);
     revealIdentitySoon();
+  }
+
+  /**
+   * Ask the server what the code is worth before the customer commits to paying.
+   *
+   * Deliberately not fired on every keystroke: the endpoint is throttled on the `promo`
+   * scope precisely because it answers "is this code real" to anonymous callers, and
+   * typing a 10-character code would spend ten attempts of that budget.
+   */
+  async function applyPromo() {
+    const code = promo.trim();
+    if (!code) return;
+    setPromoChecking(true);
+    setPromoError(null);
+    try {
+      const preview = await previewPromo({
+        items,
+        promoCode: code,
+        customerEmail: email || undefined,
+        currency,
+      });
+      setPromoApplied(preview);
+      setPromo(preview.code);
+    } catch (err) {
+      setPromoApplied(null);
+      setPromoError(err?.message || "That code could not be applied.");
+    } finally {
+      setPromoChecking(false);
+    }
+  }
+
+  function clearPromo() {
+    setPromoApplied(null);
+    setPromoError(null);
+    setPromo("");
   }
 
   async function placeOrder(event) {
@@ -503,36 +561,85 @@ export function CheckoutView() {
             </dl>
 
             {/*
-              The code is sent once, with the order — there is no live preview, because
-              previewing required a server-side cart and never attached anything anyway.
-              An invalid code comes back as promo_invalid / promo_expired /
-              promo_usage_exceeded and surfaces under the button.
+              The code is checked NOW, against the server, not silently at order time.
+
+              It used to say "Applied when you place the order" beside an unchanged total,
+              so the only way to find out whether a code was real — or what it was worth —
+              was to commit to paying. `/checkout/promo-preview/` runs the same arithmetic
+              `create_order` runs and reserves nothing, so the discount shown here is the
+              discount charged and previewing cannot burn a usage slot.
 
               Collapsed until asked for: an empty box labelled "promo code" sends people
               off to hunt for one, and most shoppers here do not have a code at all.
             */}
             <div className="mt-4 border-t border-dashed border-border pt-4">
-              {promoOpen ? (
+              {promoApplied ? (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-label-bold text-success-text">
+                      <Tag size={15} aria-hidden />
+                      <span className="truncate">{promoApplied.code} applied</span>
+                    </p>
+                    <p className="mt-1 text-body-sm text-muted-foreground">
+                      Discount shown in the total below.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearPromo}
+                    className="-my-2 flex min-h-11 shrink-0 items-center rounded px-1 text-label-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : promoOpen ? (
                 <div>
                   <label className="block">
                     <span className="mb-1.5 block text-body-sm font-medium text-foreground">
                       Promo code
                     </span>
-                    <input
-                      type="text"
-                      value={promo}
-                      onChange={(e) => setPromo(e.target.value)}
-                      placeholder="ENTER CODE"
-                      autoFocus
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="h-11 w-full rounded-md border border-border bg-muted px-3 text-body-md uppercase tracking-wide outline-none placeholder:tracking-normal placeholder:text-muted-foreground focus:border-primary sm:text-body-sm"
-                    />
+                    {/* Apply beside the field, not under it: the field and the action that
+                        validates it are one control, and on a phone a button on its own row
+                        reads as the page's primary action, which it is not. */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promo}
+                        onChange={(e) => {
+                          setPromo(e.target.value);
+                          setPromoError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          // Enter must not submit the order form this input sits inside.
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyPromo();
+                          }
+                        }}
+                        placeholder="ENTER CODE"
+                        autoFocus
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-invalid={promoError ? "true" : undefined}
+                        aria-describedby={promoError ? "promo-error" : undefined}
+                        className="h-11 min-w-0 flex-1 rounded-md border border-border bg-muted px-3 text-body-md uppercase tracking-wide outline-none placeholder:tracking-normal placeholder:text-muted-foreground focus:border-primary sm:text-body-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={applyPromo}
+                        disabled={promoChecking || !promo.trim()}
+                        className="h-11 shrink-0 rounded-md border border-border bg-card px-4 text-label-bold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                      >
+                        {promoChecking ? "Checking…" : "Apply"}
+                      </button>
+                    </div>
                   </label>
-                  <p className="mt-1.5 text-body-sm text-muted-foreground">
-                    Applied when you place the order.
-                  </p>
+                  {promoError ? (
+                    <p id="promo-error" role="alert" className="mt-1.5 text-body-sm text-destructive-text">
+                      {promoError}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <button
@@ -546,12 +653,35 @@ export function CheckoutView() {
               )}
             </div>
 
-            <dl className="mt-4 flex items-end justify-between border-t border-border pt-4">
-              <dt className="font-display text-headline-md text-foreground">Total</dt>
-              <dd aria-live="polite" className="font-display text-headline-md text-primary">
-                <Price usd={subtotal} />
-              </dd>
-            </dl>
+            {/*
+              `<Money>` for the applied case, `<Price>` otherwise, and the split is
+              load-bearing. The preview is already priced in the charge currency by the
+              server; `<Price>` converts catalogue USD, so using it here would convert an
+              already-converted figure and show an INR shopper a total ~88x too large.
+            */}
+            {promoApplied ? (
+              <dl className="mt-4 space-y-2 border-t border-border pt-4">
+                <div className="flex justify-between text-body-md">
+                  <dt className="text-muted-foreground">Discount</dt>
+                  <dd className="font-semibold text-success-text">
+                    −<Money minor={promoApplied.discount_minor} currency={promoApplied.currency} />
+                  </dd>
+                </div>
+                <div className="flex items-end justify-between">
+                  <dt className="font-display text-headline-md text-foreground">Total</dt>
+                  <dd aria-live="polite" className="font-display text-headline-md text-primary">
+                    <Money minor={promoApplied.total_minor} currency={promoApplied.currency} />
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <dl className="mt-4 flex items-end justify-between border-t border-border pt-4">
+                <dt className="font-display text-headline-md text-foreground">Total</dt>
+                <dd aria-live="polite" className="font-display text-headline-md text-primary">
+                  <Price usd={subtotal} />
+                </dd>
+              </dl>
+            )}
             {/*
               The form element stays mounted at every width — the pinned bar's button
               submits it by `form={FORM_ID}` — but its own button is hidden below `lg`,
@@ -618,8 +748,14 @@ export function CheckoutView() {
             </span>
             {/* Not aria-live: the summary card's total already announces changes, and
                 two live regions would read the same number twice. */}
+            {/* Must agree with the summary card above, including the discount — the bar
+                is the total most phone shoppers actually read before paying. */}
             <span className="font-display text-headline-md leading-none text-primary">
-              <Price usd={subtotal} />
+              {promoApplied ? (
+                <Money minor={promoApplied.total_minor} currency={promoApplied.currency} />
+              ) : (
+                <Price usd={subtotal} />
+              )}
             </span>
           </div>
           <button

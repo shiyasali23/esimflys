@@ -130,6 +130,51 @@ def preview_promo(cart, *, code, customer_email):
 OrderLine = namedtuple("OrderLine", ["catalog_plan_id", "quantity"])
 
 
+def preview_direct_promo(*, items, promo_code, customer_email, requested_currency=BASE_CURRENCY):
+    """What a promo code would do to a direct-checkout payload, without creating anything.
+
+    The checkout screen used to take a code, say "Applied when you place the order", and
+    show an unchanged total. The customer had to commit to paying to discover whether the
+    code was even valid, and never saw what they would actually be charged.
+
+    Every arithmetic step below is the same one `create_order` performs, in the same order,
+    because the two answers have to agree: this figure is shown to the customer and that
+    one is charged. Price in USD, discount in USD, resolve the charge currency from the
+    DISCOUNTED base amount (a cheap order can fall back to USD), convert, then cap the
+    converted discount at the converted subtotal. Any divergence here is a displayed price
+    that is not the charged price — see `test_preview_matches_the_order_it_predicts`.
+
+    Uses `_validate_promo`, NOT `_reserve_promo`. Previewing must never consume a usage
+    slot: a shopper who types a code, changes their mind and retypes it would otherwise
+    burn two of a five-use code and could exhaust it without ever buying anything.
+    """
+    lines = []
+    for entry in items:
+        plan = _active_plan_or_error(entry["product_code"])
+        lines.append(
+            OrderLine(catalog_plan_id=plan.id, quantity=_validate_quantity(entry.get("quantity", 1)))
+        )
+    if not lines:
+        raise Conflict(message="There is nothing to check out.")
+
+    _snapshots, base_subtotal = _price_cart(lines, BASE_CURRENCY)
+    promo = _validate_promo(promo_code, base_subtotal, BASE_CURRENCY, customer_email, None)
+    base_discount = _discount_for(promo, base_subtotal)
+
+    currency, rate = _resolve_charge_currency(requested_currency, base_subtotal - base_discount)
+    subtotal = currency_utils.convert(base_subtotal, to_currency=currency, rate=rate)
+    discount = currency_utils.convert_discount(
+        base_discount, to_currency=currency, rate=rate, max_minor=subtotal
+    )
+    return {
+        "code": promo.code,
+        "currency": currency,
+        "subtotal_minor": subtotal,
+        "discount_minor": discount,
+        "total_minor": subtotal - discount,
+    }
+
+
 def create_order(
     *, lines, customer_email, requested_currency=BASE_CURRENCY, promo_code=None, user=None,
     customer_first_name="", customer_last_name="", customer_phone="",

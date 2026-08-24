@@ -355,6 +355,21 @@ if PAYMENTS_GATEWAY not in VALID_PAYMENTS_GATEWAYS:
     raise ImproperlyConfigured(
         f"PAYMENTS_GATEWAY={PAYMENTS_GATEWAY!r} is not one of {sorted(VALID_PAYMENTS_GATEWAYS)}."
     )
+# No test may ever reach a real vendor.
+#
+# [MEASURED] 2026-08-24: `manage.py test apps.orders` made a live
+# POST https://api.esimaccess.com/api/v1/open/esim/order using the developer's own .env
+# credentials, because one test class lacked `@override_settings(SUPPLIER_GATEWAY="fake")`
+# and .env sets `SUPPLIER_GATEWAY=esim_access`. That call happened to fail logically, so no
+# wallet money moved — but nothing in the arrangement guaranteed that, and a fixture the
+# supplier accepted would have bought an eSIM every time the suite ran.
+#
+# Forcing it here rather than remembering a decorator on every class: the per-class
+# overrides are still correct and still work, they just stop being the only thing standing
+# between a test run and a real purchase.
+if "test" in sys.argv:
+    SUPPLIER_GATEWAY = "fake"
+
 if SUPPLIER_GATEWAY not in VALID_SUPPLIER_GATEWAYS:
     raise ImproperlyConfigured(
         f"SUPPLIER_GATEWAY={SUPPLIER_GATEWAY!r} is not one of {sorted(VALID_SUPPLIER_GATEWAYS)}."

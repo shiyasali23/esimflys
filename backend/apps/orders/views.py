@@ -14,6 +14,7 @@ from .models import Cart, Order
 from .serializers import (
     AddItemSerializer,
     DirectCheckoutSerializer,
+    DirectPromoPreviewSerializer,
     CartSerializer,
     CheckoutSerializer,
     OrderLookupSerializer,
@@ -220,6 +221,32 @@ class OrderLookupView(APIView):
             for profile in profiles
         ]
         return Response({"order": OrderSerializer(order).data, "esims": esims})
+
+
+class DirectPromoPreviewView(APIView):
+    """Validate a promo against a direct-checkout payload and price it, creating nothing.
+
+    Throttled on the `promo` scope, the same as the cart preview: this endpoint answers
+    "is this code real" to anonymous callers, so it is the obvious surface for guessing
+    codes. It reserves nothing, so a guess costs the attacker a rate-limit slot and costs
+    us nothing.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_scope = "promo"
+
+    def post(self, request):
+        payload = DirectPromoPreviewSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        user = _user(request)
+        email = payload.validated_data.get("customer_email") or (user.email if user else "")
+        preview = services.preview_direct_promo(
+            items=payload.validated_data["items"],
+            promo_code=payload.validated_data["promo_code"],
+            customer_email=email,
+            requested_currency=(payload.validated_data.get("currency") or "USD").upper(),
+        )
+        return Response(preview)
 
 
 class DirectCheckoutView(APIView):

@@ -54,6 +54,32 @@ export function checkoutDirect({
   );
 }
 
+/**
+ * What a promo code would do to this basket, without creating anything.
+ *
+ * The checkout summary used to take a code, say "Applied when you place the order" and
+ * show an unchanged total — so the only way to learn whether a code was valid, or what it
+ * was worth, was to commit to paying. This answers both before that point.
+ *
+ * Server-side and cart-free, running the same arithmetic `create_order` runs, so the
+ * figure shown here is the figure charged. It reserves nothing, so previewing a code
+ * cannot consume one of its uses.
+ *
+ * Amounts come back in the CHARGE currency and must be rendered with `<Money>`, never
+ * `<Price>` — `<Price>` converts catalogue USD and would double-convert these.
+ */
+export function previewPromo({ items, promoCode, customerEmail, currency }) {
+  return api.post("/checkout/promo-preview/", {
+    items: items.map((item) => ({
+      product_code: item.productCode,
+      quantity: item.quantity,
+    })),
+    promo_code: promoCode,
+    ...(customerEmail ? { customer_email: customerEmail } : {}),
+    ...(currency ? { currency } : {}),
+  });
+}
+
 /** Authenticated owners only — a guest who placed the order still gets 403 here. */
 export function getOrder(orderId, options) {
   return api.get(`/orders/${encodeURIComponent(orderId)}/`, options);
