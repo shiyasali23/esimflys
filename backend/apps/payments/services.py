@@ -1,4 +1,5 @@
 import hashlib
+from datetime import timedelta
 import json
 import logging
 
@@ -266,6 +267,111 @@ def _handle_succeeded(intent):
         user=order.user,
         order=order,
     )
+
+
+def reconcile_stuck_payments(*, older_than_minutes=10, limit=20):
+    """Finish orders whose `payment_intent.succeeded` webhook never arrived.
+
+    A webhook is best-effort. If the delivery is lost, rejected or simply late, nothing
+    else in this system ever learns the payment succeeded: the money sits in Stripe, the
+    order stays `pending_payment`, no eSIM is bought and the customer watches "Waiting for
+    your payment to be confirmed..." for ever. That is not hypothetical — two real charges
+    were taken and never delivered because `STRIPE_WEBHOOK_SECRET` did not match the
+    endpoint sending events, and every delivery was rejected with a 400. Nothing recovered
+    them, because nothing was looking.
+
+    So this asks the opposite question. Instead of waiting to be told, it takes payments
+    that have been stuck long enough to be suspicious and asks Stripe directly what
+    happened. When Stripe says the money moved, it runs `_handle_succeeded` — the SAME
+    function the webhook runs, not a parallel implementation that could drift from it.
+
+    Safety, in the order it matters:
+
+    * Provisioning cannot happen twice. `_handle_succeeded` returns early once the order
+      is `paid`, so a webhook that arrives late finds the work already done.
+    * A concurrent webhook cannot interleave. Both paths take `select_for_update` on the
+      same Payment row, so they serialise and the loser sees `paid`.
+    * `PaymentMismatch` is caught OUTSIDE the transaction, exactly as `handle_webhook_event`
+      does. Writing the quarantine inside would roll it back with the transaction and
+      leave the payment stale at `processing` with the failure recorded nowhere.
+    * One unreachable or malformed payment cannot stop the batch — each is isolated.
+    * `limit` bounds the Stripe calls per pass, so a large backlog drains over several
+      passes instead of tripping rate limits.
+
+    `older_than_minutes` must stay comfortably longer than a normal delivery, which is
+    seconds. Reconciling too eagerly would race healthy webhooks for no benefit.
+    """
+    cutoff = timezone.now() - timedelta(minutes=older_than_minutes)
+    candidates = list(
+        Payment.objects.filter(
+            provider="stripe",
+            status="processing",
+            provider_payment_id__isnull=False,
+            created_at__lte=cutoff,
+            order__payment_status="pending",
+        ).order_by("created_at")[:limit]
+    )
+    if not candidates:
+        return 0
+
+    gateway = gateway_module.get_gateway()
+    reconciled = 0
+    for payment in candidates:
+        try:
+            intent = gateway.retrieve_payment_intent(payment.provider_payment_id)
+        except Exception as exc:
+            # Stripe unreachable or answering oddly. Leave the row alone; the next pass
+            # retries it. Isolated so one bad id cannot strand the rest of the batch.
+            logger.warning(
+                "Reconciliation could not read intent %s: %s", payment.provider_payment_id, exc
+            )
+            continue
+
+        status = str(intent.get("status") or "")
+        if status != "succeeded":
+            # Genuinely unpaid, still in progress, or cancelled. Not this function's
+            # business — it exists to rescue money that MOVED, and marking an order failed
+            # from here would fight the `payment_intent.payment_failed` webhook.
+            continue
+
+        if intent.get("refunded") or (intent.get("amount_refunded") or 0) > 0:
+            # A refund leaves `status` at "succeeded" for ever, so this is the only thing
+            # standing between a refunded charge and a free eSIM. Loud, because it means an
+            # order was paid, refunded and never delivered — someone should look at it.
+            logger.warning(
+                "Skipping refunded intent %s on order %s — paid then refunded, not delivered",
+                payment.provider_payment_id, payment.order_id,
+            )
+            continue
+
+        try:
+            with transaction.atomic():
+                _handle_succeeded(intent)
+        except PaymentMismatch as exc:
+            payment_id = getattr(exc, "payment_id", None)
+            if payment_id is not None:
+                Payment.objects.filter(pk=payment_id, status="processing").update(
+                    status="failed", failure_code="reconciliation_mismatch"
+                )
+            logger.error(
+                "Reconciliation mismatch on intent %s: %s",
+                payment.provider_payment_id, exc.message,
+            )
+            continue
+        except Exception as exc:
+            logger.exception(
+                "Reconciliation failed for intent %s: %s", payment.provider_payment_id, exc
+            )
+            continue
+
+        reconciled += 1
+        # WARNING, not INFO: reaching here means a webhook that should have arrived did
+        # not, and the money was only delivered because something went looking for it.
+        logger.warning(
+            "Reconciled order %s from intent %s — its webhook never arrived",
+            payment.order_id, payment.provider_payment_id,
+        )
+    return reconciled
 
 
 def _handle_failed(intent):

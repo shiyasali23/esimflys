@@ -37,6 +37,37 @@ class StripeGateway:
             "status": intent.status,
         }
 
+    def retrieve_payment_intent(self, payment_intent_id):
+        """Ask Stripe what actually happened to an intent.
+
+        The reconciler needs this because a webhook is best-effort: if the delivery is
+        lost, rejected or delayed, nothing else in the system ever learns the payment
+        succeeded. Shaped to match the `data.object` of a `payment_intent.succeeded`
+        event so `_handle_succeeded` can consume either source unchanged — including
+        `amount`, `currency` and `metadata`, which it reconciles against the order before
+        marking anything paid.
+        """
+        # `latest_charge` is expanded because a REFUND DOES NOT CHANGE `status`: a
+        # refunded intent still reads "succeeded" for ever. Without this, reconciling a
+        # charge that was already refunded — by hand, in the dashboard, before the webhook
+        # was ever fixed — would provision an eSIM and give the goods away. The two orders
+        # stranded by the webhook outage are exactly that shape.
+        intent = self._stripe.PaymentIntent.retrieve(
+            payment_intent_id, expand=["latest_charge"]
+        )
+        charge = intent.get("latest_charge") or {}
+        if isinstance(charge, str):  # not expanded (older API versions)
+            charge = {}
+        return {
+            "id": intent.id,
+            "status": intent.status,
+            "amount": intent.amount,
+            "currency": intent.currency,
+            "metadata": dict(intent.metadata or {}),
+            "amount_refunded": charge.get("amount_refunded") or 0,
+            "refunded": bool(charge.get("refunded")),
+        }
+
     def create_refund(self, *, payment_intent_id, amount_minor, idempotency_key):
         refund = self._stripe.Refund.create(
             payment_intent=payment_intent_id,
@@ -76,6 +107,23 @@ class FakeGateway:
             "client_secret": payment_intent_id + "_secret",
             "status": "requires_payment_method",
         }
+
+    #: What `retrieve_payment_intent` should answer, keyed by intent id. Tests set this
+    #: to describe the world Stripe is presenting; anything not listed is still
+    #: `requires_payment_method`, i.e. genuinely unpaid, which must NOT be reconciled.
+    retrievable = {}
+
+    def retrieve_payment_intent(self, payment_intent_id):
+        return self.retrievable.get(
+            payment_intent_id,
+            {
+                "id": payment_intent_id,
+                "status": "requires_payment_method",
+                "amount": 0,
+                "currency": "usd",
+                "metadata": {},
+            },
+        )
 
     def create_refund(self, *, payment_intent_id, amount_minor, idempotency_key):
         digest = hashlib.sha256(idempotency_key.encode()).hexdigest()[:16]
