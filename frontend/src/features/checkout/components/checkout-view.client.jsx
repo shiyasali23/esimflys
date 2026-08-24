@@ -548,11 +548,26 @@ export function CheckoutView() {
           <div className="rounded-lg border border-border bg-white p-5 shadow-sm sm:p-6">
             <h2 className="mb-3 font-display text-headline-md text-foreground">Order summary</h2>
             <dl className="space-y-3 text-body-md">
+              {/*
+                Once a promo is applied the whole block switches to the server's figures,
+                subtotal included. Rendering only the discount and total from the preview
+                left a summary reading "3,99 €" above "−$3.99" and "$0.00": the server can
+                resolve a different charge currency than the one the shopper is browsing
+                in — a zero total falls back to USD because the converted amount lands
+                under the provider minimum — and a payment summary quoting two currencies
+                at once is not something anyone should be asked to trust.
+              */}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">
                   Subtotal ({units} {unitLabel})
                 </dt>
-                <dd><Price usd={subtotal} /></dd>
+                <dd>
+                  {promoApplied ? (
+                    <Money minor={promoApplied.subtotal_minor} currency={promoApplied.currency} />
+                  ) : (
+                    <Price usd={subtotal} />
+                  )}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">eSIM activation</dt>
@@ -714,8 +729,11 @@ export function CheckoutView() {
                 {submitError}
               </p>
             ) : null}
+            {/* The currency the SERVER resolved, not the one being browsed in — they
+                differ whenever the converted total falls under the provider minimum. */}
             <p className="mt-4 text-center text-body-sm text-muted-foreground lg:mt-3">
-              Charged in {currency}. Your card or bank may add its own conversion fee.
+              Charged in {promoApplied?.currency || currency}. Your card or bank may add its
+              own conversion fee.
             </p>
           </div>
         </aside>
