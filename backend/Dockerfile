@@ -41,10 +41,20 @@ EXPOSE 8000
 # green, and provisioning would stop SILENTLY — the exact class of invisible failure this
 # whole setup exists to prevent. Restarting it in a loop makes a crash self-healing and
 # leaves a visible line in the logs each time it happens.
+# `ensure_superuser` is wrapped in `|| true` because an admin login is worth less than
+# the site booting. It reads DJANGO_SUPERUSER_EMAIL/PASSWORD and no-ops when they are
+# unset, so it is safe to leave here permanently. It exists because there is otherwise no
+# route into this database at all: `railway ssh` fails host key verification and the
+# Postgres service exposes no public TCP proxy.
+#
+# Comments must stay OUT of the CMD below. It is shell form, so the whole thing is one
+# string passed to `sh -c`, and a `#` inside it comments out the remainder of the boot
+# chain — gunicorn included.
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput && \
     python manage.py createcachetable && \
     python manage.py ensure_catalogue && \
+    ( python manage.py ensure_superuser || true ) && \
     ( while true; do \
         python manage.py process_jobs || echo "process_jobs exited unexpectedly; restarting in 5s"; \
         sleep 5; \
