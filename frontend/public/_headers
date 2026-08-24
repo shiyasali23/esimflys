@@ -22,8 +22,20 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com")
-  # Cloudflare answers http:// itself and that redirect never reaches these rules, so this
-  # only hardens clients that already arrived over TLS.
+  # This is only load-bearing because "Always Use HTTPS" is ON in the Cloudflare dashboard
+  # (SSL/TLS -> Edge Certificates). Browsers ignore HSTS delivered over plain HTTP, so
+  # until that toggle was enabled on 2026-08-24 this header was inert: http://esimflys.com,
+  # /checkout and /account all answered 200 in clear text, which is how the pages handling
+  # payment and eSIM activation credentials were being served.
+  #
+  # The toggle cannot be replaced by code. Cloudflare's asset router answers static pages
+  # BEFORE the Worker runs — the same reason /auth had to stop being a page before the
+  # Worker could redirect it — so worker/index.js never sees these requests.
+  #
+  # [MEASURED] after enabling: http:// on /, /checkout, /account and /esim/:slug all 301 to
+  # https with the path preserved, and http://www -> https://esimflys.com in one hop.
+  # https://www.esimflys.com/api/v1/ still answers 403 rather than 301, so the API
+  # exemption that keeps credentialed fetches off a CORS preflight is intact.
   Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 # Everything under /_next/static is content-hashed by the build, so the filename changes
