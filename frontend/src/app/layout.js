@@ -7,6 +7,7 @@ import { RatesProvider } from "@/components/currency/rates-provider.client";
 import { AccountCurrencySync } from "@/components/currency/account-currency-sync.client";
 import { getRates } from "@/server/rates";
 import { ConsentBanner } from "@/components/layout/consent-banner.client";
+import { ReferralCapture } from "@/features/referral/referral-capture.client";
 import { NoFlashConsentScript } from "@/components/layout/no-flash-consent-script";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/jsonld";
@@ -91,6 +92,8 @@ export default async function RootLayout({ children }) {
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         <RatesProvider value={fx}>
           <AccountCurrencySync />
+          {/* Records `?ref=` from an agency link on any landing page. Renders nothing. */}
+          <ReferralCapture />
           {children}
         </RatesProvider>
         <ConsentBanner />

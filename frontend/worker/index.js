@@ -76,6 +76,17 @@ function legacyRedirect(url) {
     before this change. The page had no internal links — it exists only for old emails and
     external links — so a Worker redirect covers every real caller.
   */
+  /*
+    The platform panel moved from /admin to /superuser, so the name stops colliding with
+    Django's own /admin on the backend host. Handled here for the same reason /auth is:
+    the export no longer writes anything at /admin, so the asset router misses and this
+    Worker is the only thing left that can answer. Every sub-path is carried across, so a
+    bookmarked /admin/orders/detail?id=… still lands on the right screen.
+  */
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return new URL(`/superuser${pathname.slice("/admin".length)}`, url.origin);
+  }
+
   if (pathname === "/auth" || pathname === "/auth/") {
     return new URL("/auth/signin", url.origin);
   }
@@ -86,6 +97,60 @@ function legacyRedirect(url) {
   }
 
   return null;
+}
+
+/**
+ * Agency referral links: `/r/{code}` and `/r/{code}/{country-slug}`.
+ *
+ * This lives in the Worker rather than as a page because a static export cannot generate
+ * a route per agency, and agencies are created at runtime from the admin panel. `/r/` is
+ * a namespace no build artefact can ever occupy, so the asset router always misses and
+ * this always runs — which is the entire reason it is not `/{agency-name}` at the root.
+ *
+ * A root vanity path would sit in the same namespace as every page the site will ever
+ * publish. The asset router answers BEFORE this Worker, so the day `/partners` becomes a
+ * real page, an agency whose code is `partners` silently stops attributing: no error, no
+ * 404, just commission quietly going missing. That failure is invisible until a partner
+ * complains, which makes it the worst of the options rather than the prettiest.
+ *
+ * Attribution is carried two ways on purpose. The cookie survives the customer browsing
+ * around before buying; the `?ref=` on the redirect covers the case where cookies are
+ * blocked, since the storefront reads either. Neither is trusted: the code is validated
+ * server-side at order creation, and a code that does not resolve simply produces an
+ * unattributed order. Attribution must never be able to block a sale.
+ *
+ * Nor can a forged value cost money. Tracking codes are pinned to `discount_value = 0` by
+ * a database constraint (`promo_tracking_has_no_discount`), so the worst a fabricated
+ * cookie achieves is crediting the wrong agency — never a discount.
+ */
+const REFERRAL_COOKIE = "esf_ref";
+const REFERRAL_MAX_AGE = 60 * 60 * 24 * 15; // 15 days
+
+function referralRedirect(url) {
+  const match = /^\/r\/([A-Za-z0-9._@-]{1,64})(?:\/([a-z0-9-]{1,80}))?\/?$/.exec(url.pathname);
+  if (!match) return null;
+
+  const [, code, slug] = match;
+  const target = new URL(slug ? `/esim/${slug}` : "/", url.origin);
+  // Carried through so the storefront can capture it even where the cookie cannot be
+  // set — Safari with cookies blocked, an in-app browser, a stripped jar.
+  target.searchParams.set("ref", code);
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: target.toString(),
+      // Not HttpOnly: the checkout runs in the browser and has to read this to send the
+      // code with the order. It is a public referral identifier, not a secret — it is
+      // printed on the link the agency shares over WhatsApp.
+      "Set-Cookie":
+        `${REFERRAL_COOKIE}=${encodeURIComponent(code)}; Path=/; Max-Age=${REFERRAL_MAX_AGE}` +
+        "; SameSite=Lax; Secure",
+      // 302, and uncached: the Set-Cookie is the point of the response, and a cached
+      // redirect would attribute every later visitor to whoever warmed the cache.
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 const handler = {
@@ -143,6 +208,9 @@ const handler = {
     if (PROXIED_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
       return proxyToBackend(request, url, env);
     }
+
+    const referral = referralRedirect(url);
+    if (referral) return referral;
 
     const target = legacyRedirect(url);
     if (target) {

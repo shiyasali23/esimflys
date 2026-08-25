@@ -662,3 +662,100 @@ describe("refusals that a retry cannot fix", () => {
     expect(scrollIntoView).toHaveBeenCalled();
   });
 });
+
+
+/**
+ * Agency attribution reaching the order, and staying invisible while it does.
+ *
+ * A travel agency shares `/r/{code}`; the Worker leaves a 15-day cookie. The customer
+ * pays full price — a tracking code is pinned to `discount_value = 0` by a database
+ * constraint — so the only visible consequence of one must be none at all.
+ */
+describe("agency referral attribution", () => {
+  const setRef = (code) => {
+    document.cookie = `esf_ref=${code}; path=/`;
+  };
+  const clearRef = () => {
+    document.cookie = "esf_ref=; path=/; max-age=0";
+  };
+
+  afterEach(() => clearRef());
+
+  it("sends the captured code with the order when nothing was typed", async () => {
+    mockApi();
+    setRef("DESERTTOURS");
+    select(ITEM);
+    render(<CheckoutView />);
+    await submitAsGuest();
+
+    await waitFor(() => expect(checkoutCalls()).toHaveLength(1));
+    expect(body().promo_code).toBe("DESERTTOURS");
+  });
+
+  /** A deliberate choice beats a week-old cookie. */
+  it("prefers a code the customer typed over the captured one", async () => {
+    mockApi();
+    setRef("DESERTTOURS");
+    select(ITEM);
+    render(<CheckoutView />);
+    await ready();
+
+    await userEvent.click(screen.getByRole("button", { name: /have a promo code/i }));
+    await userEvent.type(screen.getByPlaceholderText(/enter code/i), "TYPEDCODE");
+    await submitAsGuest();
+
+    await waitFor(() => expect(checkoutCalls()).toHaveLength(1));
+    expect(body().promo_code).toBe("TYPEDCODE");
+  });
+
+  it("omits promo_code entirely for a customer who arrived on their own", async () => {
+    mockApi();
+    select(ITEM);
+    render(<CheckoutView />);
+    await submitAsGuest();
+
+    await waitFor(() => expect(checkoutCalls()).toHaveLength(1));
+    expect(body().promo_code).toBeUndefined();
+  });
+
+  /**
+   * A tracking code must never be presented as money off. Showing "applied" beside a
+   * zero discount would advertise a benefit that does not exist.
+   */
+  it("shows nothing at all when a tracking code is applied", async () => {
+    mockApi();
+    select(ITEM);
+    globalThis.fetch = vi.fn((url, init) => {
+      const u = String(url);
+      if (u.includes("/checkout/promo-preview/")) {
+        return Promise.resolve(
+          jsonResponse({
+            code: "DESERTTOURS",
+            kind: "tracking",
+            currency: "USD",
+            subtotal_minor: 1499,
+            discount_minor: 0,
+            total_minor: 1499,
+          }),
+        );
+      }
+      if (u.includes("/account/me/")) {
+        return Promise.resolve(
+          jsonResponse({ error: { code: "permission_denied", message: "No." } }, 403),
+        );
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    render(<CheckoutView />);
+    await ready();
+
+    await userEvent.click(screen.getByRole("button", { name: /have a promo code/i }));
+    await userEvent.type(screen.getByPlaceholderText(/enter code/i), "DESERTTOURS");
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/DESERTTOURS applied/)).toBeNull(),
+    );
+    expect(screen.queryByText(/^Discount$/)).toBeNull();
+  });
+});

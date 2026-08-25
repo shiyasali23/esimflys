@@ -13,6 +13,8 @@ from apps.common.exceptions import Conflict, PlanUnavailable, PromoUsageExceeded
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile
 from apps.common.exceptions import PromoInvalid
+from apps.accounts.models import Organization
+from apps.accounts.services import create_agency_tracking_code
 from apps.orders import services
 from apps.orders.models import Cart, Notification, Order, OrderItem, PromoCode, PromoRedemption
 from apps.orders.notifications import queue_notification, send_pending_notifications
@@ -68,6 +70,53 @@ class CheckoutServiceTests(TestCase):
         self.assertEqual(preview["discount_minor"], order.discount_minor)
         self.assertEqual(preview["total_minor"], order.total_minor)
         self.assertEqual(preview["currency"], order.currency)
+
+    def test_a_tracking_code_previews_at_full_price(self):
+        """An agency referral attributes a sale; it never reduces one.
+
+        The database forbids a tracking code from carrying a discount
+        (`promo_tracking_has_no_discount`). This asserts the preview agrees, so the
+        checkout can never show a referral as money off — the customer pays list price
+        and the agency earns commission on it.
+        """
+        org = Organization.objects.create(
+            name="Desert Tours", organization_type="travel_agency", status="active",
+        )
+        promo = create_agency_tracking_code(org, code="DESERTTOURS", commission_bps=2000)
+
+        preview = services.preview_direct_promo(
+            items=self._items(), promo_code="deserttours", customer_email="a@b.com"
+        )
+
+        self.assertEqual(preview["kind"], "tracking")
+        self.assertEqual(preview["discount_minor"], 0)
+        self.assertEqual(preview["total_minor"], preview["subtotal_minor"])
+        self.assertEqual(promo.discount_value, 0)
+
+    def test_a_tracking_code_attributes_the_order_to_its_agency(self):
+        """The whole point of the code: the order must carry the referring agency."""
+        org = Organization.objects.create(
+            name="Desert Tours", organization_type="travel_agency", status="active",
+        )
+        create_agency_tracking_code(org, code="DESERTTOURS2", commission_bps=2000)
+
+        order = services.checkout_direct(
+            items=self._items(), customer_email="a@b.com", promo_code="DESERTTOURS2"
+        )
+
+        self.assertEqual(order.referring_organization_id, org.id)
+        self.assertEqual(order.discount_minor, 0)
+        self.assertEqual(order.total_minor, order.subtotal_minor)
+
+    def test_preview_reports_the_kind_for_a_discount_code_too(self):
+        PromoCode.objects.create(
+            code="REALDISCOUNT", discount_type="percentage_bps", discount_value=1000,
+        )
+        preview = services.preview_direct_promo(
+            items=self._items(), promo_code="REALDISCOUNT", customer_email="a@b.com"
+        )
+        self.assertEqual(preview["kind"], "discount")
+        self.assertGreater(preview["discount_minor"], 0)
 
     def test_preview_does_not_consume_a_usage_slot(self):
         """Previewing must be free. It uses `_validate_promo`, never `_reserve_promo`.

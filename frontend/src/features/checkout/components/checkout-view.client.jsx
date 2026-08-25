@@ -6,6 +6,7 @@ import { ShoppingBag, ArrowRight, Trash2, Tag, CheckCircle2 } from "lucide-react
 import { useCart, cartIsEmpty, subtotalUsd, totalUnits } from "@/features/cart/use-cart.client";
 import { useCurrency } from "@/components/currency/use-currency.client";
 import { checkoutDirect, previewPromo } from "@/lib/api/orders";
+import { clearReferral, storedReferral } from "@/features/referral/use-referral.client";
 import { fetchMeOrNull, logout, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
 import { fieldErrors } from "@/lib/api/errors";
 import { saveOrderContext } from "@/features/checkout/order-context";
@@ -282,10 +283,19 @@ export function CheckoutView() {
     setSubmitting(true);
     if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
     try {
+      /*
+        A typed code wins; otherwise the agency referral captured from the link is sent.
+        Both travel in the same `promo_code` field because the server, not the browser,
+        decides what a code means — and a tracking code is pinned to zero discount by a
+        database constraint, so replaying one can attribute a sale and never discount it.
+
+        `|| undefined` rather than `|| ""`: an empty string is a code the server would
+        reject, which would fail a checkout that simply had no referral.
+      */
       const order = await checkoutDirect({
         items,
         customerEmail: email,
-        promoCode: promo.trim() || undefined,
+        promoCode: promo.trim() || storedReferral() || undefined,
         currency,
         idempotencyKey: idempotencyKey.current,
       });
@@ -295,6 +305,9 @@ export function CheckoutView() {
         email: order.customer_email || email,
       });
       idempotencyKey.current = null;
+      // Spent. Leaving it would attribute a second, unrelated purchase to the same
+      // agency weeks later, on a visit they had nothing to do with.
+      clearReferral();
       reset();
       router.push(`${routes.payment()}?order=${encodeURIComponent(order.id)}`);
     } catch (error) {
@@ -562,7 +575,7 @@ export function CheckoutView() {
                   Subtotal ({units} {unitLabel})
                 </dt>
                 <dd>
-                  {promoApplied ? (
+                  {promoApplied && promoApplied.kind !== "tracking" ? (
                     <Money minor={promoApplied.subtotal_minor} currency={promoApplied.currency} />
                   ) : (
                     <Price usd={subtotal} />
@@ -588,7 +601,14 @@ export function CheckoutView() {
               off to hunt for one, and most shoppers here do not have a code at all.
             */}
             <div className="mt-4 border-t border-dashed border-border pt-4">
-              {promoApplied ? (
+              {/*
+                A TRACKING code is deliberately invisible. It is an agency attribution the
+                customer pays full price for, so announcing "applied" beside a Discount row
+                of zero would advertise a benefit that does not exist — the exact confusion
+                the zero-discount database constraint exists to prevent. It is accepted
+                silently and the box closes.
+              */}
+              {promoApplied && promoApplied.kind === "tracking" ? null : promoApplied ? (
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 text-label-bold text-success-text">
@@ -674,7 +694,7 @@ export function CheckoutView() {
               server; `<Price>` converts catalogue USD, so using it here would convert an
               already-converted figure and show an INR shopper a total ~88x too large.
             */}
-            {promoApplied ? (
+            {promoApplied && promoApplied.kind !== "tracking" ? (
               <dl className="mt-4 space-y-2 border-t border-border pt-4">
                 <div className="flex justify-between text-body-md">
                   <dt className="text-muted-foreground">Discount</dt>
@@ -732,8 +752,10 @@ export function CheckoutView() {
             {/* The currency the SERVER resolved, not the one being browsed in — they
                 differ whenever the converted total falls under the provider minimum. */}
             <p className="mt-4 text-center text-body-sm text-muted-foreground lg:mt-3">
-              Charged in {promoApplied?.currency || currency}. Your card or bank may add its
-              own conversion fee.
+              Charged in{" "}
+              {(promoApplied && promoApplied.kind !== "tracking" && promoApplied.currency) ||
+                currency}
+              . Your card or bank may add its own conversion fee.
             </p>
           </div>
         </aside>
@@ -769,7 +791,7 @@ export function CheckoutView() {
             {/* Must agree with the summary card above, including the discount — the bar
                 is the total most phone shoppers actually read before paying. */}
             <span className="font-display text-headline-md leading-none text-primary">
-              {promoApplied ? (
+              {promoApplied && promoApplied.kind !== "tracking" ? (
                 <Money minor={promoApplied.total_minor} currency={promoApplied.currency} />
               ) : (
                 <Price usd={subtotal} />

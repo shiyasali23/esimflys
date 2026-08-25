@@ -31,11 +31,19 @@ export const routes = {
   agencyTab: (orgId, slug) =>
     q(slug ? `/agency/${slug}` : "/agency/portal", "org", orgId),
   agencyTabPath: (slug) => (slug ? `/agency/${slug}` : "/agency/portal"),
-  admin: () => "/admin",
-  adminOrder: (id) => q("/admin/orders/detail", "id", id),
-  adminAgency: (id) => q("/admin/agencies/detail", "id", id),
-  adminCustomer: (id) => q("/admin/customers/detail", "id", id),
-  adminEsim: (id) => q("/admin/esims/detail", "id", id),
+  /*
+    The platform panel lives at /superuser, not /admin.
+    /admin is Django's own admin on the backend host, and having the two share a name
+    made "the admin panel" ambiguous in every conversation about this system. The old
+    path still resolves: it no longer matches a built asset, so the Worker answers it
+    with a 308 to the new one (see `superuserRedirect` in worker/index.js) and existing
+    bookmarks keep working.
+  */
+  admin: () => "/superuser",
+  adminOrder: (id) => q("/superuser/orders/detail", "id", id),
+  adminAgency: (id) => q("/superuser/agencies/detail", "id", id),
+  adminCustomer: (id) => q("/superuser/customers/detail", "id", id),
+  adminEsim: (id) => q("/superuser/esims/detail", "id", id),
   signin: () => "/auth/signin",
   signup: () => "/auth/signup",
   forgotPassword: () => "/auth/forgot-password",

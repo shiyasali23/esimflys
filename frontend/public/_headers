@@ -76,11 +76,11 @@
   Cache-Control: private, no-store
 /account/*
   Cache-Control: private, no-store
-/admin
+/superuser
   Cache-Control: private, no-store
-/admin.txt
+/superuser.txt
   Cache-Control: private, no-store
-/admin/*
+/superuser/*
   Cache-Control: private, no-store
 /agency
   Cache-Control: private, no-store

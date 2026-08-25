@@ -168,6 +168,13 @@ def preview_direct_promo(*, items, promo_code, customer_email, requested_currenc
     )
     return {
         "code": promo.code,
+        # `kind` travels with the preview because the checkout has to present the two
+        # kinds completely differently. A `discount` code is a benefit and is announced;
+        # a `tracking` code is an agency attribution the customer pays full price for and
+        # must never be shown as a discount. Without this the UI renders "CODE applied"
+        # over a "Discount -0.00" row for a referral, which is exactly the confusion the
+        # zero-discount database constraint exists to prevent.
+        "kind": promo.kind,
         "currency": currency,
         "subtotal_minor": subtotal,
         "discount_minor": discount,

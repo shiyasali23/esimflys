@@ -121,7 +121,9 @@ describe("signed in with access", () => {
     expect(screen.queryByText("content")).toBeNull();
   });
 
-  it("links every section under /admin", async () => {
+  /* The panel moved to /superuser so its name stops colliding with Django's own
+     /admin on the backend host. /admin still resolves — the Worker 308s it. */
+  it("links every section under /superuser", async () => {
     useSession.setState({ user: USER });
     globalThis.fetch.mockResolvedValue(jsonResponse(DASHBOARD));
     render(<AdminShell title="Dashboard">content</AdminShell>);
@@ -129,10 +131,10 @@ describe("signed in with access", () => {
     const hrefs = screen
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"))
-      .filter((h) => h?.startsWith("/admin"));
-    expect(hrefs).toContain("/admin");
-    expect(hrefs).toContain("/admin/orders");
-    expect(hrefs).toContain("/admin/audit");
+      .filter((h) => h?.startsWith("/superuser"));
+    expect(hrefs).toContain("/superuser");
+    expect(hrefs).toContain("/superuser/orders");
+    expect(hrefs).toContain("/superuser/audit");
   });
 });
 
