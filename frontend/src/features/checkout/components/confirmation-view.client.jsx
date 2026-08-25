@@ -11,11 +11,38 @@ import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { routes } from "@/config/routes";
 
-const INSTALL_STEPS = [
-  "Keep this page open, or use the details below.",
+/**
+ * The three additions here are not copy polish — each one is a support ticket that has
+ * already happened.
+ *
+ * A real customer installed successfully in the UK and still had no internet for an hour,
+ * then concluded the product was broken. Supplier record at the time: `smdpStatus:
+ * INSTALLATION`, device Apple iPhone 13, `activateTime: -`, `orderUsage: 0`. The profile
+ * was on the phone and had never attached to a network. Turning Data Roaming on fixed it
+ * immediately — `smdpStatus: ENABLED`, `esimStatus: IN_USE`, 382 MB used.
+ *
+ *  1. DATA ROAMING. These plans run on a foreign IMSI and roam onto local networks —
+ *     the UK profile above carried `imsi 208011658903579` (Orange France) with
+ *     `apn: orange`. Without Data Roaming enabled for that line the device never attaches,
+ *     so the eSIM installs perfectly and delivers nothing. The old step 4 said only "turn
+ *     on the eSIM line", which is necessary and not sufficient.
+ *
+ *  2. THE DESTINATION BY NAME. "Your destination" tells someone holding a UK eSIM in
+ *     Delhi nothing. Naming the country sets the expectation that there is no service
+ *     until they are in it.
+ *
+ *  3. THE QR IS SINGLE-USE. An LPA activation code can be redeemed exactly once. The
+ *     customer above, seeing no signal, rescanned the same code and got iOS's "Unable to
+ *     Activate eSIM" — which reads like a broken product and is really just a consumed
+ *     code. Saying so up front stops the panic.
+ */
+const installSteps = (destination) => [
+  "Keep this page open, or use the details below — you'll need them in a moment.",
   "Open Settings → Cellular / Mobile Data → Add eSIM.",
-  "Scan the QR code, or enter the SM-DP+ address and activation code by hand.",
-  "Turn on the eSIM line when you land at your destination.",
+  "Scan the QR code, or enter the SM-DP+ address and activation code by hand. This code works only once, so there's no need to scan it twice.",
+  destination
+    ? `Once you're in ${destination}, turn the line on AND switch Data Roaming on for it — without roaming the eSIM installs but gets no signal.`
+    : "At your destination, turn the line on AND switch Data Roaming on for it — without roaming the eSIM installs but gets no signal.",
 ];
 
 /**
@@ -121,6 +148,12 @@ export function ConfirmationView() {
   const delivered = isDelivered(order);
   const failed = isTerminalFailure(order);
   const orderNumber = order?.order_number || context.orderNumber;
+  /*
+    The country the plan actually covers, straight from the order line. Used to name the
+    destination in the install steps instead of the useless "your destination". Falls back
+    to that wording when an order somehow carries no country, rather than rendering a gap.
+  */
+  const destination = order?.items?.[0]?.country_name || null;
 
   return (
     <Container className="max-w-3xl py-12">
@@ -219,7 +252,7 @@ export function ConfirmationView() {
         <div className="rounded-lg border border-border bg-white p-8">
           <h2 className="mb-4 font-display text-headline-md text-foreground">Install in 4 steps</h2>
           <ol className="space-y-3">
-            {INSTALL_STEPS.map((step, i) => (
+            {installSteps(destination).map((step, i) => (
               <li key={step} className="flex gap-3 text-body-md text-foreground">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-label-caps text-on-primary">
                   {i + 1}

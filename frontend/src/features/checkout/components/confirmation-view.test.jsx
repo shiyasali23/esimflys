@@ -26,6 +26,7 @@ const PENDING = {
     payment_status: "pending",
     fulfillment_status: "pending",
     total_minor: 2998,
+    items: [{ country_name: "United Kingdom", product_name: "United Kingdom 1 GB — 7 Days" }],
   },
   esims: [],
 };
@@ -134,5 +135,51 @@ describe("guest vs account routing", () => {
     await screen.findByText(/your esim is ready/i);
     const called = globalThis.fetch.mock.calls.map((c) => c[0]);
     expect(called.some((u) => String(u).includes("/orders/lookup/"))).toBe(true);
+  });
+});
+
+/**
+ * The install instructions are the product, not decoration.
+ *
+ * A real customer installed a UK eSIM correctly in the UK and had no internet for an
+ * hour, then concluded the product was broken. The supplier record showed the profile on
+ * the device (smdpStatus INSTALLATION, iPhone 13) with `activateTime: -` and zero usage:
+ * these plans roam on a foreign IMSI, and Data Roaming was off. Enabling it moved the
+ * same eSIM to ENABLED / IN_USE within seconds. Seeing no signal, they had rescanned the
+ * single-use QR and hit iOS's "Unable to Activate eSIM", which looks like a broken
+ * product and is really a consumed code.
+ *
+ * Each assertion below is one of those two facts. If they disappear from the page, the
+ * incident repeats for every customer.
+ */
+describe("install instructions", () => {
+  it("tells the customer to switch Data Roaming on", async () => {
+    globalThis.fetch = vi.fn(() => Promise.resolve(jsonResponse(DELIVERED)));
+    saveOrderContext({ orderId: "o1", orderNumber: "ESF-REAL123", email: "a@b.com" });
+    render(<ConfirmationView />);
+    expect(await screen.findByText(/data roaming/i)).toBeTruthy();
+  });
+
+  it("warns that the QR code only works once", async () => {
+    globalThis.fetch = vi.fn(() => Promise.resolve(jsonResponse(DELIVERED)));
+    saveOrderContext({ orderId: "o1", orderNumber: "ESF-REAL123", email: "a@b.com" });
+    render(<ConfirmationView />);
+    expect(await screen.findByText(/works only once/i)).toBeTruthy();
+  });
+
+  it("names the destination country rather than saying \"your destination\"", async () => {
+    globalThis.fetch = vi.fn(() => Promise.resolve(jsonResponse(DELIVERED)));
+    saveOrderContext({ orderId: "o1", orderNumber: "ESF-REAL123", email: "a@b.com" });
+    render(<ConfirmationView />);
+    expect(await screen.findByText(/United Kingdom/)).toBeTruthy();
+  });
+
+  it("still gives usable wording when the order carries no country", async () => {
+    const noCountry = { ...DELIVERED, order: { ...DELIVERED.order, items: [] } };
+    globalThis.fetch = vi.fn(() => Promise.resolve(jsonResponse(noCountry)));
+    saveOrderContext({ orderId: "o1", orderNumber: "ESF-REAL123", email: "a@b.com" });
+    render(<ConfirmationView />);
+    expect(await screen.findByText(/at your destination/i)).toBeTruthy();
+    expect(screen.getByText(/data roaming/i)).toBeTruthy();
   });
 });

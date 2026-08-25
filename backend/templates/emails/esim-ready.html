@@ -10,5 +10,25 @@
       For your security, your QR code and activation details are not included in this email.
       Please sign in to your eSIMFlys account to view and install your eSIM.
     </p>
+    {# The two facts that decide whether the eSIM works. A real customer installed
+       correctly, had no internet for an hour and concluded the product was broken:
+       the profile was on the phone (smdpStatus INSTALLATION, device iPhone 13) and had
+       never attached to a network, because these plans roam on a foreign IMSI and Data
+       Roaming was off. Enabling it took the same eSIM to ENABLED / IN_USE immediately.
+       The single-use line stops the rescan that produces iOS's alarming "Unable to
+       Activate eSIM". This email is what someone reads after closing the page. #}
+    <h2>Two things to know before you install</h2>
+    <ul>
+      <li>
+        <strong>Turn on Data Roaming</strong> for the eSIM line once it is installed
+        {% if esim %}and you are in {{ esim.order_item.country_name }}{% endif %}.
+        These plans connect through a local partner network, so without Data Roaming the
+        eSIM installs correctly but never gets a signal.
+      </li>
+      <li>
+        <strong>Your QR code works once.</strong> After it installs, scanning it again
+        will fail — that is normal and does not mean anything is wrong.
+      </li>
+    </ul>
   </body>
 </html>
