@@ -198,6 +198,7 @@ export function AdminAgencyDetail({ orgId }) {
 
 function MembersSection({ orgId, members, onChanged, setNotice }) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState("viewer");
   const [busyId, setBusyId] = useState(null);
   const [errors, setErrors] = useState({});
@@ -233,15 +234,27 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
     setNotice(null);
     setBusyId("new");
     try {
-      await addOrganizationMember(orgId, { email: email.trim(), role });
+      const chosen = password.trim();
+      await addOrganizationMember(orgId, {
+        email: email.trim(),
+        role,
+        // Omitted rather than sent blank when the person already has an account:
+        // an existing user is being GRANTED ACCESS here, not re-credentialed, and a
+        // blank string would fail validation instead of being ignored.
+        ...(chosen ? { password: chosen } : {}),
+      });
       setEmail("");
+      setPassword("");
       onChanged();
+      setNotice(
+        chosen
+          ? `Added ${email.trim()}. Send them the password over a channel you trust.`
+          : `Added ${email.trim()} to this agency.`,
+      );
     } catch (err) {
       const fields = fieldErrors(err);
       if (Object.keys(fields).length) setErrors(fields);
-      else if (err?.status === 404) {
-        setNotice("That person needs an eSIMFlys account before they can be added.");
-      } else setNotice(err?.message || "We couldn't add that person.");
+      else setNotice(err?.message || "We couldn't add that person.");
     } finally {
       setBusyId(null);
     }
@@ -306,6 +319,19 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
             ))}
           </select>
         </label>
+        <label className="min-w-56 flex-1">
+          <span className="mb-1 block text-label-bold text-foreground">
+            Password <span className="font-normal text-muted-foreground">(new accounts)</span>
+          </span>
+          <input
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Leave blank if they already have an account"
+            autoComplete="off"
+            className="w-full rounded-md border border-border bg-muted px-4 py-2.5 text-body-sm outline-none focus:border-primary"
+          />
+        </label>
         <button
           type="submit"
           disabled={busyId === "new"}
@@ -314,9 +340,17 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
           <UserPlus size={16} aria-hidden /> {busyId === "new" ? "Adding…" : "Add"}
         </button>
       </form>
-      {errors.email ? (
-        <p role="alert" className="mb-4 text-body-sm text-destructive">{errors.email}</p>
-      ) : null}
+      {/*
+        Every field the server rejected, not just `email`. The server requires a
+        password whenever the address has no account yet, and rendering only
+        `errors.email` turned that 400 into a button that did nothing at all — the
+        superuser could not create an agency login and was told nothing.
+      */}
+      {Object.entries(errors).map(([field, message]) => (
+        <p key={field} role="alert" className="mb-4 text-body-sm text-destructive">
+          {Array.isArray(message) ? message.join(" ") : message}
+        </p>
+      ))}
 
       {!members?.length ? (
         <p className="text-body-sm text-muted-foreground">No staff yet.</p>
@@ -417,11 +451,27 @@ function MembersSection({ orgId, members, onChanged, setNotice }) {
   );
 }
 
+/** The link an agency actually shares. Mirrors the /r/ route in worker/index.js. */
+function referralLink(code) {
+  const origin = typeof window === "undefined" ? "https://esimflys.com" : window.location.origin;
+  return `${origin}/r/${encodeURIComponent(code)}`;
+}
+
 function CodesSection({ orgId, codes, onChanged, setNotice }) {
   const [code, setCode] = useState("");
   const [bps, setBps] = useState(2000);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState({});
+  const [copied, setCopied] = useState(null);
+
+  async function copyLink(code) {
+    try {
+      await navigator.clipboard.writeText(referralLink(code));
+      setCopied(code);
+    } catch {
+      // Clipboard is blocked in some contexts; the link is on screen to select by hand.
+    }
+  }
 
   async function issue(event) {
     event.preventDefault();
@@ -501,6 +551,24 @@ function CodesSection({ orgId, codes, onChanged, setNotice }) {
             <li key={c.id} className="flex flex-wrap items-center justify-between gap-4 py-3">
               <div className="min-w-0">
                 <code className="font-display text-lg tracking-wide text-foreground">{c.code}</code>
+                {/*
+                  The code alone is not usable — the agency shares a LINK. Without this
+                  the superuser has to know the /r/ convention by heart and retype it for
+                  every agency, which is exactly how a mistyped link that attributes
+                  nothing reaches a partner.
+                */}
+                <span className="mt-1 flex flex-wrap items-center gap-2">
+                  <code className="break-all rounded-sm bg-muted px-2 py-1 text-body-sm text-foreground">
+                    {referralLink(c.code)}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => copyLink(c.code)}
+                    className="rounded-full border border-border px-3 py-1 text-label-bold text-foreground hover:bg-muted"
+                  >
+                    {copied === c.code ? "Copied" : "Copy link"}
+                  </button>
+                </span>
                 <p className="mt-0.5 text-body-sm text-muted-foreground">
                   {c.commission_type === "percentage_bps" && c.commission_value != null
                     ? `${(c.commission_value / 100).toFixed(2)}%`

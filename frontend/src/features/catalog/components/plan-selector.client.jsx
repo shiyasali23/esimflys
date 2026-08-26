@@ -11,6 +11,7 @@ import { checkoutDirect } from "@/lib/api/orders";
 import { fetchMeOrNull, GOOGLE_LOGIN_PATH } from "@/lib/api/session";
 import { hasSessionHint } from "@/features/auth/use-session.client";
 import { saveOrderContext } from "@/features/checkout/order-context";
+import { storedReferral, clearReferral } from "@/features/referral/use-referral.client";
 import { GoogleLogo } from "@/components/media/google-logo";
 import { cn } from "@/lib/cn";
 import { routes } from "@/config/routes";
@@ -134,12 +135,21 @@ export function PlanSelector({ country, plans, belowPlans = null }) {
     setAdding(true);
     if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
     try {
+      /**
+       * An agency link lands HERE, not on /checkout — `/r/{code}/{country}` redirects
+       * straight to this page, and this button is the shortest path off it. Without
+       * this the referral is dropped on the one flow the link itself creates, and the
+       * agency silently loses the commission. Tracking codes carry no discount, so
+       * this can only ever change who gets credited, never the price.
+       */
       const order = await checkoutDirect({
         items: [{ productCode: selected.product_id, quantity: 1 }],
         customerEmail: buyerEmail,
         currency,
+        promoCode: storedReferral() || undefined,
         idempotencyKey: idempotencyKey.current,
       });
+      clearReferral();
       saveOrderContext({
         orderId: order.id,
         orderNumber: order.order_number,

@@ -12,6 +12,7 @@ import { DataTable } from "@/components/data/data-table";
 import { routes } from "@/config/routes";
 import { useFocusOnReveal } from "@/lib/a11y/use-focus-on-reveal.client";
 import { StatusBadge } from "@/components/data/status-badge";
+import { cn } from "@/lib/cn";
 
 const STATUSES = ["", "pending", "active", "suspended", "rejected", "closed"];
 
@@ -71,7 +72,7 @@ export function AdminAgencies() {
       load(page, status);
     } catch (err) {
       // 409 invalid_status_transition explains which moves are allowed — keep it.
-      setNotice(err?.message || "That change wasn't accepted.");
+      setNotice({ tone: "error", text: err?.message || "That change wasn't accepted." });
     } finally {
       setPending(null);
     }
@@ -92,12 +93,12 @@ export function AdminAgencies() {
       });
       formEl.reset();
       setCreating(false);
-      setNotice(`Created ${org.name}. Add a member to issue their login.`);
+      setNotice({ tone: "success", text: `Created ${org.name}. Add a member to issue their login.` });
       load(1, status);
     } catch (err) {
       const fields = fieldErrors(err);
       if (Object.keys(fields).length) setCreateErrors(fields);
-      else setNotice(err?.message || "We couldn't create that agency.");
+      else setNotice({ tone: "error", text: err?.message || "We couldn't create that agency." });
     }
   }
 
@@ -189,9 +190,22 @@ export function AdminAgencies() {
         {creating ? "Cancel" : "New agency"}
       </button>
 
+      {/*
+        One slot carries both outcomes, so it must carry the tone too. Rendering a
+        successful creation in the destructive red read as a failure — the agency was
+        created and the screen said something had gone wrong.
+      */}
       {notice ? (
-        <p role="alert" className="mb-4 rounded-md bg-destructive/10 p-3 text-body-sm text-destructive-text">
-          {notice}
+        <p
+          role={notice.tone === "success" ? "status" : "alert"}
+          className={cn(
+            "mb-4 rounded-md p-3 text-body-sm",
+            notice.tone === "success"
+              ? "bg-success-text/10 text-success-text"
+              : "bg-destructive/10 text-destructive-text",
+          )}
+        >
+          {notice.text}
         </p>
       ) : null}
 

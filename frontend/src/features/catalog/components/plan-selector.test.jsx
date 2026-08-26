@@ -376,6 +376,48 @@ describe("buying straight from the plan page", () => {
   });
 
   /**
+   * `/r/{code}/{country}` redirects to THIS page, so this button — not /checkout — is
+   * the shortest path off an agency link. Dropping the code here loses the commission
+   * on the one journey the link exists to create, and nothing on screen would show it.
+   */
+  it("attributes an agency referral captured from the link", async () => {
+    document.cookie = "esf_ref=DESERTTOURS; path=/";
+    mockSession();
+    render(<PlanSelector country={COUNTRY} plans={PLANS} />);
+
+    await userEvent.type(await screen.findByLabelText(/email address/i), "buyer@example.com");
+    await userEvent.click(payButton());
+
+    await waitFor(() => expect(buyCalls()).toHaveLength(1));
+    expect(JSON.parse(buyCalls()[0][1].body).promo_code).toBe("DESERTTOURS");
+  });
+
+  /** A tracking code is spent once it has become an order; a second sale is not the agency's. */
+  it("stops attributing once the code has become an order", async () => {
+    document.cookie = "esf_ref=DESERTTOURS; path=/";
+    mockSession();
+    render(<PlanSelector country={COUNTRY} plans={PLANS} />);
+
+    await userEvent.type(await screen.findByLabelText(/email address/i), "buyer@example.com");
+    await userEvent.click(payButton());
+    await waitFor(() => expect(buyCalls()).toHaveLength(1));
+
+    expect(document.cookie).not.toContain("DESERTTOURS");
+  });
+
+  /** No link, no attribution — the field must be absent, not an empty string. */
+  it("sends no promo code when the shopper arrived on their own", async () => {
+    mockSession();
+    render(<PlanSelector country={COUNTRY} plans={PLANS} />);
+
+    await userEvent.type(await screen.findByLabelText(/email address/i), "buyer@example.com");
+    await userEvent.click(payButton());
+
+    await waitFor(() => expect(buyCalls()).toHaveLength(1));
+    expect(JSON.parse(buyCalls()[0][1].body).promo_code).toBeUndefined();
+  });
+
+  /**
    * The plan became an order. Leaving a copy in the basket would offer it for sale a
    * second time the next time the shopper opened checkout.
    */

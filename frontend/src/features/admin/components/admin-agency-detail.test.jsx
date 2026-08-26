@@ -211,19 +211,69 @@ describe("staff", () => {
   });
 
   /**
-   * The backend adds an EXISTING user; there is no invite flow. A bare 404 would
-   * read as "the agency is missing", which is the wrong thing to go fix.
+   * Agencies have no signup, so this form is the ONLY way an agency login is born and
+   * the server demands a password whenever the address has no account yet. Sending the
+   * form without one 400s, and the screen used to render only `errors.email` — so the
+   * button did nothing at all and said nothing at all. The superuser could not create
+   * an agency login and had no way to find out why.
    */
-  it("explains a 404 as the person having no account yet", async () => {
-    mockApi({ write: () => jsonResponse({ detail: "Not found." }, 404) });
+  it("issues a login by sending the password alongside the email", async () => {
+    mockApi();
     render(<AdminAgencyDetail orgId="org-1" />);
     await screen.findByText("Sunrise Travel");
 
     const form = screen.getByLabelText(/email address/i).closest("form");
-    await userEvent.type(within(form).getByLabelText(/email address/i), "ghost@sunrise.test");
+    await userEvent.type(within(form).getByLabelText(/email address/i), "new@sunrise.test");
+    await userEvent.type(within(form).getByLabelText(/password/i), "Tr0ubad0ur-Vine-92");
+    await userEvent.selectOptions(within(form).getByLabelText(/^role$/i), "owner");
     await userEvent.click(within(form).getByRole("button", { name: /add/i }));
 
-    expect(await screen.findByText(/needs an eSIMFlys account/i)).toBeTruthy();
+    await waitFor(() => expect(writes().length).toBeGreaterThan(0));
+    expect(JSON.parse(writes()[0][1].body)).toEqual({
+      email: "new@sunrise.test",
+      role: "owner",
+      password: "Tr0ubad0ur-Vine-92",
+    });
+  });
+
+  /** An existing user is being granted access, not re-credentialed — no blank password. */
+  it("omits the password entirely when the box is left empty", async () => {
+    mockApi();
+    render(<AdminAgencyDetail orgId="org-1" />);
+    await screen.findByText("Sunrise Travel");
+
+    const form = screen.getByLabelText(/email address/i).closest("form");
+    await userEvent.type(within(form).getByLabelText(/email address/i), "dana@sunrise.test");
+    await userEvent.click(within(form).getByRole("button", { name: /add/i }));
+
+    await waitFor(() => expect(writes().length).toBeGreaterThan(0));
+    expect(JSON.parse(writes()[0][1].body)).not.toHaveProperty("password");
+  });
+
+  /** A rejected field the form does not itself render is still the reason it failed. */
+  it("shows a field error the form has no input for", async () => {
+    mockApi({
+      write: () =>
+        jsonResponse(
+          {
+            error: {
+              code: "validation_error",
+              message: "The request could not be processed.",
+              fields: { password: ["This password is too common."] },
+            },
+          },
+          400,
+        ),
+    });
+    render(<AdminAgencyDetail orgId="org-1" />);
+    await screen.findByText("Sunrise Travel");
+
+    const form = screen.getByLabelText(/email address/i).closest("form");
+    await userEvent.type(within(form).getByLabelText(/email address/i), "new@sunrise.test");
+    await userEvent.type(within(form).getByLabelText(/password/i), "password");
+    await userEvent.click(within(form).getByRole("button", { name: /add/i }));
+
+    expect(await screen.findByText(/too common/i)).toBeTruthy();
   });
 
   it("changes a role by PATCH on that member", async () => {
@@ -326,6 +376,20 @@ describe("tracking codes", () => {
  * (contract §7). This form is the only route in — without it a member who forgets
  * their password is permanently locked out.
  */
+describe("the link an agency actually shares", () => {
+  /**
+   * A bare code is not shareable. Without the link on screen the superuser has to know
+   * the /r/ convention by heart and retype it per agency — which is how a partner ends
+   * up with a link that attributes nothing and nobody notices until a payout is short.
+   */
+  it("shows the referral link for each code", async () => {
+    mockApi();
+    render(<AdminAgencyDetail orgId="org-1" />);
+
+    expect(await screen.findByText(new RegExp(`/r/${CODES[0].code}$`))).toBeTruthy();
+  });
+});
+
 describe("setting a member's password", () => {
   const openFor = async (email) => {
     mockApi();
