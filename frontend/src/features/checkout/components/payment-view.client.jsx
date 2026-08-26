@@ -29,6 +29,30 @@ import { routes } from "@/config/routes";
  */
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
+
+/**
+ * Defined once at module scope, NOT inline in the render.
+ *
+ * `<Elements options={…}>` is re-read on every render, and a fresh object identity
+ * makes Stripe re-create the Payment Element — clearing whatever the customer had
+ * already typed. It only stayed harmless before because this component re-rendered
+ * rarely; the currency note above it re-renders on a currency change.
+ *
+ * The variables only borrow the site's own tokens so Stripe's iframe stops looking
+ * like a component from another site pasted into this one. The tab chrome is left
+ * alone deliberately: it is how a customer picks UPI over card, and Indian buyers
+ * need that choice (see `stripe-payment-form.client.jsx`).
+ */
+const STRIPE_APPEARANCE = {
+  theme: "stripe",
+  variables: {
+    colorPrimary: "#2563eb",
+    colorText: "#0f172a",
+    colorDanger: "#dc2626",
+    borderRadius: "10px",
+    fontSizeBase: "16px",
+  },
+};
 export function PaymentView() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -118,44 +142,55 @@ export function PaymentView() {
   const showsDifferentCurrency = displayCurrency !== chargeCurrency;
 
   return (
-    <Container className="max-w-2xl py-12">
+    <Container className="max-w-xl py-10 sm:py-12">
       <h1 className="mb-2 font-display text-headline-lg uppercase text-foreground">Payment</h1>
       <p className="mb-8 text-body-md text-muted-foreground">
         Your order is placed and awaiting payment. It is confirmed by our payment provider on the
         server — never from this page.
       </p>
 
-      <div className="rounded-lg border border-border bg-white p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="font-display text-headline-md text-foreground">Amount due</p>
-            <p className="text-body-sm text-muted-foreground">Charged in {chargeCurrency}</p>
-          </div>
-          <div className="font-display text-headline-md text-primary">{amount}</div>
+      {/*
+        No card around any of this. The Payment Element draws its own frame, and every
+        box we added sat outside that one: a white card on a near-white page, holding a
+        bordered notice, holding Stripe's bordered panel, holding bordered inputs. Four
+        nested rectangles on a 390px screen, where the outer card's padding alone ate
+        64px of the width the card fields had to share.
+
+        The amount is a heading with a rule under it, the note is a sentence, and the
+        form is the only thing on the page that looks like a container — because it is
+        the only thing that holds anything.
+      */}
+      <div className="flex items-baseline justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <p className="font-display text-headline-md text-foreground">Amount due</p>
+          <p className="text-body-sm text-muted-foreground">Charged in {chargeCurrency}</p>
         </div>
+        <p className="font-display text-headline-md text-primary">{amount}</p>
+      </div>
 
-        {/**
-          * The charge currency can differ from the one being browsed in: a rate can
-          * go stale, or the converted total can fall under Stripe's minimum, and the
-          * server falls back to USD rather than fail at the payment step.
-          *
-          * Said plainly rather than dressed up as an error, because nothing has gone
-          * wrong — but it must not be silent either. Seeing one currency all the way
-          * through checkout and a different one on the card statement is how a
-          * legitimate charge gets reported as fraud.
-          */}
-        {showsDifferentCurrency ? (
-          <p className="mb-6 rounded-md border border-border bg-muted p-3 text-body-sm text-muted-foreground">
-            Prices are shown in {displayCurrency}, but this order is charged in{" "}
-            <strong className="text-foreground">{chargeCurrency}</strong>. Your bank may apply its
-            own conversion rate.
-          </p>
-        ) : null}
+      {/**
+        * The charge currency can differ from the one being browsed in: a rate can
+        * go stale, or the converted total can fall under Stripe's minimum, and the
+        * server falls back to USD rather than fail at the payment step.
+        *
+        * Said plainly rather than dressed up as an error, because nothing has gone
+        * wrong — but it must not be silent either. Seeing one currency all the way
+        * through checkout and a different one on the card statement is how a
+        * legitimate charge gets reported as fraud.
+        */}
+      {showsDifferentCurrency ? (
+        <p className="mt-5 text-body-sm text-muted-foreground">
+          Prices are shown in {displayCurrency}, but this order is charged in{" "}
+          <strong className="text-foreground">{chargeCurrency}</strong>. Your bank may apply its
+          own conversion rate.
+        </p>
+      ) : null}
 
+      <div className="mt-8">
         {/* No publishable key means Stripe.js cannot mount. Say so rather than
             rendering a card form that silently cannot take money. */}
         {!stripePromise ? (
-          <div role="alert" className="flex gap-3 rounded-md border border-border bg-muted p-4">
+          <div role="alert" className="flex gap-3 rounded-lg border border-border bg-muted p-4">
             <Info size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden />
             <p className="text-body-sm text-muted-foreground">
               Card payments aren&apos;t configured on this deployment, so this order can&apos;t be
@@ -164,10 +199,7 @@ export function PaymentView() {
             </p>
           </div>
         ) : (
-          <Elements
-            stripe={stripePromise}
-            options={{ clientSecret: intent.client_secret, appearance: { theme: "stripe" } }}
-          >
+          <Elements stripe={stripePromise} options={{ clientSecret: intent.client_secret, appearance: STRIPE_APPEARANCE }}>
             <StripePaymentForm amount={amount} />
           </Elements>
         )}
