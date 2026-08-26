@@ -31,12 +31,15 @@ const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 
 /**
- * Defined once at module scope, NOT inline in the render.
+ * Hoisted to module scope because it is a constant, not because identity matters.
  *
- * `<Elements options={…}>` is re-read on every render, and a fresh object identity
- * makes Stripe re-create the Payment Element — clearing whatever the customer had
- * already typed. It only stayed harmless before because this component re-rendered
- * rarely; the currency note above it re-renders on a currency change.
+ * Worth stating plainly, because the opposite is the obvious guess and it is wrong:
+ * re-rendering `<Elements options={…}>` with a FRESH object does NOT re-create the
+ * Payment Element and does not clear digits already typed. react-stripe-js compares
+ * options by VALUE — `isEqual` recurses through plain objects — and applies any
+ * genuine difference with `elements.update()`, which mutates the existing group.
+ * `clientSecret` is on its immutable list and only ever warns. So the `options`
+ * literal on the JSX below is safe as written, and no one needs to memoise it.
  *
  * The variables only borrow the site's own tokens so Stripe's iframe stops looking
  * like a component from another site pasted into this one. The tab chrome is left
