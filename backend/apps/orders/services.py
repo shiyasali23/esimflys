@@ -1,6 +1,7 @@
 from collections import namedtuple
 from decimal import Decimal
 import hashlib
+import logging
 import secrets
 import uuid
 
@@ -127,6 +128,8 @@ def preview_promo(cart, *, code, customer_email):
 
 #: What ``create_order`` needs from a line. A CartItem satisfies it, and so does a plain
 #: request payload — which is the whole point: order creation never needed a Cart row.
+logger = logging.getLogger(__name__)
+
 OrderLine = namedtuple("OrderLine", ["catalog_plan_id", "quantity"])
 
 
@@ -372,7 +375,16 @@ def consume_promo_for_order(order):
     ).update(status="consumed", consumed_at=timezone.now())
 
 
-BLOCKING_PAYMENT_STATES = ("succeeded", "processing", "refunded", "partially_refunded")
+# `processing` is deliberately absent. It is the state EVERY abandoned checkout lands
+# in — opening the payment page creates a PaymentIntent — so treating it as blocking
+# refused essentially every order this exists to clear. It is resolved by asking Stripe
+# instead, in `_settle_processing_payments` below.
+BLOCKING_PAYMENT_STATES = ("succeeded", "refunded", "partially_refunded")
+
+# What Stripe says about an intent that definitively did NOT take money. Anything else —
+# `processing`, `requires_confirmation`, `requires_action`, `succeeded` — is either
+# settled or still capable of settling, and the order must be left alone.
+DEAD_INTENT_STATUSES = ("requires_payment_method", "canceled")
 
 
 def cancellation_blocker(order):
@@ -394,6 +406,56 @@ def cancellation_blocker(order):
     return None
 
 
+def _void_processing_payments(order):
+    """Ask Stripe about every in-flight payment, and void the ones that never took money.
+
+    The reconciler asks this same question to rescue money that MOVED. This asks it to
+    prove money did NOT move — and then closes the door behind it.
+
+    Voiding the intent is not tidiness. Cancelling our order row while leaving the intent
+    live means the customer's still-open tab holds a working client_secret: they could pay
+    a cancelled order minutes later, and nothing downstream is expecting that money. So an
+    intent that cannot be voided is a reason to abort the cancellation, not to continue.
+
+    Returns None when every payment is safely dead, or a string explaining the refusal.
+    """
+    from apps.payments import stripe as gateway_module
+
+    pending = [p for p in order.payments.all() if p.status in ("pending", "processing")]
+    if not pending:
+        return None
+
+    gateway = gateway_module.get_gateway()
+    for payment in pending:
+        if not payment.provider_payment_id:
+            # No intent was ever created, so there is nothing that could take money.
+            Payment = payment.__class__
+            Payment.objects.filter(pk=payment.pk).update(status="cancelled")
+            continue
+        try:
+            intent = gateway.retrieve_payment_intent(payment.provider_payment_id)
+        except Exception as exc:  # noqa: BLE001 — any failure here means "do not risk it"
+            logger.warning("Cancel could not read intent %s: %s", payment.provider_payment_id, exc)
+            return "we could not reach the payment provider to confirm it is unpaid"
+
+        status = str(intent.get("status") or "")
+        if status not in DEAD_INTENT_STATUSES:
+            return f"the payment provider reports this intent as {status or 'unknown'}"
+
+        if status != "canceled":
+            try:
+                gateway.cancel_payment_intent(payment.provider_payment_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Cancel could not void intent %s: %s", payment.provider_payment_id, exc
+                )
+                return "we could not void the payment attempt with the provider"
+
+        Payment = payment.__class__
+        Payment.objects.filter(pk=payment.pk).update(status="cancelled")
+    return None
+
+
 def cancel_unpaid_order(order):
     """Cancel an order that never got paid and hand its promo use back.
 
@@ -404,6 +466,17 @@ def cancel_unpaid_order(order):
     Returns the number of promo reservations released. Raises Conflict if the order
     must not be cancelled, so the caller cannot proceed by ignoring a return value.
     """
+    blocker = cancellation_blocker(order)
+    if blocker:
+        raise Conflict(message=f"This order cannot be cancelled: {blocker}.")
+
+    # Outside the transaction on purpose: this talks to Stripe over the network, and
+    # holding a row lock open across a third-party call is how a slow provider turns
+    # into database contention. The lock below re-checks everything that matters.
+    blocker = _void_processing_payments(order)
+    if blocker:
+        raise Conflict(message=f"This order cannot be cancelled: {blocker}.")
+
     with transaction.atomic():
         locked = Order.objects.select_for_update().get(pk=order.pk)
         blocker = cancellation_blocker(locked)

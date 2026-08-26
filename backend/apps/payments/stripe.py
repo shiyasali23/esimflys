@@ -94,6 +94,20 @@ class StripeGateway:
             "refunded": bool(charge.get("refunded")),
         }
 
+    def cancel_payment_intent(self, payment_intent_id):
+        """Void an intent so a still-open checkout tab cannot pay a cancelled order.
+
+        Without this, cancelling our order row leaves Stripe perfectly willing to take
+        the money: the customer's tab still holds a live client_secret, and a payment
+        landing against a cancelled order is worse than the abandoned row we set out to
+        tidy — real money, nothing to deliver it against, and no webhook path expecting it.
+
+        Stripe refuses to cancel an intent that already succeeded, which is the outcome
+        we want anyway; the caller treats that refusal as "do not cancel the order".
+        """
+        intent = self._stripe.PaymentIntent.cancel(payment_intent_id)
+        return _plain(intent)
+
     def create_refund(self, *, payment_intent_id, amount_minor, idempotency_key):
         refund = self._stripe.Refund.create(
             payment_intent=payment_intent_id,
@@ -150,6 +164,14 @@ class FakeGateway:
                 "metadata": {},
             },
         )
+
+    def cancel_payment_intent(self, payment_intent_id):
+        current = self.retrieve_payment_intent(payment_intent_id)
+        if current.get("status") == "succeeded":
+            raise ValueError("Cannot cancel a succeeded PaymentIntent.")
+        cancelled = {**current, "status": "canceled"}
+        self.retrievable[payment_intent_id] = cancelled
+        return cancelled
 
     def create_refund(self, *, payment_intent_id, amount_minor, idempotency_key):
         digest = hashlib.sha256(idempotency_key.encode()).hexdigest()[:16]
