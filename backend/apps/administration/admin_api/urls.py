@@ -26,6 +26,7 @@ from .views import (
     AdminNotificationRetryView,
     AdminOrderDetailView,
     AdminOrderListView,
+    AdminOrderCancelView,
     AdminOrderRefundView,
     AdminPaymentListView,
     AdminRefundListView,
@@ -87,6 +88,7 @@ urlpatterns = [
     # Orders, customers, payments, refunds
     path("orders/", AdminOrderListView.as_view(), name="order-list"),
     path("orders/<uuid:id>/", AdminOrderDetailView.as_view(), name="order-detail"),
+    path("orders/<uuid:id>/cancel/", AdminOrderCancelView.as_view(), name="order-cancel"),
     path("orders/<uuid:id>/refunds/", AdminOrderRefundView.as_view(), name="order-refund"),
     path("customers/", AdminCustomerListView.as_view(), name="customer-list"),
     path("customers/<uuid:id>/", AdminCustomerDetailView.as_view(), name="customer-detail"),

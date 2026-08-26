@@ -28,13 +28,12 @@ worse than the clutter it tidies.
 """
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+
+from apps.common.exceptions import Conflict
 from django.utils import timezone
 
-from apps.orders.models import Order, OrderItem, PromoRedemption
-
-BLOCKING_PAYMENT_STATES = ("succeeded", "processing", "refunded", "partially_refunded")
-
+from apps.orders.models import Order
+from apps.orders.services import cancel_unpaid_order, cancellation_blocker
 
 class Command(BaseCommand):
     help = "Cancel unpaid orders and release the promo reservations they were holding."
@@ -101,24 +100,12 @@ class Command(BaseCommand):
                 cancelled += 1
                 continue
 
-            with transaction.atomic():
-                # Re-read under a row lock: a webhook could settle this order between
-                # the read above and the write here, which would cancel a paid order.
-                locked = Order.objects.select_for_update().get(pk=order.pk)
-                blocker = self._blocker(locked)
-                if blocker:
-                    skipped += 1
-                    self.stdout.write(f"  SKIP {str(order.id)[:8]} — became {blocker} while running")
-                    continue
-
-                released = PromoRedemption.objects.filter(
-                    order=locked, status="reserved"
-                ).update(status="released", released_at=timezone.now())
-
-                locked.status = "cancelled"
-                locked.payment_status = "cancelled"
-                locked.fulfillment_status = "cancelled"
-                locked.save(update_fields=["status", "payment_status", "fulfillment_status"])
+            try:
+                released = cancel_unpaid_order(order)
+            except Conflict as exc:
+                skipped += 1
+                self.stdout.write(f"  SKIP {str(order.id)[:8]} — {exc.message}")
+                continue
 
             cancelled += 1
             note = f" (released {released} promo reservation)" if released else ""
@@ -130,14 +117,5 @@ class Command(BaseCommand):
             self.stdout.write("Nothing was written. Re-run with --apply to commit.")
 
     def _blocker(self, order):
-        """Why this order must not be cancelled, or None if it is safe."""
-        if order.payment_status != "pending":
-            return f"payment_status is {order.payment_status}"
-        # An EsimProfile hangs off OrderItem, not Order — there is no `order.esims`.
-        # Reaching through the items is the only way to see a delivered profile.
-        if OrderItem.objects.filter(order=order, esim_profile__isnull=False).exists():
-            return "an eSIM was already provisioned — this is a refund, not a cancellation"
-        live = [p.status for p in order.payments.all() if p.status in BLOCKING_PAYMENT_STATES]
-        if live:
-            return f"carries a payment in {live[0]}"
-        return None
+        """Delegates to the shared guard so this and the admin endpoint cannot diverge."""
+        return cancellation_blocker(order)

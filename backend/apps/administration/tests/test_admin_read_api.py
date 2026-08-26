@@ -10,7 +10,7 @@ from apps.catalog.models import CatalogPlan, Country, Supplier
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile, SupplierEvent
 from apps.orders import services as order_services
-from apps.orders.models import Notification, Order
+from apps.orders.models import Notification, Order, PromoRedemption
 from apps.payments.models import Payment, Refund
 
 from .test_admin_api import platform_user
@@ -274,6 +274,103 @@ class OperationsTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         notification.refresh_from_db()
         self.assertEqual(notification.status, "queued")
+
+
+@override_settings(SUPPLIER_GATEWAY="fake", PAYMENTS_GATEWAY="fake")
+class AdminOrderCancelTests(APITestCase):
+    """Cancelling is the unpaid twin of refunding, and its refusals matter just as much.
+
+    The panel could refund a settled order and do nothing with an unsettled one, so
+    abandoned checkouts had no ending and kept holding the promo use they reserved.
+    """
+
+    def setUp(self):
+        build_catalogue()
+        self.admin = platform_user("ops@example.com", "platform_admin")
+        self.support = platform_user("support@example.com", "support_admin")
+        self.agency = Organization.objects.create(
+            name="Sunrise", organization_type="travel_agency",
+            billing_email="s@s.com", status="active",
+        )
+        create_agency_tracking_code(self.agency, code="TRACK", commission_bps=2000)
+
+    def _url(self, order):
+        return f"{ADMIN}/orders/{order.id}/cancel/"
+
+    def test_cancels_an_unpaid_order(self):
+        order = place_order()
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(self._url(order))
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "cancelled")
+        self.assertEqual(order.payment_status, "cancelled")
+        self.assertEqual(order.fulfillment_status, "cancelled")
+
+    def test_hands_the_promo_reservation_back(self):
+        order = place_order(promo="TRACK")
+        self.assertEqual(
+            PromoRedemption.objects.filter(order=order, status="reserved").count(), 1
+        )
+        self.client.force_authenticate(self.admin)
+        self.client.post(self._url(order))
+        self.assertEqual(
+            PromoRedemption.objects.filter(order=order, status="released").count(), 1
+        )
+
+    def test_refuses_to_cancel_a_settled_order(self):
+        """The money guard. A paid order is a refund question, never a cancellation."""
+        order = place_order()
+        settle(order)
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(self._url(order))
+        self.assertEqual(response.status_code, 409)
+        order.refresh_from_db()
+        self.assertNotEqual(order.status, "cancelled")
+
+    def test_support_may_cancel_an_unpaid_order(self):
+        """`support_admin` holds MANAGE_ORDER on purpose: "Support can help a customer
+        but must not touch money or pricing." Cancelling an unpaid order moves no money —
+        no charge, no refund, no payout — so it is squarely support's job. The money
+        boundary is kept by the guard below, not by withholding the capability."""
+        order = place_order()
+        self.client.force_authenticate(self.support)
+        response = self.client.post(self._url(order))
+        self.assertEqual(response.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "cancelled")
+
+    def test_support_still_cannot_cancel_a_settled_order(self):
+        """Where support's reach actually stops. Paid means refund, and refunds are finance."""
+        order = place_order()
+        settle(order)
+        self.client.force_authenticate(self.support)
+        response = self.client.post(self._url(order))
+        self.assertEqual(response.status_code, 409)
+        order.refresh_from_db()
+        self.assertNotEqual(order.status, "cancelled")
+
+    def test_readonly_admin_cannot_cancel(self):
+        readonly = platform_user("ro@example.com", "readonly_admin")
+        order = place_order()
+        self.client.force_authenticate(readonly)
+        response = self.client.post(self._url(order))
+        self.assertEqual(response.status_code, 403)
+        order.refresh_from_db()
+        self.assertEqual(order.status, "pending_payment")
+
+    def test_anonymous_cannot_cancel(self):
+        order = place_order()
+        response = self.client.post(self._url(order))
+        self.assertIn(response.status_code, (401, 403))
+        order.refresh_from_db()
+        self.assertEqual(order.status, "pending_payment")
+
+    def test_writes_an_audit_event(self):
+        order = place_order()
+        self.client.force_authenticate(self.admin)
+        self.client.post(self._url(order))
+        self.assertTrue(AuditEvent.objects.filter(action="order.cancelled").exists())
 
 
 @override_settings(SUPPLIER_GATEWAY="fake", PAYMENTS_GATEWAY="fake")

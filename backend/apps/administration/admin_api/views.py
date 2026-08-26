@@ -41,6 +41,7 @@ from apps.catalog.models import CatalogPlan, Country, TopupProduct
 from apps.common.exceptions import Conflict
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile, SupplierEvent
+from apps.orders import services as order_services
 from apps.orders.models import Notification, Order, PromoCode
 from apps.payments import services as payment_services
 from apps.payments.models import Payment, Refund
@@ -506,6 +507,34 @@ class AdminRefundListView(PlatformListView):
 
     def get_queryset(self):
         return Refund.objects.select_related("payment__order").order_by("-created_at")
+
+
+class AdminOrderCancelView(PlatformAPIView):
+    """End an order that was placed but never paid.
+
+    The panel could refund a settled order and do nothing at all with an unsettled
+    one, so abandoned checkouts had no way to end: 57 of 63 orders on production sat
+    in `pending_payment`, the oldest twelve days old, each still holding the promo use
+    it reserved at creation.
+
+    The guard lives in `orders.services.cancellation_blocker` and is shared with the
+    `cancel_stale_orders` command, so an operator clicking here and an operator
+    running the sweep cannot get different answers about whether an order took money.
+    """
+
+    required_capability = roles.MANAGE_ORDER
+
+    def post(self, request, id):
+        order = get_object_or_404(Order, pk=id)
+        released = order_services.cancel_unpaid_order(order)
+        record_audit(
+            action="order.cancelled",
+            obj=order,
+            request=request,
+            changes={"released_promo_reservations": released},
+        )
+        order.refresh_from_db()
+        return Response(AdminOrderDetailSerializer(order).data)
 
 
 class AdminOrderRefundView(PlatformAPIView):

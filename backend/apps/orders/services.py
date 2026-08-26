@@ -372,6 +372,55 @@ def consume_promo_for_order(order):
     ).update(status="consumed", consumed_at=timezone.now())
 
 
+BLOCKING_PAYMENT_STATES = ("succeeded", "processing", "refunded", "partially_refunded")
+
+
+def cancellation_blocker(order):
+    """Why this order must not be cancelled, or None if cancelling it is safe.
+
+    Single source of truth for both callers — the admin endpoint and the
+    `cancel_stale_orders` command. Two copies of a money guard is one copy that
+    eventually disagrees with the other, and the disagreement shows up as a paid
+    order that someone managed to void.
+    """
+    if order.payment_status != "pending":
+        return f"payment_status is {order.payment_status}"
+    # An EsimProfile hangs off OrderItem, not Order — there is no `order.esims`.
+    if OrderItem.objects.filter(order=order, esim_profile__isnull=False).exists():
+        return "an eSIM was already provisioned — this is a refund, not a cancellation"
+    live = [p.status for p in order.payments.all() if p.status in BLOCKING_PAYMENT_STATES]
+    if live:
+        return f"carries a payment in {live[0]}"
+    return None
+
+
+def cancel_unpaid_order(order):
+    """Cancel an order that never got paid and hand its promo use back.
+
+    Re-reads under a row lock and re-checks the guard inside the transaction: a Stripe
+    webhook can settle the order between the caller's decision and this write, and
+    cancelling an order that has just been paid is the one outcome worth locking for.
+
+    Returns the number of promo reservations released. Raises Conflict if the order
+    must not be cancelled, so the caller cannot proceed by ignoring a return value.
+    """
+    with transaction.atomic():
+        locked = Order.objects.select_for_update().get(pk=order.pk)
+        blocker = cancellation_blocker(locked)
+        if blocker:
+            raise Conflict(message=f"This order cannot be cancelled: {blocker}.")
+
+        released = PromoRedemption.objects.filter(
+            order=locked, status="reserved"
+        ).update(status="released", released_at=timezone.now())
+
+        locked.status = "cancelled"
+        locked.payment_status = "cancelled"
+        locked.fulfillment_status = "cancelled"
+        locked.save(update_fields=["status", "payment_status", "fulfillment_status"])
+    return released
+
+
 def release_promo_for_order(order):
     PromoRedemption.objects.filter(order=order, status="reserved").update(
         status="released", released_at=timezone.now()
