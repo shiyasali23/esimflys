@@ -28,6 +28,8 @@ from .views import (
     AdminOrderDetailView,
     AdminOrderListView,
     AdminOrderCancelView,
+    AdminOrderTimelineView,
+    AdminSearchView,
     AdminPromoCodeDetailView,
     AdminPromoCodeListView,
     AdminOrderRefundView,
@@ -86,6 +88,7 @@ urlpatterns = [
     path("audit-events/", AuditEventListView.as_view(), name="audit-events"),
 
     # Dashboard & reports
+    path("search/", AdminSearchView.as_view(), name="admin-search"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("reports/revenue/", RevenueReportView.as_view(), name="report-revenue"),
 
@@ -94,6 +97,7 @@ urlpatterns = [
     path("orders/<uuid:id>/", AdminOrderDetailView.as_view(), name="order-detail"),
     path("promo-codes/", AdminPromoCodeListView.as_view(), name="promo-code-list"),
     path("promo-codes/<uuid:id>/", AdminPromoCodeDetailView.as_view(), name="promo-code-detail"),
+    path("orders/<uuid:id>/timeline/", AdminOrderTimelineView.as_view(), name="order-timeline"),
     path("orders/<uuid:id>/cancel/", AdminOrderCancelView.as_view(), name="order-cancel"),
     path("orders/<uuid:id>/refunds/", AdminOrderRefundView.as_view(), name="order-refund"),
     path("customers/", AdminCustomerListView.as_view(), name="customer-list"),

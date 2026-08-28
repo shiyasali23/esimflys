@@ -37,6 +37,7 @@ from apps.administration.services import members as member_services
 from apps.administration.services import operations as operation_services
 from apps.administration.services import organizations as organization_services
 from apps.administration.services import promos as promo_services
+from apps.administration.services import timeline as timeline_services
 from apps.administration.services import reports as report_services
 from apps.catalog.models import CatalogPlan, Country, TopupProduct
 from apps.common.exceptions import Conflict, UpstreamUnavailable
@@ -606,6 +607,90 @@ class AdminRefundListView(PlatformListView):
 
     def get_queryset(self):
         return Refund.objects.select_related("payment__order").order_by("-created_at")
+
+
+class AdminSearchView(PlatformAPIView):
+    """One box that finds a customer, an order or an eSIM without knowing which tab.
+
+    Support is handed one identifier — whatever the customer happened to quote — and had
+    to guess which screen it belonged to before they could search at all. An order number
+    goes in Orders, an email in Customers, the last four of an ICCID in eSIMs, and
+    picking wrong looks exactly like "we have no record of you".
+
+    ICCID is matched on `iccid_last4`, which exists precisely so a support conversation
+    can identify an eSIM without anybody handling the full number. The encrypted column
+    is never touched here.
+
+    Capped hard at five hits per kind. This is a "take me to the record" box, not a
+    reporting tool, and an unbounded LIKE over three tables on every keystroke is how a
+    convenience becomes a performance problem.
+    """
+
+    required_capability = roles.VIEW_ORDER
+
+    def get(self, request):
+        term = (request.query_params.get("q") or "").strip()
+        if len(term) < 3:
+            # Two characters match most of the database and answer nothing.
+            return Response({"query": term, "orders": [], "customers": [], "esims": []})
+
+        orders = Order.objects.filter(
+            Q(order_number__icontains=term) | Q(customer_email__icontains=term)
+        ).order_by("-created_at")[:5]
+
+        customers = User.objects.filter(
+            Q(email__icontains=term)
+            | Q(first_name__icontains=term)
+            | Q(last_name__icontains=term)
+        ).order_by("-date_joined")[:5]
+
+        esims = EsimProfile.objects.select_related("order_item__order").filter(
+            Q(iccid_last4__icontains=term)
+            | Q(order_item__order__order_number__icontains=term)
+        ).order_by("-created_at")[:5]
+
+        return Response({
+            "query": term,
+            "orders": [
+                {"id": str(o.id), "order_number": o.order_number,
+                 "customer_email": o.customer_email, "status": o.status,
+                 "payment_status": o.payment_status, "total_minor": o.total_minor,
+                 "currency": o.currency}
+                for o in orders
+            ],
+            "customers": [
+                {"id": str(u.id), "email": u.email,
+                 "name": f"{u.first_name} {u.last_name}".strip()}
+                for u in customers
+            ],
+            "esims": [
+                {"id": str(e.id), "status": e.status, "iccid_last4": e.iccid_last4,
+                 "order_number": e.order_item.order.order_number}
+                for e in esims
+            ],
+        })
+
+
+class AdminOrderTimelineView(PlatformAPIView):
+    """Everything recorded about one order, in the order it happened.
+
+    Answering "what happened to this order" meant opening five screens and reconciling
+    timestamps by eye. Every one of them already existed; none were ever shown together,
+    so the shape of a failure — paid, provisioned, email failed, never retried, all
+    inside the same minute — was invisible.
+
+    VIEW_ORDER, the same capability as reading the order itself: this assembles rows the
+    holder can already see and adds no secrets. Activation codes, QR payloads and ICCIDs
+    are deliberately absent so a debugging view cannot become the way around the audited
+    reveal endpoint.
+    """
+
+    required_capability = roles.VIEW_ORDER
+
+    def get(self, request, id):
+        order = get_object_or_404(Order.objects.prefetch_related("payments"), pk=id)
+        return Response({"order_number": order.order_number,
+                         "entries": timeline_services.order_timeline(order)})
 
 
 class AdminOrderCancelView(PlatformAPIView):

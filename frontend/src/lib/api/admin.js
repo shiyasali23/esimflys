@@ -408,3 +408,19 @@ export async function fetchWebhookEvents({ page = 1, problems, eventType } = {})
     ),
   );
 }
+
+/** Everything recorded about one order, oldest first, from five tables at once. */
+export function fetchOrderTimeline(id) {
+  return api.get(`/admin/orders/${encodeURIComponent(id)}/timeline/`);
+}
+
+/**
+ * One box for an order number, an email, or the last four of an ICCID.
+ *
+ * Support is handed whatever the customer happened to quote and had to guess which tab
+ * it belonged to first — and guessing wrong looks exactly like "we have no record of
+ * you". The server caps results and ignores terms under three characters.
+ */
+export function adminSearch(term) {
+  return api.get(`/admin/search/${query({ q: term })}`);
+}

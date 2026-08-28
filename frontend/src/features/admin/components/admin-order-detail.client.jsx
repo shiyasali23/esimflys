@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { fetchAdminOrder, cancelOrder } from "@/lib/api/admin";
+import { fetchAdminOrder, cancelOrder, fetchOrderTimeline } from "@/lib/api/admin";
 import { AdminRefundPanel } from "@/features/admin/components/admin-refund-panel.client";
 import { fromMinor, formatBytes, planAllowance, usageRatio } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -28,6 +28,7 @@ export function AdminOrderDetail({ orderId }) {
   const [error, setError] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [timeline, setTimeline] = useState(null);
 
   /**
    * Cancelling is offered ONLY while the order is unpaid. The server enforces that
@@ -57,6 +58,11 @@ export function AdminOrderDetail({ orderId }) {
     fetchAdminOrder(orderId)
       .then((data) => active && setOrder(data))
       .catch((err) => active && setError(err));
+    // Fetched separately and allowed to fail quietly: the timeline is a debugging aid,
+    // and losing it must not take the order page down with it.
+    fetchOrderTimeline(orderId)
+      .then((data) => active && setTimeline(data?.entries || []))
+      .catch(() => active && setTimeline([]));
     return () => {
       active = false;
     };
@@ -274,6 +280,33 @@ export function AdminOrderDetail({ orderId }) {
           >
             {cancelling ? "Cancelling…" : "Cancel this order"}
           </button>
+        </section>
+      ) : null}
+
+      {/*
+        Five tables, one story. Answering "what happened to this order" used to mean
+        opening the order, its payments, the supplier jobs, the eSIM and the
+        notifications, then reconciling timestamps by eye — so a failure whose whole
+        shape was "paid, provisioned, email failed, never retried, all inside one
+        minute" was invisible.
+      */}
+      {timeline?.length ? (
+        <section className="rounded-lg border border-border bg-white p-5 sm:p-6">
+          <h2 className="mb-4 font-display text-headline-md text-foreground">What happened</h2>
+          <ol className="space-y-3">
+            {timeline.map((entry, index) => (
+              <li key={`${entry.at}-${index}`} className="flex flex-wrap items-baseline gap-x-3">
+                <time className="w-44 shrink-0 text-body-sm tabular-nums text-muted-foreground">
+                  {new Date(entry.at).toLocaleString()}
+                </time>
+                <span className="text-foreground">{entry.label}</span>
+                {entry.status ? <StatusBadge status={entry.status} /> : null}
+                {entry.detail ? (
+                  <span className="text-body-sm text-muted-foreground">{entry.detail}</span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
         </section>
       ) : null}
 

@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 
 const SECTIONS = [
   { slug: "", label: "Dashboard" },
+  { slug: "search", label: "Search" },
   { slug: "orders", label: "Orders" },
   { slug: "customers", label: "Customers" },
   { slug: "esims", label: "eSIMs" },
