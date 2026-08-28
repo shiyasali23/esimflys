@@ -392,3 +392,19 @@ export function updatePromoCode(id, patch) {
 export function cancelOrder(id) {
   return api.post(`/admin/orders/${encodeURIComponent(id)}/cancel/`, {});
 }
+
+/**
+ * Stripe webhook deliveries.
+ *
+ * `problems: true` is the switch that matters. On a healthy day this table is thousands
+ * of uneventful rows; the only ones worth a human's attention are a rejected signature
+ * (the secret does not match the endpoint, so EVERY delivery is being dropped) and a
+ * delivery that failed after being accepted.
+ */
+export async function fetchWebhookEvents({ page = 1, problems, eventType } = {}) {
+  return toList(
+    await api.get(
+      `/admin/webhook-events/${query({ page, problems: problems ? "true" : undefined, event_type: eventType })}`,
+    ),
+  );
+}

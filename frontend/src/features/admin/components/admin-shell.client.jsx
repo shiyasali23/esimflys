@@ -24,6 +24,7 @@ const SECTIONS = [
   { slug: "catalogue", label: "Catalogue" },
   { slug: "payments", label: "Payments" },
   { slug: "operations", label: "Operations" },
+  { slug: "webhooks", label: "Webhooks" },
   { slug: "audit", label: "Audit" },
 ];
 

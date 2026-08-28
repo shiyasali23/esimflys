@@ -47,7 +47,7 @@ from apps.esims.supplier import SupplierError
 from apps.orders import services as order_services
 from apps.orders.models import Notification, Order, PromoCode
 from apps.payments import services as payment_services
-from apps.payments.models import Payment, Refund
+from apps.payments.models import Payment, Refund, WebhookEvent
 
 from .serializers import (
     AddMemberSerializer,
@@ -69,6 +69,7 @@ from .serializers import (
     AdminPaymentSerializer,
     AdminRefundSerializer,
     AdminSupplierEventSerializer,
+    AdminWebhookEventSerializer,
     AuditEventSerializer,
     CreateRefundSerializer,
     AdminPromoCodeSerializer,
@@ -785,6 +786,40 @@ class AdminEsimSupplierProbeView(PlatformAPIView):
 
 
 # --- Operations ----------------------------------------------------------------------
+
+class AdminWebhookEventListView(PlatformListView):
+    """Stripe webhook deliveries.
+
+    Exists because a wrong STRIPE_WEBHOOK_SECRET once cost two paid orders that were
+    never delivered: every delivery was rejected with a 400, the money sat in Stripe,
+    and nothing in the panel could show why. `signature_valid=false` is the whole
+    explanation and it was already being recorded — just never rendered.
+
+    Defaults to newest first and can be filtered to failures alone, because on a healthy
+    day this table is thousands of uneventful rows and the only ones worth a human's time
+    are the ones that did not process.
+    """
+
+    required_capability = roles.VIEW_OPS
+    serializer_class = AdminWebhookEventSerializer
+
+    def get_queryset(self):
+        queryset = WebhookEvent.objects.all()
+        params = self.request.query_params
+        status_filter = params.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if params.get("problems") == "true":
+            # One switch for "show me what went wrong", covering both a rejected
+            # signature and a delivery that failed after being accepted.
+            queryset = queryset.filter(
+                Q(status__in=("failed", "rejected")) | Q(signature_valid=False)
+            )
+        event_type = params.get("event_type")
+        if event_type:
+            queryset = queryset.filter(event_type=event_type)
+        return queryset.order_by("-created_at")
+
 
 class AdminSupplierEventListView(PlatformListView):
     required_capability = roles.VIEW_OPS

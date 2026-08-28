@@ -10,8 +10,11 @@ Two rules govern this module:
    in this module touches a wholesale column.
 """
 
+from datetime import timedelta
+
 from django.db.models import Count, DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 
 from apps.accounts.models import CommissionPayout, PartnerCommission
 from apps.esims.models import EsimProfile, SupplierEvent
@@ -104,6 +107,20 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
             status__in=("failed", "retrying")
         ).count(),
         "webhooks_rejected": WebhookEvent.objects.filter(status="rejected").count(),
+        # A rejected signature is not the same as a rejected delivery: it means the
+        # secret does not match the endpoint sending events, so EVERY delivery is being
+        # dropped. That state once cost two paid orders that were never fulfilled.
+        "webhooks_bad_signature": WebhookEvent.objects.filter(
+            signature_valid=False
+        ).count(),
+        # Paid, but no eSIM. The single condition that means a customer has been charged
+        # and has nothing to show for it, which is the one thing that must never sit
+        # unnoticed. Ten minutes is comfortably longer than the 11s a healthy order took.
+        "paid_without_esim": Order.objects.filter(
+            payment_status__in=SETTLED_PAYMENT_STATES,
+            fulfillment_status__in=("pending", "processing", "failed"),
+            created_at__lt=timezone.now() - timedelta(minutes=10),
+        ).count(),
     }
 
     gross = order_totals["gross_revenue_minor"]

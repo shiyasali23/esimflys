@@ -34,6 +34,7 @@ from .views import (
     AdminPaymentListView,
     AdminRefundListView,
     AdminSupplierEventListView,
+    AdminWebhookEventListView,
     AdminSupplierEventRetryView,
     AuditEventListView,
     DashboardView,
@@ -116,6 +117,9 @@ urlpatterns = [
     ),
 
     # Operations
+    path(
+        "webhook-events/", AdminWebhookEventListView.as_view(), name="webhook-event-list"
+    ),
     path(
         "supplier-events/", AdminSupplierEventListView.as_view(), name="supplier-event-list"
     ),

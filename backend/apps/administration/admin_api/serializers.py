@@ -27,7 +27,7 @@ from apps.administration.roles import has_platform_capability
 from apps.catalog.models import CatalogPlan, Country, TopupProduct
 from apps.esims.models import EsimProfile, SupplierEvent
 from apps.orders.models import Notification, Order, OrderItem, PromoCode
-from apps.payments.models import Payment, Refund
+from apps.payments.models import Payment, Refund, WebhookEvent
 
 User = get_user_model()
 
@@ -402,6 +402,28 @@ class AdminEsimListSerializer(serializers.ModelSerializer):
             # raw pair is what tells support the mapper has fallen behind rather than
             # the customer having done nothing.
             "smdp_status", "esim_status",
+        )
+        read_only_fields = fields
+
+
+class AdminWebhookEventSerializer(serializers.ModelSerializer):
+    """Stripe deliveries, which had no admin surface at all.
+
+    The table has recorded every delivery since launch — including `signature_valid`,
+    which is the single field that would have explained the two paid-but-undelivered
+    orders caused by a mismatched STRIPE_WEBHOOK_SECRET. Nothing could read it without
+    database access, so the dashboard could count rejections but never show one.
+
+    `payload_redacted` is deliberately excluded from the list: it is a whole Stripe
+    event per row and turns a monitoring screen into a wall of JSON.
+    """
+
+    class Meta:
+        model = WebhookEvent
+        fields = (
+            "id", "provider", "external_event_id", "event_type", "signature_valid",
+            "status", "attempt_count", "last_error", "received_at", "processed_at",
+            "created_at",
         )
         read_only_fields = fields
 
