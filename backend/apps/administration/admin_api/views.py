@@ -39,9 +39,10 @@ from apps.administration.services import organizations as organization_services
 from apps.administration.services import promos as promo_services
 from apps.administration.services import reports as report_services
 from apps.catalog.models import CatalogPlan, Country, TopupProduct
-from apps.common.exceptions import Conflict
+from apps.common.exceptions import Conflict, UpstreamUnavailable
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile, SupplierEvent
+from apps.esims.supplier import SupplierError
 from apps.orders import services as order_services
 from apps.orders.models import Notification, Order, PromoCode
 from apps.payments import services as payment_services
@@ -737,7 +738,13 @@ class AdminEsimRefreshUsageView(PlatformAPIView):
 
     def post(self, request, id):
         profile = get_object_or_404(EsimProfile, pk=id)
-        esim_services.refresh_usage(profile)
+        try:
+            esim_services.refresh_usage(profile)
+        except SupplierError as exc:
+            # The supplier being unhelpful is not OUR crash. As a 500 the panel showed
+            # "An unexpected error occurred", which tells an operator nothing and sends
+            # them to the server logs for something the provider already explained.
+            raise UpstreamUnavailable(message=f"The supplier could not be read: {exc}")
         record_audit(action="esim.usage_refreshed", obj=profile, request=request)
         return Response(AdminEsimListSerializer(profile).data)
 

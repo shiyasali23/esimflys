@@ -24,6 +24,19 @@ class DomainError(APIException):
         super().__init__(detail=self.message, code=self.error_code)
 
 
+class UpstreamUnavailable(DomainError):
+    """A third party we depend on could not be read, and that is not our crash.
+
+    Returned instead of a 500 when the supplier or another provider answers unhelpfully.
+    A 500 tells the operator "An unexpected error occurred" and sends them to the server
+    logs for something the provider has already explained in words.
+    """
+
+    status_code = status.HTTP_502_BAD_GATEWAY
+    error_code = "upstream_unavailable"
+    default_message = "An upstream provider could not be reached."
+
+
 class PlanUnavailable(DomainError):
     status_code = status.HTTP_409_CONFLICT
     error_code = "plan_unavailable"

@@ -272,7 +272,15 @@ class EsimAccessGateway:
         obj = self._post("/esim/usage/query", {"esimTranNoList": [supplier_reference]})
         rows = obj.get("esimList") or obj.get("list") or []
         if not rows:
-            raise SupplierError("usage query returned no rows")
+            # Name the shape we actually got. "returned no rows" is unfalsifiable from
+            # outside the container: it cannot distinguish a reference the supplier does
+            # not know, a response key we are not reading, or a payload field they have
+            # started requiring — and all three look identical in the admin panel as a
+            # bare 500. The keys are structural, not customer data.
+            raise SupplierError(
+                "usage query returned no rows for "
+                f"{supplier_reference[:6]}… — response keys: {sorted(obj)}"
+            )
         row = rows[0]
         # `esimStatus`, `smdpStatus` and `expiredTime` are in this row already — the
         # redactor below has always kept them. Only the two volume fields were read, so

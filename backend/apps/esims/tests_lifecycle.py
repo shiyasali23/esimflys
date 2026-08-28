@@ -251,3 +251,62 @@ class RefreshUsageTests(TestCase):
         good.refresh_from_db()
         self.assertEqual(refreshed, 1)
         self.assertIsNotNone(good.last_synced_at)
+
+
+@override_settings(SUPPLIER_GATEWAY="fake", PAYMENTS_GATEWAY="fake")
+class RefreshUsageErrorSurfacingTests(TestCase):
+    """A supplier that answers unhelpfully must not look like our crash.
+
+    The refresh button returned a bare 500 — "An unexpected error occurred" — which
+    cannot distinguish a reference the supplier does not know from a response key we are
+    not reading from a payload field they have started requiring. All three send an
+    operator to the server logs for something the provider already explained in words.
+    """
+
+    def setUp(self):
+        from apps.administration.tests.test_admin_api import platform_user
+
+        self.admin = platform_user("ops@example.com", "platform_admin")
+
+    def test_supplier_failure_is_a_502_carrying_the_reason(self):
+        from apps.esims.supplier import SupplierError
+        from rest_framework.test import APIClient
+
+        supplier = Supplier.objects.create(
+            code="esim-access", name="eSIM Access", status="active"
+        )
+        country = Country.objects.create(
+            iso2="DE", name="Germany", slug="germany", region="Europe", is_active=True
+        )
+        plan = CatalogPlan.objects.create(
+            supplier=supplier, country=country, product_code="DE-1GB",
+            supplier_package_code="PKG-DE", plan_type="fixed", display_name="1GB",
+            data_limit_mb=1000, validity_days=7, retail_amount_minor=399,
+            wholesale_amount_minor=200, currency="USD", status="active",
+        )
+        with transaction.atomic():
+            order = order_services.create_order(
+                lines=[order_services.OrderLine(catalog_plan_id=plan.id, quantity=1)],
+                customer_email="buyer@example.com", requested_currency="USD",
+            )
+        profile = EsimProfile.objects.create(
+            order_item=order.items.first(), supplier=supplier, status="ready",
+            supplier_reference="ref_broken",
+        )
+
+        gateway_cls = type(get_supplier_gateway())
+        original = gateway_cls.get_usage
+
+        def boom(self, *, supplier_reference):
+            raise SupplierError("usage query returned no rows — response keys: ['x']")
+
+        gateway_cls.get_usage = boom
+        try:
+            client = APIClient()
+            client.force_authenticate(self.admin)
+            response = client.post(f"/api/v1/admin/esims/{profile.id}/refresh-usage/")
+        finally:
+            gateway_cls.get_usage = original
+
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("response keys", response.data["error"]["message"])
