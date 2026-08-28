@@ -2,10 +2,12 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2 } from "lucide-react";
+import { Building2, LayoutDashboard, Percent, ShoppingBag, Wallet } from "lucide-react";
 import { useSession } from "@/features/auth/use-session.client";
 import { useAgency, findOrganization } from "@/features/agency/use-agency.client";
 import { Container } from "@/components/ui/container";
+import { AdminSurface } from "@/features/admin/components/admin-surface.client";
+import { AdminAccountMenu } from "@/features/admin/components/admin-account-menu.client";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -18,12 +20,11 @@ import { cn } from "@/lib/cn";
  * changed by the platform, so there are no screens for them here.
  */
 const TABS = [
-  { slug: "", label: "Dashboard" },
-  { slug: "sales", label: "Sales" },
-  { slug: "commissions", label: "Commissions" },
-  { slug: "payouts", label: "Payouts" },
+  { slug: "", label: "Dashboard", icon: LayoutDashboard },
+  { slug: "sales", label: "Sales", icon: ShoppingBag },
+  { slug: "commissions", label: "Commissions", icon: Percent },
+  { slug: "payouts", label: "Payouts", icon: Wallet },
 ];
-
 /**
  * Chrome for every agency screen: tenant resolution, nav, and a tenant switcher
  * when the user belongs to more than one organization.
@@ -58,7 +59,7 @@ export function AgencyShell({ orgId, title, children }) {
   // A failed probe is not a signed-out session — offer retry, not a sign-in prompt.
   if (sessionError) {
     return (
-      <Container className="py-16">
+      <Container className="py-16" data-surface="admin">
         <ErrorState
           error={sessionError}
           title="We couldn't verify your session"
@@ -70,7 +71,7 @@ export function AgencyShell({ orgId, title, children }) {
 
   if (!resolving && user === null) {
     return (
-      <Container className="py-16">
+      <Container className="py-16" data-surface="admin">
         <EmptyState
           icon={Building2}
           title="Sign in to your agency"
@@ -86,7 +87,7 @@ export function AgencyShell({ orgId, title, children }) {
   // Only a resolved membership list can prove a tenant isn't the user's.
   if (!resolving && !organization) {
     return (
-      <Container className="py-16">
+      <Container className="py-16" data-surface="admin">
         <EmptyState
           icon={Building2}
           title="Not found"
@@ -97,77 +98,72 @@ export function AgencyShell({ orgId, title, children }) {
     );
   }
 
+  /*
+   * Tabs are sibling static pages carrying `?org=`, not path segments under the org id,
+   * so the active check compares the PATHNAME only. `href` carries a query string and
+   * would never equal a bare pathname — the same trap the tab strip handled, preserved
+   * here verbatim because losing it silently un-highlights the whole nav.
+   */
+  const groups = [
+    {
+      label: null,
+      items: TABS.map((tab) => ({
+        ...tab,
+        href: routes.agencyTab(orgId, tab.slug),
+        path: routes.agencyTabPath(tab.slug),
+      })),
+    },
+  ];
+  const activeFor = (item, pathname) =>
+    pathname === item.path || pathname === `${item.path}/`;
+
   return (
-    <Container className="py-12">
-      <header className="mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-label-caps uppercase text-muted-foreground">Agency portal</p>
-            <h1 className="mt-1 flex min-h-11 flex-wrap items-center gap-3 font-display text-headline-lg uppercase text-foreground">
-              {resolving ? (
-                <span className="inline-block h-8 w-56 animate-pulse rounded bg-muted" aria-busy="true" />
-              ) : (
-                <>
-                  {organization.name}
-                  <StatusBadge status={organization.status} />
-                </>
-              )}
-            </h1>
-          </div>
+    <AdminSurface
+      brand="eSIMFlys Partners"
+      groups={groups}
+      activeFor={activeFor}
+      title={title || (resolving ? "Agency" : organization.name)}
+      actions={
+        <>
           {!resolving && organizations.length > 1 ? (
-            <label className="text-body-sm">
-              <span className="mb-1 block text-muted-foreground">Organization</span>
-              <select
-                value={orgId}
-                onChange={(e) => {
-                  window.location.href = routes.agency(e.target.value);
-                }}
-                className="rounded-md border border-border bg-white px-3 py-2 text-body-sm text-foreground"
-              >
-                {organizations.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <label className="flex items-center gap-2">
+            <span className="text-admin-label text-admin-text-muted">Organization</span>
+            <select
+              value={orgId}
+              onChange={(e) => {
+                window.location.href = routes.agency(e.target.value);
+              }}
+              className="h-8 rounded-admin-sm border border-admin-border bg-admin-surface px-2 text-admin-body text-admin-text"
+            >
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          ) : !resolving ? (
+            <StatusBadge status={organization.status} />
           ) : null}
+          {/* Clearing the membership cache is part of signing out, not a side effect of
+              the next sign-in: the next account on this browser must not inherit it. */}
+          <AdminAccountMenu
+            onSignedOut={() => useAgency.getState().reset()}
+            redirectTo="/agency"
+          />
+        </>
+      }
+    >
+      {resolving ? (
+        <div className="space-y-2" aria-busy="true">
+          <div className="h-9 animate-pulse rounded-admin-sm bg-admin-border-subtle" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-10 animate-pulse rounded-admin-sm bg-admin-border-subtle" />
+          ))}
         </div>
-
-        <nav aria-label="Agency sections" className="mt-6 overflow-x-auto">
-          <ul className="flex gap-1 border-b border-border">
-            {TABS.map((tab) => {
-              // Tabs are sibling static pages carrying `?org=`, not path segments under
-              // the org id, so the active check compares pathname only — `href` now has
-              // a query string and would never match a bare pathname.
-              const href = routes.agencyTab(orgId, tab.slug);
-              const tabPath = routes.agencyTabPath(tab.slug);
-              const active = pathname === tabPath || pathname === `${tabPath}/`;
-              return (
-                <li key={tab.slug || "dashboard"}>
-                  <Link
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "-mb-px inline-block whitespace-nowrap border-b-2 px-4 py-3 text-label-bold transition-colors",
-                      active
-                        ? "border-primary text-primary"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {tab.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      </header>
-
-      {title ? (
-        <h2 className="mb-6 font-display text-headline-md text-foreground">{title}</h2>
-      ) : null}
-      {children}
-    </Container>
+      ) : (
+        children
+      )}
+    </AdminSurface>
   );
 }

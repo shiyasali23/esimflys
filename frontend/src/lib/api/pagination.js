@@ -10,6 +10,22 @@
 /** Mirrors DRF's configured page_size (apps/common/pagination.py). */
 export const DEFAULT_PAGE_SIZE = 24;
 
+/**
+ * Offered page sizes. The ceiling is the API's own `max_page_size = 100`; asking for
+ * more is rejected server-side, so offering it would only produce an error.
+ *
+ * A larger page is CHEAPER in total, not more expensive: one query for 100 rows
+ * replaces four for 24, with one round trip instead of four and the same index scan.
+ * The default stays 24 so nothing changes for anyone who does not choose.
+ */
+export const PAGE_SIZES = [24, 50, 100];
+
+/** Clamps an untrusted `?limit=` to something the API will actually accept. */
+export function normalisePageSize(value) {
+  const size = Number(value);
+  return PAGE_SIZES.includes(size) ? size : DEFAULT_PAGE_SIZE;
+}
+
 /** Reads the `page` query param from a DRF cursor URL. */
 export function pageFromUrl(url) {
   if (typeof url !== "string" || !url) return null;

@@ -259,6 +259,7 @@ export function AdminEsims() {
       ) : null}
 
       <DataTable
+        density="compact"
         caption="eSIM profiles across the platform"
         columns={columns}
         list={list}

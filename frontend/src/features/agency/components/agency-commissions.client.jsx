@@ -117,6 +117,7 @@ export function AgencyCommissions({ orgId }) {
       </label>
 
       <DataTable
+        density="compact"
         caption="Commission earned on attributed sales"
         columns={columns}
         list={list}

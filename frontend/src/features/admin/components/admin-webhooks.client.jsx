@@ -110,6 +110,7 @@ export function AdminWebhooks() {
       </label>
 
       <DataTable
+        density="compact"
         caption="Stripe webhook deliveries"
         columns={columns}
         list={list}

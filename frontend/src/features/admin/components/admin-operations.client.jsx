@@ -191,6 +191,7 @@ export function AdminOperations() {
       ) : null}
 
       <DataTable
+        density="compact"
         caption={tab === "jobs" ? "Supplier provisioning jobs" : "Outbound notifications"}
         columns={tab === "jobs" ? jobColumns : notificationColumns}
         list={list}

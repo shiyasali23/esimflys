@@ -228,6 +228,7 @@ export function AdminCommissions() {
       ) : null}
 
       <DataTable
+        density="compact"
         caption="Agency commissions awaiting approval"
         columns={columns}
         list={list}

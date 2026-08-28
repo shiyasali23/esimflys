@@ -1,6 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchAuditEvents } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 
 /**
@@ -11,27 +17,27 @@ import { DataTable } from "@/components/data/data-table";
  * contains secrets; `actor_email` is empty for system-initiated events, which
  * renders as "System" rather than a blank cell.
  */
+const FILTER_KEYS = ["q"];
 export function AdminAudit() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [action, setAction] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [draft, setDraft] = useState(filters.q);
 
-  const load = useCallback((nextPage, nextAction) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchAuditEvents({ page: nextPage, action: nextAction })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchAuditEvents({ page, page_size: limit, action: filters.q })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.q]);
 
   useEffect(() => {
-    load(1, "");
+    load();
   }, [load]);
 
   const columns = [
@@ -82,39 +88,27 @@ export function AdminAudit() {
 
   return (
     <div>
-      <form
-        className="mb-4 flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          load(1, action);
-        }}
-      >
-        <label className="min-w-56 flex-1">
-          <span className="mb-1 block text-label-bold text-foreground">Action</span>
-          <input
-            type="search"
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            placeholder="e.g. order.credentials_viewed"
-            className="w-full rounded-md border border-border bg-white px-4 py-2.5 text-body-sm outline-none focus:border-primary"
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
-        >
-          Filter
-        </button>
-      </form>
+      <AdminToolbar>
+        <ToolbarSearch
+          label="Filter audit events by action"
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => setFilters({ q: draft })}
+          placeholder="e.g. order.credentials_viewed"
+        />
+      </AdminToolbar>
 
       <DataTable
+        density="compact"
         caption="Platform audit trail (read-only)"
         columns={columns}
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, action)}
-        onPageChange={(next) => load(next, action)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No audit events", body: "Nothing matches that filter." }}
       />
     </div>

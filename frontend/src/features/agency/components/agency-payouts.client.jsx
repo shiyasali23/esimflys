@@ -73,6 +73,7 @@ export function AgencyPayouts({ orgId }) {
 
   return (
     <DataTable
+        density="compact"
       caption="Payouts settled to your agency"
       columns={columns}
       list={list}

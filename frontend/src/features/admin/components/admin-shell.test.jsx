@@ -117,7 +117,9 @@ describe("signed in with access", () => {
   it("renders the nav on first paint, before the probe resolves", () => {
     useSession.setState({ user: USER });
     render(<AdminShell title="Dashboard">content</AdminShell>);
-    expect(screen.getByRole("navigation", { name: /admin sections/i })).toBeTruthy();
+    // The rail is labelled "Primary" now that both surfaces share one shell — the
+    // label names the landmark's role in the page, not which panel it belongs to.
+    expect(screen.getByRole("navigation", { name: /primary/i })).toBeTruthy();
     expect(screen.queryByText("content")).toBeNull();
   });
 

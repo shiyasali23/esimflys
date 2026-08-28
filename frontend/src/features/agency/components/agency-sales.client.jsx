@@ -79,6 +79,7 @@ export function AgencySales({ orgId }) {
 
   return (
     <DataTable
+        density="compact"
       caption="Sales attributed to your tracking code"
       columns={columns}
       list={list}

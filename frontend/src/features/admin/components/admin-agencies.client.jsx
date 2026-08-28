@@ -308,6 +308,7 @@ export function AdminAgencies() {
       ) : null}
 
       <DataTable
+        density="compact"
         caption="Travel agencies and their lifecycle state"
         columns={columns}
         list={list}

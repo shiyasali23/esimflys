@@ -266,6 +266,7 @@ export function AdminPromoCodes() {
       ) : null}
 
       <DataTable
+        density="compact"
         caption="Discount promo codes"
         columns={columns}
         list={list}

@@ -304,6 +304,7 @@ function PlansTab() {
       <BulkReport result={result} />
 
       <DataTable
+        density="compact"
         caption="Catalogue plans"
         columns={columns}
         list={list}

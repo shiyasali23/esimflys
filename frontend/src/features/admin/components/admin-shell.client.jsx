@@ -2,33 +2,84 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldAlert } from "lucide-react";
+import {
+  Activity,
+  BadgePercent,
+  Building2,
+  ClipboardList,
+  CreditCard,
+  FileClock,
+  LayoutDashboard,
+  Package,
+  Percent,
+  Search,
+  ShieldAlert,
+  Smartphone,
+  Users,
+  Wallet,
+  Webhook,
+} from "lucide-react";
 import { fetchAdminDashboard } from "@/lib/api/admin";
 import { useSession } from "@/features/auth/use-session.client";
 import { Container } from "@/components/ui/container";
+import { AdminSurface } from "@/features/admin/components/admin-surface.client";
+import { AdminAccountMenu } from "@/features/admin/components/admin-account-menu.client";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { AdminSignIn } from "@/features/admin/components/admin-sign-in.client";
 import { ErrorState } from "@/components/feedback/error-state";
 import { routes } from "@/config/routes";
 import { cn } from "@/lib/cn";
 
-const SECTIONS = [
-  { slug: "", label: "Dashboard" },
-  { slug: "search", label: "Search" },
-  { slug: "orders", label: "Orders" },
-  { slug: "customers", label: "Customers" },
-  { slug: "esims", label: "eSIMs" },
-  { slug: "promo-codes", label: "Promo codes" },
-  { slug: "agencies", label: "Agencies" },
-  { slug: "commissions", label: "Commissions" },
-  { slug: "payouts", label: "Payouts" },
-  { slug: "catalogue", label: "Catalogue" },
-  { slug: "payments", label: "Payments" },
-  { slug: "operations", label: "Operations" },
-  { slug: "webhooks", label: "Webhooks" },
-  { slug: "audit", label: "Audit" },
+/**
+ * Grouped rather than a flat list of fourteen.
+ *
+ * The horizontal tab strip this replaces held all fourteen in one row, which scrolled
+ * sideways and hid its own contents past "Catalogue". Grouping is what makes a rail of
+ * this length scannable: an operator looking for Webhooks now looks under Operations
+ * instead of reading fourteen labels.
+ *
+ * The order is by how often a shift actually starts there — daily work, then money,
+ * then partners, then the things you open when something is wrong.
+ */
+const GROUPS = [
+  {
+    label: null,
+    items: [
+      { slug: "", label: "Dashboard", icon: LayoutDashboard },
+      { slug: "search", label: "Search", icon: Search },
+    ],
+  },
+  {
+    label: "Commerce",
+    items: [
+      { slug: "orders", label: "Orders", icon: ClipboardList },
+      { slug: "customers", label: "Customers", icon: Users },
+      { slug: "esims", label: "eSIMs", icon: Smartphone },
+      { slug: "promo-codes", label: "Promo codes", icon: BadgePercent },
+      { slug: "catalogue", label: "Catalogue", icon: Package },
+    ],
+  },
+  {
+    label: "Money",
+    items: [
+      { slug: "payments", label: "Payments", icon: CreditCard },
+      { slug: "commissions", label: "Commissions", icon: Percent },
+      { slug: "payouts", label: "Payouts", icon: Wallet },
+    ],
+  },
+  {
+    label: "Partners",
+    items: [{ slug: "agencies", label: "Agencies", icon: Building2 }],
+  },
+  {
+    label: "Operations",
+    items: [
+      { slug: "operations", label: "Operations", icon: Activity },
+      { slug: "webhooks", label: "Webhooks", icon: Webhook },
+      { slug: "audit", label: "Audit", icon: FileClock },
+    ],
+  },
 ];
-
 /**
  * Chrome for the platform admin panel.
  *
@@ -74,7 +125,7 @@ export function AdminShell({ title, children }) {
    */
   if (sessionError) {
     return (
-      <Container className="py-16">
+      <Container className="py-16" data-surface="admin">
         <ErrorState
           error={sessionError}
           title="We couldn't verify your session"
@@ -92,7 +143,7 @@ export function AdminShell({ title, children }) {
    */
   if (user === null) {
     return (
-      <Container className="py-16">
+      <Container className="py-16" data-surface="admin">
         {/* setUser flips `user`, which re-runs the access probe below. */}
         <AdminSignIn />
       </Container>
@@ -101,7 +152,7 @@ export function AdminShell({ title, children }) {
 
   if (access === false) {
     return (
-      <Container className="py-16">
+      <Container className="py-16" data-surface="admin">
         <EmptyState
           icon={ShieldAlert}
           title="No access"
@@ -114,51 +165,48 @@ export function AdminShell({ title, children }) {
 
   const base = routes.admin();
 
-  return (
-    <Container className="py-12">
-      <header className="mb-8">
-        <p className="text-label-caps uppercase text-muted-foreground">Platform admin</p>
-        <h1 className="mt-1 font-display text-headline-lg uppercase text-foreground">
-          {title || "Dashboard"}
-        </h1>
-        <nav aria-label="Admin sections" className="mt-6 overflow-x-auto">
-          <ul className="flex gap-1 border-b border-border">
-            {SECTIONS.map((section) => {
-              const href = section.slug ? `${base}/${section.slug}` : base;
-              const active = section.slug
-                ? pathname.startsWith(href)
-                : pathname === base || pathname === `${base}/`;
-              return (
-                <li key={section.slug || "dashboard"}>
-                  <Link
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "-mb-px inline-block whitespace-nowrap border-b-2 px-4 py-3 text-label-bold transition-colors",
-                      active
-                        ? "border-primary text-primary"
-                        : "border-transparent text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {section.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      </header>
+  /*
+   * Hrefs are built here, once, so the sidebar stays a presentation component with no
+   * knowledge of this panel's route shape.
+   */
+  const groups = GROUPS.map((group) => ({
+    label: group.label,
+    items: group.items.map((item) => ({
+      ...item,
+      href: item.slug ? `${base}/${item.slug}` : base,
+    })),
+  }));
 
+  /*
+   * Dashboard is an exact match; everything else is a prefix.
+   *
+   * `startsWith` on the bare base would mark Dashboard active on every page in the
+   * panel, since every route begins with it — the same trap the old tab strip handled
+   * and which is easy to lose when nav moves.
+   */
+  const activeFor = (item, pathname) =>
+    item.slug
+      ? pathname.startsWith(item.href)
+      : pathname === base || pathname === `${base}/`;
+
+  return (
+    <AdminSurface
+      brand="eSIMFlys"
+      groups={groups}
+      activeFor={activeFor}
+      title={title || "Dashboard"}
+      actions={<AdminAccountMenu redirectTo={routes.admin()} />}
+    >
       {access === undefined ? (
-        <div className="min-h-[22rem] space-y-2" aria-busy="true">
-          <div className="h-12 animate-pulse rounded-md bg-muted/70" />
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-md bg-muted" />
+        <div className="space-y-2" aria-busy="true">
+          <div className="h-9 animate-pulse rounded-admin-sm bg-admin-border-subtle" />
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-10 animate-pulse rounded-admin-sm bg-admin-border-subtle" />
           ))}
         </div>
       ) : (
         children
       )}
-    </Container>
+    </AdminSurface>
   );
 }

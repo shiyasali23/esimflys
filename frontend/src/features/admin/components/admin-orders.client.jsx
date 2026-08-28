@@ -2,12 +2,23 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchAdminOrders } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
 import { routes } from "@/config/routes";
 
 const PAYMENT_STATUSES = ["", "pending", "processing", "paid", "failed", "refunded"];
+const PAYMENT_OPTIONS = PAYMENT_STATUSES.map((value) => ({
+  value,
+  label: value ? value.replace(/_/g, " ") : "All payments",
+}));
+const FILTER_KEYS = ["q", "payment_status"];
 
 /**
  * All platform orders.
@@ -17,26 +28,37 @@ const PAYMENT_STATUSES = ["", "pending", "processing", "paid", "failed", "refund
  * role.
  */
 export function AdminOrders() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ search: "", payment_status: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Only the text box is local: it holds keystrokes until Apply, so typing does not
+  // rewrite the URL — or fire a request — on every character.
+  const [draft, setDraft] = useState(filters.q);
 
-  const load = useCallback((nextPage, nextFilters) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchAdminOrders({ page: nextPage, ...nextFilters })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchAdminOrders({
+      page,
+      page_size: limit,
+      search: filters.q,
+      payment_status: filters.payment_status,
+    })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.q, filters.payment_status]);
 
+  /*
+   * One effect, keyed on `load`, which is keyed on the URL. The URL is the only source
+   * of truth, so this fires exactly once per navigation — there is no seed-then-sync
+   * pass to fire it a second time with a different value.
+   */
   useEffect(() => {
-    load(1, { search: "", payment_status: "" });
+    load();
   }, [load]);
 
   const columns = [
@@ -84,57 +106,33 @@ export function AdminOrders() {
 
   return (
     <div>
-      <form
-        className="mb-4 flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          load(1, filters);
-        }}
-      >
-        <label className="min-w-56 flex-1">
-          <span className="mb-1 block text-label-bold text-foreground">Search</span>
-          <input
-            type="search"
-            value={filters.search}
-            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-            placeholder="Order number or email"
-            className="w-full rounded-md border border-border bg-white px-4 py-2.5 text-body-sm outline-none focus:border-primary"
-          />
-        </label>
-        <label>
-          <span className="mb-1 block text-label-bold text-foreground">Payment</span>
-          <select
-            value={filters.payment_status}
-            onChange={(e) => {
-              const next = { ...filters, payment_status: e.target.value };
-              setFilters(next);
-              load(1, next);
-            }}
-            className="rounded-md border border-border bg-white px-3 py-2.5 text-body-sm text-foreground"
-          >
-            {PAYMENT_STATUSES.map((s) => (
-              <option key={s || "all"} value={s}>
-                {s ? s.replace(/_/g, " ") : "All"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
-        >
-          Apply
-        </button>
-      </form>
+      <AdminToolbar>
+        <ToolbarSearch
+          label="Search orders by number or email"
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => setFilters({ q: draft })}
+          placeholder="Order number or email"
+        />
+        <ToolbarSelect
+          label="Filter by payment status"
+          value={filters.payment_status}
+          onChange={(value) => setFilters({ payment_status: value })}
+          options={PAYMENT_OPTIONS}
+        />
+      </AdminToolbar>
 
       <DataTable
         caption="All platform orders"
+        density="compact"
         columns={columns}
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, filters)}
-        onPageChange={(next) => load(next, filters)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No orders found", body: "Try a different search or filter." }}
       />
     </div>

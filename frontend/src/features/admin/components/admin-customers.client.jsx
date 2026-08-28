@@ -2,6 +2,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchAdminCustomers } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { routes } from "@/config/routes";
@@ -13,27 +19,27 @@ import { routes } from "@/config/routes";
  * access in the audit trail — so this screen does not preload detail for every
  * row. Opening a customer is a deliberate act.
  */
+const FILTER_KEYS = ["q"];
 export function AdminCustomers() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [draft, setDraft] = useState(filters.q);
 
-  const load = useCallback((nextPage, nextSearch) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchAdminCustomers({ page: nextPage, search: nextSearch })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchAdminCustomers({ page, page_size: limit, search: filters.q })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.q]);
 
   useEffect(() => {
-    load(1, "");
+    load();
   }, [load]);
 
   const columns = [
@@ -90,39 +96,27 @@ export function AdminCustomers() {
 
   return (
     <div>
-      <form
-        className="mb-4 flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          load(1, search);
-        }}
-      >
-        <label className="min-w-56 flex-1">
-          <span className="mb-1 block text-label-bold text-foreground">Search</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Email or name"
-            className="w-full rounded-md border border-border bg-white px-4 py-2.5 text-body-sm outline-none focus:border-primary"
-          />
-        </label>
-        <button
-          type="submit"
-          className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
-        >
-          Search
-        </button>
-      </form>
+      <AdminToolbar>
+        <ToolbarSearch
+          label="Search customers by email or name"
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => setFilters({ q: draft })}
+          placeholder="Email or name"
+        />
+      </AdminToolbar>
 
       <DataTable
+        density="compact"
         caption="Platform customers"
         columns={columns}
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, search)}
-        onPageChange={(next) => load(next, search)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No customers found", body: "Try a different search." }}
       />
     </div>

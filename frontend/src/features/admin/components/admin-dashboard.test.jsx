@@ -123,8 +123,14 @@ describe("failure and alerting", () => {
     );
     const { container } = render(<AdminDashboard />);
     await screen.findByText(/operations/i);
+    /*
+     * `text-destructive-text`, not `text-destructive`. The alert tiles moved to the
+     * accessible variant: the base red measures 4.13:1 on white, below AA, which this
+     * codebase already documents as the reason `--color-destructive-text` exists. The
+     * assertion is unchanged in intent — trouble must be visibly flagged, not buried.
+     */
     await waitFor(() =>
-      expect(container.querySelectorAll(".text-destructive").length).toBeGreaterThan(0),
+      expect(container.querySelectorAll(".text-destructive-text").length).toBeGreaterThan(0),
     );
   });
 });

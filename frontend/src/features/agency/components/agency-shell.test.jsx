@@ -48,13 +48,20 @@ describe("while resolving", () => {
   it("renders the nav immediately, since it only needs the org id", () => {
     useSession.setState({ user: USER });
     render(<AgencyShell orgId="org-1">content</AgencyShell>);
-    expect(screen.getByRole("navigation", { name: /agency sections/i })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: /primary/i })).toBeTruthy();
   });
 
-  it("shows a placeholder for the name rather than an empty heading", () => {
+  /**
+   * The intent is unchanged — the heading must never be empty while the org name loads.
+   * The implementation is: the title bar reads "Agency" until the name arrives, instead
+   * of holding a pulsing skeleton. In a 48px bar a skeleton is fussier than a word, and
+   * a word is also what a screen reader can announce.
+   */
+  it("never renders an empty heading while the name is loading", () => {
     useSession.setState({ user: USER });
-    const { container } = render(<AgencyShell orgId="org-1">content</AgencyShell>);
-    expect(container.querySelector('h1 [aria-busy="true"]')).toBeTruthy();
+    render(<AgencyShell orgId="org-1">content</AgencyShell>);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.textContent.trim().length).toBeGreaterThan(0);
   });
 });
 

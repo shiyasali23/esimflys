@@ -125,6 +125,7 @@ export function AdminPayments() {
       </div>
 
       <DataTable
+        density="compact"
         caption={tab === "payments" ? "Payments taken" : "Refunds issued"}
         columns={tab === "payments" ? paymentColumns : refundColumns}
         list={list}

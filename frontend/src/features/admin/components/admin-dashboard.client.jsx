@@ -14,6 +14,44 @@ import { ErrorState } from "@/components/feedback/error-state";
  * Reading `data.margin.margin_minor` directly would throw for a support or finance
  * admin, taking the whole page down.
  */
+/**
+ * A KPI tile at operational density.
+ *
+ * The previous tile was a 22px-radius card with 20px padding and a 24px value, three to
+ * a row — nineteen of them stacked to 1792px, so an operator scrolled 2.3 screens to
+ * read the numbers that are the entire point of a dashboard. This one is ~68px tall and
+ * sits up to six to a row, which puts the whole set above the fold.
+ *
+ * Label above value, both left-aligned on one axis: a column of figures is read by
+ * scanning down, and centring them breaks that line.
+ *
+ * Declared at module scope, NOT inside AdminDashboard. A component created during render
+ * is a new type on every pass, so React unmounts and remounts every tile each time the
+ * dashboard refetches — throwing away their DOM for no reason.
+ */
+function Tile({ label, value, alert, accent }) {
+  return (
+    <div
+      className={`rounded-admin border bg-admin-surface px-3 py-2.5 shadow-admin ${
+        alert
+          ? "border-destructive/40"
+          : accent
+            ? "border-admin-accent/40"
+            : "border-admin-border"
+      }`}
+    >
+      <p className="truncate text-admin-label text-admin-text-muted">{label}</p>
+      <p
+        className={`mt-0.5 text-admin-kpi ${
+          alert ? "text-destructive-text" : accent ? "text-admin-accent-ink" : "text-admin-text"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export function AdminDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -144,7 +182,7 @@ export function AdminDashboard() {
   ].filter(Boolean);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3">
       {alerts.length ? (
         <section aria-labelledby="admin-alerts">
           <h2 id="admin-alerts" className="mb-3 text-label-caps uppercase text-destructive-text">
@@ -168,24 +206,10 @@ export function AdminDashboard() {
 
       {groups.map((group) => (
         <section key={group.heading}>
-          <h2 className="mb-3 text-label-caps uppercase text-muted-foreground">{group.heading}</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="mb-1.5 text-admin-caps uppercase text-admin-text-muted">{group.heading}</h2>
+          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
             {group.tiles.map((tile) => (
-              <div
-                key={tile.label}
-                className={`rounded-card border bg-white p-5 ${
-                  tile.alert ? "border-destructive/40" : tile.accent ? "border-primary/40" : "border-border"
-                }`}
-              >
-                <p className="text-body-sm text-muted-foreground">{tile.label}</p>
-                <p
-                  className={`mt-1 font-display text-headline-md ${
-                    tile.alert ? "text-destructive" : tile.accent ? "text-primary" : "text-foreground"
-                  }`}
-                >
-                  {tile.value}
-                </p>
-              </div>
+              <Tile key={tile.label} {...tile} />
             ))}
           </div>
         </section>
@@ -193,34 +217,19 @@ export function AdminDashboard() {
 
       {showPricing ? (
         <section>
-          <h2 className="mb-3 text-label-caps uppercase text-muted-foreground">
+          <h2 className="mb-1.5 text-admin-caps uppercase text-admin-text-muted">
             Platform economics
           </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-card border border-border bg-white p-5">
-              <p className="text-body-sm text-muted-foreground">Collected</p>
-              <p className="mt-1 font-display text-headline-md text-foreground">
-                {money(data.margin?.retail_minor)}
-              </p>
-            </div>
-            <div className="rounded-card border border-border bg-white p-5">
-              <p className="text-body-sm text-muted-foreground">Supplier cost</p>
-              <p className="mt-1 font-display text-headline-md text-foreground">
-                {money(data.margin?.wholesale_minor)}
-              </p>
-            </div>
-            <div className="rounded-card border border-primary/40 bg-white p-5">
-              <p className="text-body-sm text-muted-foreground">Gross margin</p>
-              <p className="mt-1 font-display text-headline-md text-primary">
-                {money(data.margin?.margin_minor)}
-              </p>
-            </div>
+          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
+            <Tile label="Collected" value={money(data.margin?.retail_minor)} />
+            <Tile label="Supplier cost" value={money(data.margin?.wholesale_minor)} />
+            <Tile label="Gross margin" value={money(data.margin?.margin_minor)} accent />
           </div>
         </section>
       ) : (
         <section>
-          <p className="flex items-center gap-2 rounded-card border border-border bg-muted p-4 text-body-sm text-muted-foreground">
-            <Lock size={16} aria-hidden />
+          <p className="flex items-center gap-2 rounded-admin border border-admin-border bg-admin-surface px-3 py-2.5 text-admin-body text-admin-text-muted">
+            <Lock size={14} aria-hidden />
             Platform economics are hidden for your role.
           </p>
         </section>
