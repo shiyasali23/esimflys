@@ -345,3 +345,38 @@ export function readBulkResult(result) {
     partial: failed.length > 0 && (Array.isArray(succeeded) ? succeeded.length : 0) > 0,
   };
 }
+
+/**
+ * Discount promo codes (percentage off).
+ *
+ * These are `kind: "discount"` only. Agency referral codes live in the same table but
+ * are a different product — no discount, attributed to an organization — and are issued
+ * per-agency via `issueTrackingCode` above. The server scopes this list for us; the
+ * distinction is repeated here because the two are easy to confuse by name alone.
+ *
+ * The API speaks PERCENT (10 means 10%), not the basis points the column stores. The
+ * conversion happens server-side so there is exactly one place it can be wrong.
+ */
+export async function fetchPromoCodes({ page = 1, isActive, search } = {}) {
+  return toList(await api.get(`/admin/promo-codes/${query({ page, is_active: isActive, search })}`));
+}
+
+export function createPromoCode({ code, percentOff, usageLimit, perCustomerLimit, endsAt }) {
+  return api.post("/admin/promo-codes/", {
+    code,
+    percent_off: percentOff,
+    ...(usageLimit ? { usage_limit: usageLimit } : {}),
+    ...(perCustomerLimit ? { per_customer_limit: perCustomerLimit } : {}),
+    ...(endsAt ? { ends_at: endsAt } : {}),
+  });
+}
+
+/** Retiring a code is `isActive: false` — codes are never deleted (redemptions PROTECT them). */
+export function updatePromoCode(id, patch) {
+  const body = {};
+  if (patch.percentOff !== undefined) body.percent_off = patch.percentOff;
+  if (patch.usageLimit !== undefined) body.usage_limit = patch.usageLimit;
+  if (patch.isActive !== undefined) body.is_active = patch.isActive;
+  if (patch.endsAt !== undefined) body.ends_at = patch.endsAt;
+  return api.patch(`/admin/promo-codes/${encodeURIComponent(id)}/`, body);
+}

@@ -36,6 +36,7 @@ from apps.administration.services import catalogue as catalogue_services
 from apps.administration.services import members as member_services
 from apps.administration.services import operations as operation_services
 from apps.administration.services import organizations as organization_services
+from apps.administration.services import promos as promo_services
 from apps.administration.services import reports as report_services
 from apps.catalog.models import CatalogPlan, Country, TopupProduct
 from apps.common.exceptions import Conflict
@@ -68,7 +69,10 @@ from .serializers import (
     AdminSupplierEventSerializer,
     AuditEventSerializer,
     CreateRefundSerializer,
+    AdminPromoCodeSerializer,
+    CreatePromoCodeSerializer,
     IssueTrackingCodeSerializer,
+    UpdatePromoCodeSerializer,
     OrganizationCreateSerializer,
     OrganizationMemberSerializer,
     OrganizationSerializer,
@@ -379,6 +383,88 @@ class TrackingCodeListView(PlatformAPIView):
         )
         promo.redemption_count = 0
         return Response(TrackingCodeSerializer(promo).data, status=201)
+
+
+# --- Discount promo codes ------------------------------------------------------------
+
+class AdminPromoCodeListView(PlatformListView):
+    """List and mint percentage-off codes.
+
+    Gated on MANAGE_PLATFORM_PRICING, not MANAGE_ORDER. Minting a discount code gives
+    away margin on every sale that uses it, which is a pricing decision — support can
+    help a customer but must not be able to create a 100%-off code, and finance handles
+    refunds and commissions rather than list price. Only superuser and platform_admin
+    hold pricing.
+
+    Scoped to `kind="discount"`. Agency tracking codes share this table but are a
+    different product — they carry no discount and belong to an organization — and are
+    managed per-agency under Agencies. Mixing them into one list is how someone
+    eventually edits a referral code expecting it to discount.
+    """
+
+    required_capability = roles.MANAGE_PLATFORM_PRICING
+    serializer_class = AdminPromoCodeSerializer
+
+    def get_queryset(self):
+        queryset = PromoCode.objects.filter(kind="discount").annotate(
+            redemption_count=Count("redemptions", filter=Q(redemptions__status="consumed"))
+        )
+        params = self.request.query_params
+        active = params.get("is_active")
+        if active in ("true", "false"):
+            queryset = queryset.filter(is_active=(active == "true"))
+        search = params.get("search")
+        if search:
+            queryset = queryset.filter(code__icontains=search)
+        return queryset.order_by("-created_at")
+
+    def post(self, request, *args, **kwargs):
+        payload = CreatePromoCodeSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        promo = promo_services.create_discount_promo_code(
+            code=payload.validated_data["code"],
+            percent_off=payload.validated_data["percent_off"],
+            usage_limit=payload.validated_data.get("usage_limit"),
+            per_customer_limit=payload.validated_data.get("per_customer_limit"),
+            starts_at=payload.validated_data.get("starts_at"),
+            ends_at=payload.validated_data.get("ends_at"),
+            actor=request.user,
+            request=request,
+        )
+        promo.redemption_count = 0
+        return Response(AdminPromoCodeSerializer(promo).data, status=201)
+
+
+class AdminPromoCodeDetailView(PlatformAPIView):
+    """Read or amend one discount code.
+
+    There is no DELETE. `PromoRedemption.promo_code` is `on_delete=PROTECT`, so a code
+    that has ever been used cannot be removed anyway — and removing one that has would
+    erase the reason an old order was discounted. Retiring a code is `is_active: false`,
+    which checkout refuses (`orders.services._check_promo`).
+    """
+
+    required_capability = roles.MANAGE_PLATFORM_PRICING
+
+    def _get(self, id):
+        return get_object_or_404(
+            PromoCode.objects.filter(kind="discount").annotate(
+                redemption_count=Count("redemptions", filter=Q(redemptions__status="consumed"))
+            ),
+            pk=id,
+        )
+
+    def get(self, request, id):
+        return Response(AdminPromoCodeSerializer(self._get(id)).data)
+
+    def patch(self, request, id):
+        promo = self._get(id)
+        payload = UpdatePromoCodeSerializer(data=request.data, partial=True)
+        payload.is_valid(raise_exception=True)
+        promo_services.update_discount_promo_code(
+            promo, actor=request.user, request=request, **payload.validated_data
+        )
+        return Response(AdminPromoCodeSerializer(self._get(id)).data)
 
 
 # --- Dashboard and reports -----------------------------------------------------------

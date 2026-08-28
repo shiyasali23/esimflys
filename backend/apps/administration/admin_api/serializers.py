@@ -5,9 +5,13 @@ banned in admin scope: it would silently expose new columns (including wholesale
 encrypted credentials) the moment a model gains them.
 """
 
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+
+from apps.administration.services import promos as promo_services
 
 from apps.accounts.models import (
     MEMBER_ROLES,
@@ -184,6 +188,98 @@ class IssueTrackingCodeSerializer(serializers.Serializer):
         if PromoCode.objects.filter(code=code).exists():
             raise serializers.ValidationError("That code already exists.")
         return code
+
+
+class AdminPromoCodeSerializer(serializers.ModelSerializer):
+    """A discount code as the panel shows it.
+
+    `percent_off` is derived, not stored: the column is basis points so the arithmetic
+    stays integral, and every surface that shows a percentage derives it from the same
+    helper rather than dividing by 100 in its own way.
+    """
+
+    percent_off = serializers.SerializerMethodField()
+    redemption_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = PromoCode
+        fields = (
+            "id",
+            "code",
+            "kind",
+            "discount_type",
+            "discount_value",
+            "percent_off",
+            "usage_limit",
+            "per_customer_limit",
+            "starts_at",
+            "ends_at",
+            "is_active",
+            "redemption_count",
+            "created_at",
+        )
+        read_only_fields = fields
+
+    def get_percent_off(self, obj):
+        return promo_services.bps_to_percent(obj.discount_value)
+
+
+class CreatePromoCodeSerializer(serializers.Serializer):
+    """Mint a percentage-off code.
+
+    Takes a PERCENT, not basis points. Operators think in percent, and the one place
+    that ever sees 1000-meaning-10% is the conversion in `promos.percent_to_bps`.
+    """
+
+    code = serializers.CharField(max_length=64)
+    percent_off = serializers.DecimalField(
+        max_digits=5, decimal_places=2, min_value=Decimal("0.01"), max_value=Decimal("100"),
+    )
+    usage_limit = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    per_customer_limit = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    starts_at = serializers.DateTimeField(required=False, allow_null=True)
+    ends_at = serializers.DateTimeField(required=False, allow_null=True)
+
+    def validate_code(self, value):
+        code = value.strip()
+        if not code:
+            raise serializers.ValidationError("Code cannot be blank.")
+        if " " in code:
+            raise serializers.ValidationError("Codes cannot contain spaces.")
+        # `code` is a CITextField, so this lookup is already case-insensitive — which is
+        # what makes the check honest: SAVE10 and save10 are the same code at checkout,
+        # and without it the duplicate reaches the unique index as a 500 instead of a
+        # field error the operator can act on.
+        if PromoCode.objects.filter(code=code).exists():
+            raise serializers.ValidationError("A promo code with that name already exists.")
+        return code
+
+    def validate(self, attrs):
+        starts, ends = attrs.get("starts_at"), attrs.get("ends_at")
+        if starts and ends and starts > ends:
+            # Also a database constraint (`promo_dates_ordered`); caught here so it
+            # returns a field error instead of a 500 from the integrity error.
+            raise serializers.ValidationError({"ends_at": ["End date must be after the start date."]})
+        return attrs
+
+
+class UpdatePromoCodeSerializer(serializers.Serializer):
+    """Edit a code's terms. `code` and `kind` are deliberately absent — see promos.py."""
+
+    percent_off = serializers.DecimalField(
+        max_digits=5, decimal_places=2, min_value=Decimal("0.01"), max_value=Decimal("100"),
+        required=False,
+    )
+    usage_limit = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    per_customer_limit = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    starts_at = serializers.DateTimeField(required=False, allow_null=True)
+    ends_at = serializers.DateTimeField(required=False, allow_null=True)
+    is_active = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("Provide at least one field to change.")
+        return attrs
 
 
 class AdminOrderItemSerializer(serializers.ModelSerializer):

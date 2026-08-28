@@ -27,6 +27,8 @@ from .views import (
     AdminOrderDetailView,
     AdminOrderListView,
     AdminOrderCancelView,
+    AdminPromoCodeDetailView,
+    AdminPromoCodeListView,
     AdminOrderRefundView,
     AdminPaymentListView,
     AdminRefundListView,
@@ -88,6 +90,8 @@ urlpatterns = [
     # Orders, customers, payments, refunds
     path("orders/", AdminOrderListView.as_view(), name="order-list"),
     path("orders/<uuid:id>/", AdminOrderDetailView.as_view(), name="order-detail"),
+    path("promo-codes/", AdminPromoCodeListView.as_view(), name="promo-code-list"),
+    path("promo-codes/<uuid:id>/", AdminPromoCodeDetailView.as_view(), name="promo-code-detail"),
     path("orders/<uuid:id>/cancel/", AdminOrderCancelView.as_view(), name="order-cancel"),
     path("orders/<uuid:id>/refunds/", AdminOrderRefundView.as_view(), name="order-refund"),
     path("customers/", AdminCustomerListView.as_view(), name="customer-list"),

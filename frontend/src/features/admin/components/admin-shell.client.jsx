@@ -17,6 +17,7 @@ const SECTIONS = [
   { slug: "orders", label: "Orders" },
   { slug: "customers", label: "Customers" },
   { slug: "esims", label: "eSIMs" },
+  { slug: "promo-codes", label: "Promo codes" },
   { slug: "agencies", label: "Agencies" },
   { slug: "commissions", label: "Commissions" },
   { slug: "payouts", label: "Payouts" },
