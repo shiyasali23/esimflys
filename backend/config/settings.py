@@ -250,11 +250,16 @@ if not DEBUG:
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 
+# Resend over HTTPS is the production default, NOT SMTP. Outbound SMTP is blocked from
+# the container: every one of the first ten emails died with "timed out" against a
+# correctly configured smtp.resend.com:587, which answers in 0.19s from a laptop. The
+# same container reaches Stripe and eSIM Access over 443 without trouble, so the fix is
+# the transport, not the credentials. See apps/common/email.py.
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend"
     if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend",
+    else "apps.common.email.ResendEmailBackend",
 )
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
@@ -263,6 +268,10 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="eSIMFlys <no-reply@esimflys.com>")
+# Used by ResendEmailBackend. The SMTP settings above stay readable so a deployment
+# can fall back to EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend on a host
+# that does allow SMTP, without any code change.
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
 
 # These five were NEVER read from the environment, and nothing said so.
 #
@@ -280,6 +289,16 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="eSIMFlys <no-reply@esimf
 # EMAIL_TIMEOUT is explicit because Django's default is None — no timeout at all. A
 # provider that accepts the connection and then stalls would hang the request thread,
 # and these sends happen inside the checkout path.
+if not DEBUG and EMAIL_BACKEND.endswith("ResendEmailBackend") and not RESEND_API_KEY:
+    # Same reasoning as the SMTP guard below: refuse to boot rather than accept orders
+    # whose confirmation and QR code can never be delivered.
+    raise ImproperlyConfigured(
+        "EMAIL_BACKEND is the Resend backend but RESEND_API_KEY is empty, so no email "
+        "could be sent. Set RESEND_API_KEY (the same key used as the SMTP password) — or "
+        "set EMAIL_BACKEND to django.core.mail.backends.console.EmailBackend if this "
+        "deployment must not send mail."
+    )
+
 if not DEBUG and EMAIL_BACKEND.endswith("smtp.EmailBackend") and not EMAIL_HOST:
     # Refuse to boot rather than repeat the silent failure. The same pattern guards
     # CACHE_URL and ALLOWED_HOSTS above; both exist because a quiet default cost real

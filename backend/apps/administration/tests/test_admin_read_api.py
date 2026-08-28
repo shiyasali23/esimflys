@@ -10,7 +10,7 @@ from apps.catalog.models import CatalogPlan, Country, Supplier
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile, SupplierEvent
 from apps.orders import services as order_services
-from apps.orders.models import Notification, Order, PromoRedemption
+from apps.orders.models import Notification, Order, PromoCode, PromoRedemption
 from apps.payments.models import Payment, Refund
 
 from .test_admin_api import platform_user
@@ -445,3 +445,63 @@ class AdminRefundTests(APITestCase):
         self.assertEqual(self.client.get(f"{ADMIN}/refunds/").status_code, 403)
         self.client.force_authenticate(self.finance)
         self.assertEqual(self.client.get(f"{ADMIN}/refunds/").status_code, 200)
+
+
+@override_settings(SUPPLIER_GATEWAY="fake", PAYMENTS_GATEWAY="fake")
+class DashboardMarginTests(APITestCase):
+    """Margin must measure what we kept, not what things were listed at.
+
+    The original summed `OrderItem.unit_amount_minor` — the pre-discount price — so every
+    promo read as profit. On production that showed as $12.05 of margin against $11.96 of
+    revenue and $3.90 of supplier cost, the gap being one 100%-off order reporting its
+    full list price.
+    """
+
+    def setUp(self):
+        build_catalogue()
+        self.admin = platform_user("pricing@example.com", "platform_admin")
+        self.client.force_authenticate(self.admin)
+
+    def _margin(self):
+        return self.client.get(f"{ADMIN}/dashboard/").data["margin"]
+
+    def test_a_fully_discounted_order_adds_no_margin(self):
+        PromoCode.objects.create(
+            code="ALLFREE", kind="discount", discount_type="percentage_bps",
+            discount_value=10000, is_active=True,
+        )
+        order = place_order(promo="ALLFREE")
+        # A zero-total order has no Payment row — `payment_amount_positive` forbids one,
+        # and the app skips Stripe entirely for these (payments/services.py:32). It is
+        # settled by `_complete_zero_total`, so the test must settle it the same way.
+        Order.objects.filter(pk=order.pk).update(payment_status="paid", status="paid")
+        order.refresh_from_db()
+
+        margin = self._margin()
+        self.assertEqual(order.total_minor, 0)
+        self.assertEqual(margin["retail_minor"], 0)
+        # It still cost us the wholesale price, so margin is NEGATIVE. That is the truth
+        # a free order tells, and the old figure hid it behind the list price.
+        self.assertLess(margin["margin_minor"], 0)
+
+    def test_margin_is_revenue_minus_supplier_cost(self):
+        order = place_order()
+        settle(order)
+
+        margin = self._margin()
+        wholesale = sum(i.wholesale_amount_minor or 0 for i in order.items.all())
+        self.assertEqual(margin["retail_minor"], order.total_minor)
+        self.assertEqual(margin["wholesale_minor"], wholesale)
+        self.assertEqual(margin["margin_minor"], order.total_minor - wholesale)
+
+    def test_margin_honours_the_date_range(self):
+        """It ignored date_from/date_to entirely, so changing the range moved revenue
+        while margin stood still."""
+        order = place_order()
+        settle(order)
+
+        data = self.client.get(
+            f"{ADMIN}/dashboard/?date_from=2099-01-01&date_to=2099-12-31"
+        ).data
+        self.assertEqual(data["margin"]["retail_minor"], 0)
+        self.assertEqual(data["margin"]["wholesale_minor"], 0)

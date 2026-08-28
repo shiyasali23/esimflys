@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { fetchAdminOrder } from "@/lib/api/admin";
+import { fetchAdminOrder, cancelOrder } from "@/lib/api/admin";
 import { AdminRefundPanel } from "@/features/admin/components/admin-refund-panel.client";
 import { fromMinor, formatBytes, planAllowance, usageRatio } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -26,6 +26,31 @@ import { routes } from "@/config/routes";
 export function AdminOrderDetail({ orderId }) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  /**
+   * Cancelling is offered ONLY while the order is unpaid. The server enforces that
+   * anyway — and enforces more than this can see, since it also asks Stripe whether an
+   * in-flight intent really took money — but offering a button that can only 409 invites
+   * an operator to think something is broken. A paid order is a refund, and the refund
+   * panel below is where that lives.
+   */
+  async function cancel() {
+    setCancelling(true);
+    setNotice(null);
+    try {
+      const updated = await cancelOrder(orderId);
+      setOrder(updated);
+      setNotice({ tone: "success", text: "Order cancelled. Any promo use it held has been released." });
+    } catch (err) {
+      // A 409 explains itself — "carries a payment in processing", "an eSIM was already
+      // provisioned". That message is the useful part, so it is shown verbatim.
+      setNotice({ tone: "error", text: err?.message || "We couldn't cancel that order." });
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -219,6 +244,38 @@ export function AdminOrderDetail({ orderId }) {
           </p>
         )}
       </section>
+
+      {notice ? (
+        <p
+          role={notice.tone === "success" ? "status" : "alert"}
+          className={
+            notice.tone === "success"
+              ? "rounded-md bg-success-text/10 p-3 text-body-sm text-success-text"
+              : "rounded-md bg-destructive/10 p-3 text-body-sm text-destructive-text"
+          }
+        >
+          {notice.text}
+        </p>
+      ) : null}
+
+      {order.payment_status === "pending" ? (
+        <section className="rounded-lg border border-border bg-white p-5 sm:p-6">
+          <h2 className="mb-2 font-display text-headline-md text-foreground">Cancel order</h2>
+          <p className="mb-4 text-body-sm text-muted-foreground">
+            This order was placed but never paid. Cancelling closes it and hands back any
+            promo use it was holding. Nothing that took money can be cancelled — that is a
+            refund.
+          </p>
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={cancelling}
+            className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted disabled:opacity-60"
+          >
+            {cancelling ? "Cancelling…" : "Cancel this order"}
+          </button>
+        </section>
+      ) : null}
 
       <AdminRefundPanel order={order} items={items} />
     </div>

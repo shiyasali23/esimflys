@@ -380,3 +380,15 @@ export function updatePromoCode(id, patch) {
   if (patch.endsAt !== undefined) body.ends_at = patch.endsAt;
   return api.patch(`/admin/promo-codes/${encodeURIComponent(id)}/`, body);
 }
+
+/**
+ * End an order that was placed but never paid.
+ *
+ * The unpaid twin of `createRefund`. The server refuses anything that took money —
+ * a settled payment, a provisioned eSIM, or a Stripe intent it cannot prove is dead —
+ * with 409, and voids the payment intent before cancelling so a stale checkout tab
+ * cannot pay an order that no longer exists.
+ */
+export function cancelOrder(id) {
+  return api.post(`/admin/orders/${encodeURIComponent(id)}/cancel/`, {});
+}

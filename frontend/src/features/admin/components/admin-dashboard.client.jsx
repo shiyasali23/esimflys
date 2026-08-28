@@ -140,19 +140,19 @@ export function AdminDashboard() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-card border border-border bg-white p-5">
-              <p className="text-body-sm text-muted-foreground">Retail</p>
+              <p className="text-body-sm text-muted-foreground">Collected</p>
               <p className="mt-1 font-display text-headline-md text-foreground">
                 {money(data.margin?.retail_minor)}
               </p>
             </div>
             <div className="rounded-card border border-border bg-white p-5">
-              <p className="text-body-sm text-muted-foreground">Wholesale</p>
+              <p className="text-body-sm text-muted-foreground">Supplier cost</p>
               <p className="mt-1 font-display text-headline-md text-foreground">
                 {money(data.margin?.wholesale_minor)}
               </p>
             </div>
             <div className="rounded-card border border-primary/40 bg-white p-5">
-              <p className="text-body-sm text-muted-foreground">Margin</p>
+              <p className="text-body-sm text-muted-foreground">Gross margin</p>
               <p className="mt-1 font-display text-headline-md text-primary">
                 {money(data.margin?.margin_minor)}
               </p>

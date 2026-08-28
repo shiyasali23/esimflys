@@ -126,17 +126,47 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
     }
 
     if include_margin:
-        margin = OrderItem.objects.filter(
-            order__payment_status__in=SETTLED_PAYMENT_STATES,
-            wholesale_amount_minor__isnull=False,
-        ).aggregate(
-            retail_minor=_zero_sum("unit_amount_minor"),
-            wholesale_minor=_zero_sum("wholesale_amount_minor"),
+        # Margin is what we KEPT, so it starts from what the customer was charged, not
+        # from the list price of what they bought.
+        #
+        # This used to sum `OrderItem.unit_amount_minor` — the pre-discount price — which
+        # made every promo look like profit. Production showed it exactly: retail summed
+        # to 1595 against 1196 of real revenue, the 399 gap being one 100%-off order that
+        # earned nothing and still reported its full list price. The dashboard claimed
+        # $12.05 of profit on $11.96 of revenue against $3.90 of supplier cost.
+        #
+        # `base_total_minor` rather than `total_minor`, because the block is labelled USD
+        # and `total_minor` is denominated in whatever currency the order was charged in.
+        # Adding an INR total to a USD one produces a number that means nothing. Older
+        # rows predate the base columns, so they fall back to `total_minor` — correct for
+        # the USD orders that make up all settled history today, and the only alternative
+        # to dropping them from the figure entirely.
+        #
+        # It also honours date_from/date_to now. It did not before, so moving the range
+        # moved revenue while margin stayed still.
+        settled_totals = settled.aggregate(
+            revenue_minor=Coalesce(
+                Sum(Coalesce(F("base_total_minor"), F("total_minor"))), 0
+            )
         )
+        wholesale = _date_filter(
+            OrderItem.objects.filter(
+                order__payment_status__in=SETTLED_PAYMENT_STATES,
+                wholesale_amount_minor__isnull=False,
+            ),
+            "order__created_at",
+            date_from,
+            date_to,
+        ).aggregate(wholesale_minor=_zero_sum("wholesale_amount_minor"))
+
+        revenue_minor = settled_totals["revenue_minor"] - refunded
+        wholesale_minor = wholesale["wholesale_minor"]
         result["margin"] = {
-            "retail_minor": margin["retail_minor"],
-            "wholesale_minor": margin["wholesale_minor"],
-            "margin_minor": margin["retail_minor"] - margin["wholesale_minor"],
+            # Kept under the old key so the dashboard tile needs no change, but it is now
+            # revenue actually collected rather than list price. The tile is relabelled.
+            "retail_minor": revenue_minor,
+            "wholesale_minor": wholesale_minor,
+            "margin_minor": revenue_minor - wholesale_minor,
         }
     return result
 
