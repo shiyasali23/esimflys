@@ -310,3 +310,75 @@ class RefreshUsageErrorSurfacingTests(TestCase):
 
         self.assertEqual(response.status_code, 502)
         self.assertIn("response keys", response.data["error"]["message"])
+
+
+@override_settings(SUPPLIER_GATEWAY="fake", PAYMENTS_GATEWAY="fake")
+class SupplierProbeTests(TestCase):
+    """The probe must answer "what did they send?" without becoming a credential leak."""
+
+    def setUp(self):
+        from apps.administration.tests.test_admin_api import platform_user
+
+        self.admin = platform_user("ops2@example.com", "platform_admin")
+        self.readonly = platform_user("ro2@example.com", "readonly_admin")
+        supplier = Supplier.objects.create(
+            code="esim-access", name="eSIM Access", status="active"
+        )
+        country = Country.objects.create(
+            iso2="IT", name="Italy", slug="italy", region="Europe", is_active=True
+        )
+        plan = CatalogPlan.objects.create(
+            supplier=supplier, country=country, product_code="IT-1GB",
+            supplier_package_code="PKG-IT", plan_type="fixed", display_name="1GB",
+            data_limit_mb=1000, validity_days=7, retail_amount_minor=399,
+            wholesale_amount_minor=200, currency="USD", status="active",
+        )
+        with transaction.atomic():
+            order = order_services.create_order(
+                lines=[order_services.OrderLine(catalog_plan_id=plan.id, quantity=1)],
+                customer_email="buyer@example.com", requested_currency="USD",
+            )
+        self.profile = EsimProfile.objects.create(
+            order_item=order.items.first(), supplier=supplier, status="ready",
+            supplier_reference="ref_probe",
+        )
+
+    def _client(self, user):
+        from rest_framework.test import APIClient
+
+        c = APIClient()
+        c.force_authenticate(user)
+        return c
+
+    def _url(self):
+        return f"/api/v1/admin/esims/{self.profile.id}/supplier-probe/"
+
+    def test_reports_the_response_shape(self):
+        response = self._client(self.admin).get(self._url())
+        self.assertEqual(response.status_code, 200)
+        probe = response.data["probe"]
+        self.assertEqual(probe["success"], True)
+        self.assertIn("row_keys", probe)
+        self.assertIn("smdpStatus", probe["lifecycle_fields"])
+
+    def test_never_returns_activation_credentials(self):
+        """Structure and statuses only. If this ever carried an ICCID or an activation
+        code it would be a way around the audited, rate-limited reveal endpoint."""
+        body = str(self._client(self.admin).get(self._url()).data)
+        for secret in ("iccid", "activation_code", "qr_payload", "smdp_address", "LPA:"):
+            self.assertNotIn(secret, body.lower() if secret.islower() else body)
+
+    def test_readonly_cannot_probe(self):
+        """It spends a real supplier API call, so it is not a read-only view."""
+        self.assertEqual(self._client(self.readonly).get(self._url()).status_code, 403)
+
+    def test_is_audited(self):
+        from apps.administration.models import AuditEvent
+
+        self._client(self.admin).get(self._url())
+        self.assertTrue(AuditEvent.objects.filter(action="esim.supplier_probed").exists())
+
+    def test_explains_a_profile_with_no_supplier_reference(self):
+        EsimProfile.objects.filter(pk=self.profile.pk).update(supplier_reference=None)
+        response = self._client(self.admin).get(self._url())
+        self.assertEqual(response.status_code, 409)

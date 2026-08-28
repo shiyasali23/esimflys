@@ -42,6 +42,7 @@ from apps.catalog.models import CatalogPlan, Country, TopupProduct
 from apps.common.exceptions import Conflict, UpstreamUnavailable
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile, SupplierEvent
+from apps.esims import supplier as esim_supplier
 from apps.esims.supplier import SupplierError
 from apps.orders import services as order_services
 from apps.orders.models import Notification, Order, PromoCode
@@ -747,6 +748,40 @@ class AdminEsimRefreshUsageView(PlatformAPIView):
             raise UpstreamUnavailable(message=f"The supplier could not be read: {exc}")
         record_audit(action="esim.usage_refreshed", obj=profile, request=request)
         return Response(AdminEsimListSerializer(profile).data)
+
+
+class AdminEsimSupplierProbeView(PlatformAPIView):
+    """What did the supplier actually send back for this eSIM?
+
+    Exists because the usage refresh has never worked and could not be diagnosed from
+    outside the container: the provider answers 200 OK, our parse finds no rows, and the
+    panel showed a bare 500. Reading it needed shell access to production, which is a bad
+    answer to "a provider changed something" — it will happen again.
+
+    Returns STRUCTURE ONLY — keys, counts, the success flag, their own error text, and
+    the five lifecycle fields, which are statuses and byte counts rather than secrets.
+    ICCIDs, activation codes and QR payloads never appear, so this cannot be used to walk
+    around the audited reveal endpoint.
+
+    Gated on MANAGE_OPS, the same capability as retrying a supplier event — not VIEW_OPS.
+    It spends a real supplier API call, so it is an action rather than a read, and a
+    read-only role must not be able to run up someone else's rate limit. Audited for the
+    same reason: it should be visible that somebody made the call.
+    """
+
+    required_capability = roles.MANAGE_OPS
+    throttle_scope = "usage"
+
+    def get(self, request, id):
+        profile = get_object_or_404(EsimProfile, pk=id)
+        if not profile.supplier_reference:
+            raise Conflict(
+                message="This eSIM has no supplier reference yet, so there is nothing to query."
+            )
+        gateway = esim_supplier.get_supplier_gateway()
+        probe = gateway.probe_usage(supplier_reference=profile.supplier_reference)
+        record_audit(action="esim.supplier_probed", obj=profile, request=request)
+        return Response({"profile_status": profile.status, "probe": probe})
 
 
 # --- Operations ----------------------------------------------------------------------

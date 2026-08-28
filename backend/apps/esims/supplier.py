@@ -293,6 +293,79 @@ class EsimAccessGateway:
             "expires_at": row.get("expiredTime"),
         }
 
+    def probe_usage(self, *, supplier_reference):
+        """Report the SHAPE of the usage response without unwrapping or raising.
+
+        `_post` is deliberately opinionated: it unwraps `obj` on success and turns
+        anything else into an exception. That is right for the code paths that have to
+        act, and useless for the one question an operator actually has when a supplier
+        call fails — what did they send back?
+
+        The usage refresh has never worked. The supplier answers 200 OK and our parse
+        finds no rows, which cannot distinguish a reference they do not recognise, a
+        response key we are not reading, or a payload field they have started requiring.
+        One bug in exactly that family has already been fixed here: `/esim/query` needed
+        a `pager` field and returned success:false until it was named.
+
+        STRUCTURE ONLY. Keys, counts, the success flag and their own error text — plus
+        the five lifecycle fields, which are statuses and byte counts rather than
+        secrets. ICCIDs, activation codes and QR payloads are never included, so this
+        cannot become a back door around the audited reveal endpoint.
+        """
+        import json as _json
+
+        import httpx
+
+        payload = {"esimTranNoList": [supplier_reference]}
+        body = _json.dumps(payload)
+        client = self._client or httpx.Client(timeout=self._timeout)
+        try:
+            response = client.post(
+                self._base + "/esim/usage/query", content=body, headers=self._headers(body)
+            )
+        except Exception as exc:
+            return {"transport_error": f"{type(exc).__name__}: {exc}"}
+        finally:
+            if self._client is None:
+                client.close()
+
+        result = {
+            "http_status": response.status_code,
+            "request_keys": sorted(payload),
+        }
+        try:
+            data = response.json()
+        except ValueError:
+            result["non_json"] = True
+            return result
+
+        result["envelope_keys"] = sorted(data) if isinstance(data, dict) else None
+        result["success"] = data.get("success") if isinstance(data, dict) else None
+        result["error_code"] = data.get("errorCode") if isinstance(data, dict) else None
+        result["error_message"] = data.get("errorMsg") if isinstance(data, dict) else None
+
+        obj = data.get("obj") if isinstance(data, dict) else None
+        if isinstance(obj, dict):
+            result["obj_keys"] = sorted(obj)
+            for key, value in obj.items():
+                if isinstance(value, list):
+                    result["list_key"] = key
+                    result["row_count"] = len(value)
+                    if value and isinstance(value[0], dict):
+                        result["row_keys"] = sorted(value[0])
+                        result["lifecycle_fields"] = {
+                            k: value[0].get(k)
+                            for k in ("esimStatus", "smdpStatus", "expiredTime",
+                                      "totalVolume", "orderUsage")
+                            if k in value[0]
+                        }
+                    break
+        elif obj is None:
+            result["obj"] = None
+        else:
+            result["obj_type"] = type(obj).__name__
+        return result
+
     def apply_topup(self, *, supplier_reference, package_code, data_amount_mb=None,
                     idempotency_key=None):
         """Recharge an existing eSIM. Only packages with ``supportTopUpType == 2``."""
@@ -432,6 +505,25 @@ class FakeSupplier:
             "smdp_status": state.get("smdp_status", "RELEASED"),
             "expires_at": state.get("expires_at"),
             **{k: v for k, v in state.items() if k in ("total_data_bytes", "remaining_data_bytes")},
+        }
+
+    def probe_usage(self, *, supplier_reference):
+        return {
+            "http_status": 200,
+            "request_keys": ["esimTranNoList"],
+            "envelope_keys": ["obj", "success"],
+            "success": True,
+            "error_code": None,
+            "error_message": None,
+            "obj_keys": ["esimList"],
+            "list_key": "esimList",
+            "row_count": 1,
+            "row_keys": ["esimStatus", "esimTranNo", "expiredTime", "orderUsage",
+                         "smdpStatus", "totalVolume"],
+            "lifecycle_fields": {
+                "esimStatus": "GOT_RESOURCE", "smdpStatus": "RELEASED",
+                "expiredTime": None, "totalVolume": 10 * _GB, "orderUsage": 0,
+            },
         }
 
     def apply_topup(self, *, supplier_reference, package_code, data_amount_mb=None,

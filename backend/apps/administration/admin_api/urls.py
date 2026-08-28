@@ -21,6 +21,7 @@ from .views import (
     AdminEsimDetailView,
     AdminEsimListView,
     AdminEsimRefreshUsageView,
+    AdminEsimSupplierProbeView,
     AdminEsimRevealView,
     AdminNotificationListView,
     AdminNotificationRetryView,
@@ -107,6 +108,11 @@ urlpatterns = [
         "esims/<uuid:id>/refresh-usage/",
         AdminEsimRefreshUsageView.as_view(),
         name="esim-refresh-usage",
+    ),
+    path(
+        "esims/<uuid:id>/supplier-probe/",
+        AdminEsimSupplierProbeView.as_view(),
+        name="esim-supplier-probe",
     ),
 
     # Operations
