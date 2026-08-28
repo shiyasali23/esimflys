@@ -38,8 +38,7 @@ measured 90 with borders.
 | P2 | `data-table.jsx` | Page-size select, always-visible count — **admin variant only** |
 | P3 | `pagination.js` | `PAGE_SIZES`, `normalisePageSize` |
 | P4 | `use-list-query.client.js` **new** | URL is the sole source of truth — one fetch per navigation |
-| V1 | orders, customers, audit | Toolbar + URL state + compact table |
-| — | 10 further tables | `density="compact"` |
+| V1–V14 | all 14 paginated views | Toolbar + URL state + page-size selector + compact table |
 | V13 | `admin-dashboard.client.jsx` | Compact KPI tile, hoisted to module scope |
 | D1 | admin routes | `Container` no longer used; unchanged for its 24 customer call sites |
 
@@ -54,6 +53,12 @@ a class that emitted nothing and rendered at inherited size.
 **3. Visual** — screenshots captured of `/superuser`, `/superuser/orders`, `/account/orders`.
 
 **4. Density** — table above, measured from the live DOM.
+
+**Router mock corrected.** `routerMock.replace` was a bare spy and `useSearchParams`
+returned a static object, so a test could change a filter, see the spy fire, and watch the
+component keep rendering the old query. Harmless while state lived in `useState`; wrong the
+moment it moved to the URL. It now applies the new query and notifies subscribers through
+`useSyncExternalStore`, so components re-render as they do in the browser.
 
 **5. Regression** — 796 tests pass; build clean; lint clean. **Customer site verified after
 deploy** on `/account/orders`: header present (68px), 53px rows, pagination still hidden on
@@ -73,9 +78,11 @@ collapse carries `aria-expanded`; `#main-content` present for the skip link.
 
 ## Not done — stated, not glossed
 
-- **URL state covers 3 of 12 list views** (orders, customers, audit). The other nine keep
-  local paging: they work, and show count + range + prev/next, but no page-size selector and
-  no URL persistence. Mechanical to finish; not finished.
+- ~~URL state covers 3 of 12 list views~~ — **now complete: all 14 paginated views** carry
+  `?page=`, `?limit=` and their filters, each with a page-size selector, total count and
+  range indicator. Verified on production: `/superuser/esims?limit=50&status=ready` reloads
+  into the same view and issues **exactly one** request (`?page_size=50&status=ready`) — no
+  seed-then-sync double fetch.
 - **`?sort=` omitted.** No admin endpoint uses DRF's `OrderingFilter`; every queryset has a
   fixed `.order_by()`. A client-side sort would reorder ONE PAGE while appearing to sort the
   table. Needs a backend change, which you excluded.
