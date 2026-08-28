@@ -406,8 +406,16 @@ class AdminPromoCodeListView(PlatformListView):
     serializer_class = AdminPromoCodeSerializer
 
     def get_queryset(self):
+        # `reserved` counts too, because that is what the LIMIT counts. `_validate_promo`
+        # refuses a code once reserved + consumed reaches `usage_limit`, so counting only
+        # `consumed` here shows "2 of 3" on a code that is already exhausted — and the
+        # operator goes looking for a bug in checkout instead of finding a held reservation.
+        # (The agency tracking list deliberately counts `consumed` alone: an agency is
+        # asking how many sales it earned, not how much of a limit is left.)
         queryset = PromoCode.objects.filter(kind="discount").annotate(
-            redemption_count=Count("redemptions", filter=Q(redemptions__status="consumed"))
+            redemption_count=Count(
+                "redemptions", filter=Q(redemptions__status__in=["reserved", "consumed"])
+            )
         )
         params = self.request.query_params
         active = params.get("is_active")
@@ -449,7 +457,9 @@ class AdminPromoCodeDetailView(PlatformAPIView):
     def _get(self, id):
         return get_object_or_404(
             PromoCode.objects.filter(kind="discount").annotate(
-                redemption_count=Count("redemptions", filter=Q(redemptions__status="consumed"))
+                redemption_count=Count(
+                    "redemptions", filter=Q(redemptions__status__in=["reserved", "consumed"])
+                )
             ),
             pk=id,
         )

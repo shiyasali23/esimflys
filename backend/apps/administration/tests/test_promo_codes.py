@@ -126,6 +126,18 @@ class AdminPromoCodeTests(APITestCase):
         self.assertIn("SAVE10", codes)
         self.assertNotIn("TRACKME", codes)
 
+    def test_usage_shown_counts_reservations_not_just_settled_orders(self):
+        """The count is displayed against `usage_limit`, and the limit counts a RESERVED
+        redemption. Counting only `consumed` shows "0 of 3" on a code with a use already
+        held — so an operator sees room that does not exist, and a customer hitting the
+        limit looks like a checkout bug."""
+        self._create(code="HELDUSE", percent_off="10", usage_limit=3)
+        place_order(email="holder@example.com", promo="HELDUSE")  # unpaid: reserved
+
+        self.client.force_authenticate(self.admin)
+        row = self.client.get(f"{URL}?search=HELDUSE").data["results"][0]
+        self.assertEqual(row["redemption_count"], 1)
+
     # ---- managing ----
 
     def test_deactivating_a_code_stops_it_working(self):
