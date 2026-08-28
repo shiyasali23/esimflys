@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchAdminPayments, fetchAdminRefunds } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import { AdminToolbar } from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
@@ -13,30 +15,33 @@ import { Money } from "@/components/currency/money";
  * support receives 403. Presenting a refund button here would invite a failure
  * for most operators.
  */
+/* The tab is part of the view, so it belongs in the URL with everything else — a link
+   to "refunds, page 3" has to survive being pasted to a colleague. */
+const FILTER_KEYS = ["view"];
+const DEFAULT_VIEW = "payments";
+
 export function AdminPayments() {
-  const [tab, setTab] = useState("payments");
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
+  const tab = filters.view || DEFAULT_VIEW;
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const load = useCallback((which, nextPage) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    const fetcher = which === "payments" ? fetchAdminPayments : fetchAdminRefunds;
-    fetcher({ page: nextPage })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    (tab === "payments" ? fetchAdminPayments : fetchAdminRefunds)({ page, page_size: limit })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [tab, page, limit]);
 
+  /* Switching tab changes the URL, which changes `load`, which fires once. */
   useEffect(() => {
-    setList(null);
-    load(tab, 1);
-  }, [tab, load]);
+    load();
+  }, [load]);
 
   const paymentColumns = [
     {
@@ -102,7 +107,13 @@ export function AdminPayments() {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2" role="tablist" aria-label="Payments view">
+      <AdminToolbar>
+        {/*
+          `aria-pressed`, not `role="tab"`. These no longer sit in a tablist — they write
+          `?view=` and reload the table, which is a toggle group, not a tab set. Keeping
+          the tab role without its required parent is an actual axe violation, and it also
+          promises a tabpanel relationship that does not exist.
+        */}
         {[
           { id: "payments", label: "Payments" },
           { id: "refunds", label: "Refunds" },
@@ -110,19 +121,18 @@ export function AdminPayments() {
           <button
             key={option.id}
             type="button"
-            role="tab"
-            aria-selected={tab === option.id}
-            onClick={() => setTab(option.id)}
-            className={`rounded-full px-4 py-2 text-label-bold transition-colors ${
+            aria-pressed={tab === option.id}
+            onClick={() => setFilters({ view: option.id === DEFAULT_VIEW ? "" : option.id })}
+            className={`h-8 rounded-admin-sm px-3 text-admin-label transition-colors ${
               tab === option.id
-                ? "bg-primary text-on-primary"
-                : "border border-border text-foreground hover:bg-muted"
+                ? "bg-admin-accent-tint font-medium text-admin-accent-ink"
+                : "border border-admin-border text-admin-text hover:bg-admin-hover"
             }`}
           >
             {option.label}
           </button>
         ))}
-      </div>
+      </AdminToolbar>
 
       <DataTable
         density="compact"
@@ -131,8 +141,10 @@ export function AdminPayments() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(tab, page)}
-        onPageChange={(next) => load(tab, next)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{
           title: tab === "payments" ? "No payments" : "No refunds",
           body:

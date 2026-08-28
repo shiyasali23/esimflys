@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
@@ -9,22 +10,57 @@ import { cleanup } from "@testing-library/react";
  * that care about navigation assert against `routerMock` instead.
  */
 
-export const routerMock = {
-  push: vi.fn(),
-  replace: vi.fn(),
-  refresh: vi.fn(),
-  back: vi.fn(),
-};
-
 export const navigationState = {
   pathname: "/",
   searchParams: new URLSearchParams(),
 };
 
+/*
+ * The URL is REACTIVE here, as it is in the real router.
+ *
+ * This used to be a static object: `router.replace()` was a bare spy and
+ * `useSearchParams()` returned whatever `navigationState` happened to hold, with nothing
+ * telling React to render again. That was fine while every list view kept its filters in
+ * `useState` — and stopped being fine the moment they moved into the URL, because a test
+ * could change a filter, see the spy called, and watch the component sit there showing
+ * the old query. The failure looked like a component bug and was a harness bug.
+ *
+ * `replace` now writes the new pathname and query into `navigationState` and notifies
+ * subscribers, so a component reading `useSearchParams` re-renders exactly as it does in
+ * the browser. Assertions against `routerMock.replace` still work — it is still a spy.
+ */
+const listeners = new Set();
+const notify = () => listeners.forEach((l) => l());
+
+function applyUrl(url) {
+  const [pathname, query = ""] = String(url).split("?");
+  navigationState.pathname = pathname;
+  navigationState.searchParams = new URLSearchParams(query);
+  notify();
+}
+
+export const routerMock = {
+  push: vi.fn(applyUrl),
+  replace: vi.fn(applyUrl),
+  refresh: vi.fn(),
+  back: vi.fn(),
+};
+
+function useReactiveSearchParams() {
+  return useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    () => navigationState.searchParams,
+    () => navigationState.searchParams,
+  );
+}
+
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
   usePathname: () => navigationState.pathname,
-  useSearchParams: () => navigationState.searchParams,
+  useSearchParams: () => useReactiveSearchParams(),
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
@@ -37,6 +73,7 @@ afterEach(() => {
   routerMock.refresh.mockClear();
   navigationState.pathname = "/";
   navigationState.searchParams = new URLSearchParams();
+  listeners.clear();
 });
 
 /** localStorage/sessionStorage are absent from this jsdom build. */

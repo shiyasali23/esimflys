@@ -1,6 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchAgencyCommissions } from "@/lib/api/agency";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
@@ -16,29 +21,32 @@ const STATUSES = ["", "pending", "available", "approved", "paid", "reversed", "c
  *
  * The rate is read-only — agencies cannot change their own commission.
  */
+const FILTER_KEYS = ["status"];
+
 export function AgencyCommissions({ orgId }) {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchPage = useCallback(
-    (next, nextStatus = status) => {
-      setLoading(true);
-      setError(null);
-      fetchAgencyCommissions(orgId, { page: next, status: nextStatus || undefined })
-        .then((result) => {
-          setList(result);
-          setPage(next);
-        })
-        .catch(setError)
-        .finally(() => setLoading(false));
-    },
-    [orgId, status],
-  );
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetchAgencyCommissions(orgId, {
+      page,
+      page_size: limit,
+      status: filters.status || undefined,
+    })
+      .then(setList)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [orgId, page, limit, filters.status]);
 
-  useEffect(() => fetchPage(1, ""), [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const columns = [
     {
@@ -98,23 +106,17 @@ export function AgencyCommissions({ orgId }) {
 
   return (
     <div>
-      <label className="mb-4 inline-block text-body-sm">
-        <span className="mb-1 block text-muted-foreground">Filter by status</span>
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            fetchPage(1, e.target.value);
-          }}
-          className="rounded-md border border-border bg-white px-3 py-2 text-body-sm text-foreground"
-        >
-          {STATUSES.map((s) => (
-            <option key={s || "all"} value={s}>
-              {s ? s.replace(/_/g, " ") : "All"}
-            </option>
-          ))}
-        </select>
-      </label>
+      <AdminToolbar>
+        <ToolbarSelect
+          label="Filter commissions by status"
+          value={filters.status}
+          onChange={(value) => setFilters({ status: value })}
+          options={STATUSES.map((value) => ({
+            value,
+            label: value ? value.replace(/_/g, " ") : "All statuses",
+          }))}
+        />
+      </AdminToolbar>
 
       <DataTable
         density="compact"
@@ -123,8 +125,10 @@ export function AgencyCommissions({ orgId }) {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => fetchPage(page)}
-        onPageChange={fetchPage}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{
           title: "No commission yet",
           body: "Commission is recorded once an attributed order is paid.",

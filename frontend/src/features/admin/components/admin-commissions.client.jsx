@@ -7,6 +7,12 @@ import {
   bulkApproveCommissions,
   readBulkResult,
 } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
@@ -23,31 +29,34 @@ const STATUSES = ["", "pending", "available", "approved", "paid", "reversed", "c
  *
  * `net_minor` is the figure that matters — a refund claws commission back.
  */
+const STATUS_OPTIONS = STATUSES.map((value) => ({
+  value,
+  label: value || "All statuses",
+}));
+const FILTER_KEYS = ["status"];
 export function AdminCommissions() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState([]);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
-  const load = useCallback((nextPage, nextStatus) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    setSelected([]);
-    fetchAdminCommissions({ page: nextPage, status: nextStatus })
-      .then((data) => {
-        setList(data);
-        setPage(nextPage);
-      })
+    fetchAdminCommissions({ page, page_size: limit, status: filters.status })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.status]);
 
+  /* One effect keyed on the URL, so a navigation fires exactly one request. */
   useEffect(() => {
-    load(1, "");
+    load();
   }, [load]);
 
   const approvable = (row) => ["pending", "available"].includes(row.status);
@@ -57,7 +66,7 @@ export function AdminCommissions() {
     setResult(null);
     try {
       await approveCommission(row.id);
-      load(page, status);
+      load();
     } catch (err) {
       setResult({ succeeded: [], failed: [{ id: row.id, error: err?.message || "Refused" }] });
     } finally {
@@ -71,7 +80,7 @@ export function AdminCommissions() {
     setResult(null);
     try {
       setResult(readBulkResult(await bulkApproveCommissions(selected)));
-      load(page, status);
+      load();
     } catch (err) {
       setResult({ succeeded: [], failed: [{ id: "—", error: err?.message || "Refused" }] });
     } finally {
@@ -159,25 +168,19 @@ export function AdminCommissions() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <label>
-          <span className="mb-1 block text-label-bold text-foreground">Status</span>
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              load(1, e.target.value);
-            }}
-            className="rounded-md border border-border bg-white px-3 py-2.5 text-body-sm text-foreground"
-          >
-            {STATUSES.map((s) => (
-              <option key={s || "all"} value={s}>
-                {s || "All"}
-              </option>
-            ))}
-          </select>
-        </label>
+      <AdminToolbar>
+        <ToolbarSelect
+          label="Filter commissions by status"
+          value={filters.status}
+          onChange={(value) => setFilters({ status: value })}
+          options={STATUS_OPTIONS}
+        />
+      </AdminToolbar>
 
+      {/* Bulk approval stays in the body, not the top bar: it acts on the CURRENT
+          selection and belongs beside the rows it will change. */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <span />
         {selectable.length ? (
           <div className="flex items-center gap-3">
             <button
@@ -234,8 +237,10 @@ export function AdminCommissions() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, status)}
-        onPageChange={(next) => load(next, status)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No commissions", body: "Nothing matches this filter." }}
       />
     </div>

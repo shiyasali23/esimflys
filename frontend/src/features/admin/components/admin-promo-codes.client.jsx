@@ -3,6 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { fetchPromoCodes, createPromoCode, updatePromoCode } from "@/lib/api/admin";
 import { fieldErrors } from "@/lib/api/errors";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { useFocusOnReveal } from "@/lib/a11y/use-focus-on-reveal.client";
@@ -31,35 +37,36 @@ const FILTERS = [
  * so a code that has been used cannot be removed, and removing one that has would erase
  * the reason an old order was discounted.
  */
+const STATUS_OPTIONS = FILTERS.map((f) => ({ value: f.value, label: f.label }));
+const FILTER_KEYS = ["status"];
 export function AdminPromoCodes() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [isActive, setIsActive] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
+  const focusForm = useFocusOnReveal();
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
   const [errors, setErrors] = useState({});
   const [code, setCode] = useState("");
   const [percent, setPercent] = useState("10");
   const [usageLimit, setUsageLimit] = useState("");
-  const focusForm = useFocusOnReveal();
 
-  const load = useCallback((nextPage, nextActive) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchPromoCodes({ page: nextPage, isActive: nextActive || undefined })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchPromoCodes({ page, page_size: limit, isActive: filters.status || undefined })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.status]);
 
+  /* One effect keyed on the URL, so a navigation fires exactly one request. */
   useEffect(() => {
-    load(1, "");
+    load();
   }, [load]);
 
   async function submit(event) {
@@ -80,7 +87,7 @@ export function AdminPromoCodes() {
         tone: "success",
         text: `${created.code} created — ${created.percent_off}% off. Customers can use it now.`,
       });
-      load(1, isActive);
+      load();
     } catch (err) {
       const fields = fieldErrors(err);
       if (Object.keys(fields).length) setErrors(fields);
@@ -101,7 +108,7 @@ export function AdminPromoCodes() {
           ? `${row.code} is active again.`
           : `${row.code} retired — checkout will refuse it from now on.`,
       });
-      load(page, isActive);
+      load();
     } catch (err) {
       setNotice({ tone: "error", text: err?.message || "We couldn't update that code." });
     } finally {
@@ -157,32 +164,21 @@ export function AdminPromoCodes() {
 
   return (
     <section>
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <label>
-          <span className="mb-1 block text-label-bold text-foreground">Status</span>
-          <select
-            value={isActive}
-            onChange={(e) => {
-              setIsActive(e.target.value);
-              load(1, e.target.value);
-            }}
-            className="rounded-md border border-border bg-white px-3 py-2.5 text-body-sm text-foreground"
-          >
-            {FILTERS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <AdminToolbar>
+        <ToolbarSelect
+          label="Filter promo codes by status"
+          value={filters.status}
+          onChange={(value) => setFilters({ status: value })}
+          options={STATUS_OPTIONS}
+        />
         <button
           type="button"
           onClick={() => setCreating((v) => !v)}
-          className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
+          className="h-8 rounded-admin-sm border border-admin-border px-3 text-admin-label text-admin-text transition-colors hover:bg-admin-hover"
         >
           {creating ? "Cancel" : "New promo code"}
         </button>
-      </div>
+      </AdminToolbar>
 
       {notice ? (
         <p
@@ -272,8 +268,10 @@ export function AdminPromoCodes() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, isActive)}
-        onPageChange={(next) => load(next, isActive)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{
           title: "No promo codes",
           body: "Create one to give customers a percentage off. Agency referral codes live under Agencies.",

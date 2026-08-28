@@ -9,6 +9,12 @@ import {
   readBulkResult,
 } from "@/lib/api/admin";
 import { fromMinor, formatDataMb, planAllowance } from "@/lib/format/units";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
@@ -83,31 +89,34 @@ function BulkReport({ result }) {
   );
 }
 
+/* Plans is the tab that paginates, so it owns the URL keys. Countries fetches once and
+   has nothing to persist. */
+const FILTER_KEYS = ["q", "status"];
+
 function PlansTab() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ status: "", search: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [draft, setDraft] = useState(filters.q);
   const [selected, setSelected] = useState([]);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
-  const load = useCallback((nextPage, nextFilters) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     setSelected([]);
-    fetchAdminPlans({ page: nextPage, ...nextFilters })
-      .then((data) => {
-        setList(data);
-        setPage(nextPage);
-      })
+    fetchAdminPlans({ page, page_size: limit, search: filters.q, status: filters.status })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.q, filters.status]);
 
   useEffect(() => {
-    load(1, { status: "", search: "" });
+    load();
   }, [load]);
 
   async function changeOne(row, verb) {
@@ -115,7 +124,7 @@ function PlansTab() {
     setResult(null);
     try {
       await setPlanStatus(row.id, verb);
-      load(page, filters);
+      load();
     } catch (err) {
       setResult({ succeeded: [], failed: [{ id: row.id, error: err?.message || "Refused" }] });
     } finally {
@@ -129,7 +138,7 @@ function PlansTab() {
     setResult(null);
     try {
       setResult(readBulkResult(await bulkSetPlanStatus(selected, status)));
-      load(page, filters);
+      load();
     } catch (err) {
       setResult({ succeeded: [], failed: [{ id: "—", error: err?.message || "Refused" }] });
     } finally {
@@ -229,48 +238,21 @@ function PlansTab() {
 
   return (
     <div>
-      <form
-        className="mb-4 flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          load(1, filters);
-        }}
-      >
-        <label className="min-w-48 flex-1">
-          <span className="mb-1 block text-label-bold text-foreground">Search</span>
-          <input
-            type="search"
-            value={filters.search}
-            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-            placeholder="Product code or country"
-            className="w-full rounded-md border border-border bg-white px-4 py-2.5 text-body-sm outline-none focus:border-primary"
-          />
-        </label>
-        <label>
-          <span className="mb-1 block text-label-bold text-foreground">Status</span>
-          <select
-            value={filters.status}
-            onChange={(e) => {
-              const next = { ...filters, status: e.target.value };
-              setFilters(next);
-              load(1, next);
-            }}
-            className="rounded-md border border-border bg-white px-3 py-2.5 text-body-sm text-foreground"
-          >
-            {PLAN_STATUSES.map((s) => (
-              <option key={s || "all"} value={s}>
-                {s || "All"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
-        >
-          Apply
-        </button>
-      </form>
+      <AdminToolbar>
+        <ToolbarSearch
+          label="Search plans by product code or country"
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => setFilters({ q: draft })}
+          placeholder="Product code or country"
+        />
+        <ToolbarSelect
+          label="Filter plans by status"
+          value={filters.status}
+          onChange={(value) => setFilters({ status: value })}
+          options={PLAN_STATUSES.map((value) => ({ value, label: value || "All statuses" }))}
+        />
+      </AdminToolbar>
 
       {selected.length ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-white p-4">
@@ -310,8 +292,10 @@ function PlansTab() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, filters)}
-        onPageChange={(next) => load(next, filters)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No plans found", body: "Try a different search or status." }}
       />
     </div>

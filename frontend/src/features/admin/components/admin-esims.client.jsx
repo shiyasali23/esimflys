@@ -4,6 +4,12 @@ import Link from "next/link";
 import { Eye, RefreshCw } from "lucide-react";
 import { fetchAdminEsims, revealEsimCredentials, refreshAdminEsimUsage } from "@/lib/api/admin";
 import { formatBytes, usageRatio } from "@/lib/format/units";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { routes } from "@/config/routes";
@@ -19,30 +25,35 @@ const STATUSES = ["", "pending", "provisioning", "ready", "installed", "active",
  * per-row button, never auto-loaded, and what it returns is held in local state
  * only for as long as the operator is looking at it.
  */
+const STATUS_OPTIONS = STATUSES.map((value) => ({
+  value,
+  label: value ? value.replace(/_/g, " ") : "All statuses",
+}));
+const FILTER_KEYS = ["q", "status"];
 export function AdminEsims() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ search: "", status: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [draft, setDraft] = useState(filters.q);
   const [revealed, setRevealed] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [notice, setNotice] = useState(null);
 
-  const load = useCallback((nextPage, nextFilters) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchAdminEsims({ page: nextPage, ...nextFilters })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchAdminEsims({ page, page_size: limit, search: filters.q, status: filters.status })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.q, filters.status]);
 
+  /* One effect keyed on the URL, so a navigation fires exactly one request. */
   useEffect(() => {
-    load(1, { search: "", status: "" });
+    load();
   }, [load]);
 
   async function reveal(row) {
@@ -69,7 +80,7 @@ export function AdminEsims() {
     setNotice(null);
     try {
       await refreshAdminEsimUsage(row.id);
-      load(page, filters);
+      load();
     } catch (err) {
       setNotice(err?.message || "Couldn't refresh usage.");
     } finally {
@@ -204,56 +215,38 @@ export function AdminEsims() {
 
   return (
     <div>
-      <form
-        className="mb-4 flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          load(1, filters);
-        }}
-      >
-        <label className="min-w-56 flex-1">
-          <span className="mb-1 block text-label-bold text-foreground">Search</span>
-          <input
-            type="search"
-            value={filters.search}
-            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-            placeholder="Order number or ICCID"
-            className="w-full rounded-md border border-border bg-white px-4 py-2.5 text-body-sm outline-none focus:border-primary"
-          />
-        </label>
-        <label>
-          <span className="mb-1 block text-label-bold text-foreground">Status</span>
-          <select
-            value={filters.status}
-            onChange={(e) => {
-              const next = { ...filters, status: e.target.value };
-              setFilters(next);
-              load(1, next);
-            }}
-            className="rounded-md border border-border bg-white px-3 py-2.5 text-body-sm text-foreground"
-          >
-            {STATUSES.map((s) => (
-              <option key={s || "all"} value={s}>
-                {s ? s.replace(/_/g, " ") : "All"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
-        >
-          Apply
-        </button>
-      </form>
+      <AdminToolbar>
+        <ToolbarSearch
+          label="Search eSIMs by order number or ICCID"
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => setFilters({ q: draft })}
+          placeholder="Order number or ICCID"
+        />
+        <ToolbarSelect
+          label="Filter by eSIM status"
+          value={filters.status}
+          onChange={(value) => setFilters({ status: value })}
+          options={STATUS_OPTIONS}
+        />
+      </AdminToolbar>
 
-      <p className="mb-4 text-body-sm text-muted-foreground">
-        Revealing credentials is audited and limited to 10 per hour. Only reveal when a customer has
-        asked for help.
+      {/*
+        Restored deliberately. This warning and the failure notice below it sat inside the
+        old filter block, and moving filters to the top bar took them with it — which
+        would have removed the only on-screen statement that revealing a customer's
+        activation credentials is audited and capped, on the one screen that can do it.
+      */}
+      <p className="mb-2 text-admin-label text-admin-text-muted">
+        Revealing credentials is audited and limited to 10 per hour. Only reveal when a
+        customer has asked for help.
       </p>
 
       {notice ? (
-        <p role="alert" className="mb-4 rounded-md bg-destructive/10 p-3 text-body-sm text-destructive-text">
+        <p
+          role="alert"
+          className="mb-2 rounded-admin-sm bg-destructive/10 px-3 py-2 text-admin-body text-destructive-text"
+        >
           {notice}
         </p>
       ) : null}
@@ -265,8 +258,10 @@ export function AdminEsims() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, filters)}
-        onPageChange={(next) => load(next, filters)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No eSIMs found", body: "Try a different search or filter." }}
       />
     </div>

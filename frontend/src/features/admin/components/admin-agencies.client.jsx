@@ -8,6 +8,12 @@ import {
   createOrganization,
 } from "@/lib/api/admin";
 import { fieldErrors } from "@/lib/api/errors";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { routes } from "@/config/routes";
 import { useFocusOnReveal } from "@/lib/a11y/use-focus-on-reveal.client";
@@ -27,35 +33,39 @@ const STATUSES = ["", "pending", "active", "suspended", "rejected", "closed"];
  * returns `409 invalid_status_transition` whose message names the legal options —
  * that message is shown verbatim rather than replaced with something vaguer.
  */
+const STATUS_OPTIONS = STATUSES.map((value) => ({
+  value,
+  label: value || "All statuses",
+}));
+const FILTER_KEYS = ["status"];
 export function AdminAgencies() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(null);
   const [notice, setNotice] = useState(null);
   const [reasonFor, setReasonFor] = useState(null);
   const [reason, setReason] = useState("");
+  const [creating, setCreating] = useState(false);
   const focusReason = useFocusOnReveal();
   const focusNewAgency = useFocusOnReveal();
-  const [creating, setCreating] = useState(false);
   const [createErrors, setCreateErrors] = useState({});
 
-  const load = useCallback((nextPage, nextStatus) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchAdminOrganizations({ page: nextPage, status: nextStatus })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchAdminOrganizations({ page, page_size: limit, status: filters.status })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.status]);
 
+  /* One effect keyed on the URL, so a navigation fires exactly one request. */
   useEffect(() => {
-    load(1, "");
+    load();
   }, [load]);
 
   async function act(org, transition, withReason) {
@@ -69,7 +79,7 @@ export function AdminAgencies() {
     try {
       await transitionOrganization(org.id, transition.verb, { reason: withReason });
       setReasonFor(null);
-      load(page, status);
+      load();
     } catch (err) {
       // 409 invalid_status_transition explains which moves are allowed — keep it.
       setNotice({ tone: "error", text: err?.message || "That change wasn't accepted." });
@@ -94,7 +104,7 @@ export function AdminAgencies() {
       formEl.reset();
       setCreating(false);
       setNotice({ tone: "success", text: `Created ${org.name}. Add a member to issue their login.` });
-      load(1, status);
+      load();
     } catch (err) {
       const fields = fieldErrors(err);
       if (Object.keys(fields).length) setCreateErrors(fields);
@@ -164,37 +174,22 @@ export function AdminAgencies() {
 
   return (
     <div>
-      <label className="mb-4 inline-block">
-        <span className="mb-1 block text-label-bold text-foreground">Status</span>
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            load(1, e.target.value);
-          }}
-          className="rounded-md border border-border bg-white px-3 py-2.5 text-body-sm text-foreground"
+      <AdminToolbar>
+        <ToolbarSelect
+          label="Filter agencies by status"
+          value={filters.status}
+          onChange={(value) => setFilters({ status: value })}
+          options={STATUS_OPTIONS}
+        />
+        <button
+          type="button"
+          onClick={() => setCreating((v) => !v)}
+          className="h-8 rounded-admin-sm border border-admin-border px-3 text-admin-label text-admin-text transition-colors hover:bg-admin-hover"
         >
-          {STATUSES.map((s) => (
-            <option key={s || "all"} value={s}>
-              {s || "All"}
-            </option>
-          ))}
-        </select>
-      </label>
+          {creating ? "Cancel" : "New agency"}
+        </button>
+      </AdminToolbar>
 
-      <button
-        type="button"
-        onClick={() => setCreating((v) => !v)}
-        className="mb-4 ml-3 rounded-full border border-border px-5 py-2.5 text-label-bold text-foreground hover:bg-muted"
-      >
-        {creating ? "Cancel" : "New agency"}
-      </button>
-
-      {/*
-        One slot carries both outcomes, so it must carry the tone too. Rendering a
-        successful creation in the destructive red read as a failure — the agency was
-        created and the screen said something had gone wrong.
-      */}
       {notice ? (
         <p
           role={notice.tone === "success" ? "status" : "alert"}
@@ -314,8 +309,10 @@ export function AdminAgencies() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, status)}
-        onPageChange={(next) => load(next, status)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "No agencies", body: "No organizations match this filter." }}
       />
     </div>

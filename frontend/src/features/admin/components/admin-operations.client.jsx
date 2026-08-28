@@ -8,6 +8,8 @@ import {
   retryNotification,
   canRetry,
 } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import { AdminToolbar } from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 
@@ -19,32 +21,35 @@ import { StatusBadge } from "@/components/data/status-badge";
  * `failed | manual_review | retrying`. Retries reuse the original idempotency key,
  * which is what makes the allowed cases safe.
  */
+/* The tab is part of the view, so it belongs in the URL with everything else — a link
+   to "refunds, page 3" has to survive being pasted to a colleague. */
+const FILTER_KEYS = ["view"];
+const DEFAULT_VIEW = "jobs";
+
 export function AdminOperations() {
-  const [tab, setTab] = useState("jobs");
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
+  const tab = filters.view || DEFAULT_VIEW;
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [notice, setNotice] = useState(null);
 
-  const load = useCallback((which, nextPage) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    const fetcher = which === "jobs" ? fetchSupplierEvents : fetchNotifications;
-    fetcher({ page: nextPage })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    (tab === "jobs" ? fetchSupplierEvents : fetchNotifications)({ page, page_size: limit })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [tab, page, limit]);
 
+  /* Switching tab changes the URL, which changes `load`, which fires once. */
   useEffect(() => {
-    setList(null);
-    load(tab, 1);
-  }, [tab, load]);
+    load();
+  }, [load]);
 
   async function retry(row) {
     setBusyId(row.id);
@@ -52,7 +57,7 @@ export function AdminOperations() {
     try {
       if (tab === "jobs") await retrySupplierEvent(row.id);
       else await retryNotification(row.id);
-      load(tab, page);
+      load();
     } catch (err) {
       setNotice(err?.message || "That retry wasn't accepted.");
     } finally {
@@ -162,7 +167,13 @@ export function AdminOperations() {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2" role="tablist" aria-label="Operations view">
+      <AdminToolbar>
+        {/*
+          `aria-pressed`, not `role="tab"`. These no longer sit in a tablist — they write
+          `?view=` and reload the table, which is a toggle group, not a tab set. Keeping
+          the tab role without its required parent is an actual axe violation, and it also
+          promises a tabpanel relationship that does not exist.
+        */}
         {[
           { id: "jobs", label: "Supplier jobs" },
           { id: "notifications", label: "Notifications" },
@@ -170,25 +181,18 @@ export function AdminOperations() {
           <button
             key={option.id}
             type="button"
-            role="tab"
-            aria-selected={tab === option.id}
-            onClick={() => setTab(option.id)}
-            className={`rounded-full px-4 py-2 text-label-bold transition-colors ${
+            aria-pressed={tab === option.id}
+            onClick={() => setFilters({ view: option.id === DEFAULT_VIEW ? "" : option.id })}
+            className={`h-8 rounded-admin-sm px-3 text-admin-label transition-colors ${
               tab === option.id
-                ? "bg-primary text-on-primary"
-                : "border border-border text-foreground hover:bg-muted"
+                ? "bg-admin-accent-tint font-medium text-admin-accent-ink"
+                : "border border-admin-border text-admin-text hover:bg-admin-hover"
             }`}
           >
             {option.label}
           </button>
         ))}
-      </div>
-
-      {notice ? (
-        <p role="alert" className="mb-4 rounded-md bg-destructive/10 p-3 text-body-sm text-destructive-text">
-          {notice}
-        </p>
-      ) : null}
+      </AdminToolbar>
 
       <DataTable
         density="compact"
@@ -197,8 +201,10 @@ export function AdminOperations() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(tab, page)}
-        onPageChange={(next) => load(tab, next)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{ title: "Nothing here", body: "No records match." }}
       />
     </div>

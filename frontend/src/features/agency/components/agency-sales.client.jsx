@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchAgencySales } from "@/lib/api/agency";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 import { Money } from "@/components/currency/money";
@@ -14,27 +15,24 @@ import { Money } from "@/components/currency/money";
  * inventing data.
  */
 export function AgencySales({ orgId }) {
+  /* No filters on this screen — page and rows-per-page are the whole state. */
+  const { page, limit, setPage, setLimit } = useListQuery();
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchPage = useCallback(
-    (next) => {
-      setLoading(true);
-      setError(null);
-      fetchAgencySales(orgId, { page: next })
-        .then((result) => {
-          setList(result);
-          setPage(next);
-        })
-        .catch(setError)
-        .finally(() => setLoading(false));
-    },
-    [orgId],
-  );
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetchAgencySales(orgId, { page, page_size: limit })
+      .then(setList)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [orgId, page, limit]);
 
-  useEffect(() => fetchPage(1), [fetchPage]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const columns = [
     {
@@ -85,8 +83,9 @@ export function AgencySales({ orgId }) {
       list={list}
       loading={loading}
       error={error}
-      onRetry={() => fetchPage(page)}
-      onPageChange={fetchPage}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
       empty={{
         title: "No attributed sales yet",
         body: "Sales appear here once a customer buys using your tracking code.",

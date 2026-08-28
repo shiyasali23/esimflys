@@ -1,6 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { fetchWebhookEvents } from "@/lib/api/admin";
+import { useListQuery } from "@/features/admin/hooks/use-list-query.client";
+import {
+  AdminToolbar,
+  ToolbarSearch,
+  ToolbarSelect,
+} from "@/features/admin/components/admin-toolbar.client";
 import { DataTable } from "@/components/data/data-table";
 import { StatusBadge } from "@/components/data/status-badge";
 
@@ -17,27 +23,29 @@ import { StatusBadge } from "@/components/data/status-badge";
  * Defaults to problems only. Showing every successful delivery first would bury the
  * handful of rows anybody actually needs.
  */
+/* Absent means "problems only" — the default this screen opens on. `?problems=all`
+   is the opt-out, so the useful view is the one with the shortest URL. */
+const FILTER_KEYS = ["problems"];
 export function AdminWebhooks() {
+  const { page, limit, filters, setFilters, setPage, setLimit } = useListQuery({
+    filterKeys: FILTER_KEYS,
+  });
   const [list, setList] = useState(null);
-  const [page, setPage] = useState(1);
-  const [problemsOnly, setProblemsOnly] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const load = useCallback((nextPage, onlyProblems) => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetchWebhookEvents({ page: nextPage, problems: onlyProblems })
-      .then((result) => {
-        setList(result);
-        setPage(nextPage);
-      })
+    fetchWebhookEvents({ page, page_size: limit, problems: filters.problems !== "all" })
+      .then(setList)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, limit, filters.problems]);
 
+  /* One effect keyed on the URL, so a navigation fires exactly one request. */
   useEffect(() => {
-    load(1, true);
+    load();
   }, [load]);
 
   const columns = [
@@ -96,18 +104,17 @@ export function AdminWebhooks() {
 
   return (
     <section>
-      <label className="mb-4 flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={problemsOnly}
-          onChange={(e) => {
-            setProblemsOnly(e.target.checked);
-            load(1, e.target.checked);
-          }}
-          className="h-4 w-4"
-        />
-        <span className="text-label-bold text-foreground">Problems only</span>
-      </label>
+      <AdminToolbar>
+        <label className="flex items-center gap-2 text-admin-label text-admin-text">
+          <input
+            type="checkbox"
+            checked={filters.problems !== "all"}
+            onChange={(e) => setFilters({ problems: e.target.checked ? "" : "all" })}
+            className="h-4 w-4"
+          />
+          Problems only
+        </label>
+      </AdminToolbar>
 
       <DataTable
         density="compact"
@@ -116,13 +123,16 @@ export function AdminWebhooks() {
         list={list}
         loading={loading}
         error={error}
-        onRetry={() => load(page, problemsOnly)}
-        onPageChange={(next) => load(next, problemsOnly)}
+        pageSize={limit}
+        onRetry={load}
+        onPageChange={setPage}
+        onPageSizeChange={setLimit}
         empty={{
-          title: problemsOnly ? "No webhook problems" : "No webhook deliveries",
-          body: problemsOnly
-            ? "Every delivery Stripe has sent was accepted and processed."
-            : "Nothing has been delivered yet.",
+          title: filters.problems !== "all" ? "No webhook problems" : "No webhook deliveries",
+          body:
+            filters.problems !== "all"
+              ? "Every delivery Stripe has sent was accepted and processed."
+              : "Nothing has been delivered yet.",
         }}
       />
     </section>
