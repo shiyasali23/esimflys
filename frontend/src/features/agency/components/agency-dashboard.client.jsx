@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { fetchAgencyDashboard } from "@/lib/api/agency";
 import { Money } from "@/components/currency/money";
 import { ErrorState } from "@/components/feedback/error-state";
+import { KpiTile } from "@/features/admin/components/admin-kpi-tile";
 
 /**
  * Agency overview.
@@ -29,9 +30,9 @@ export function AgencyDashboard({ orgId }) {
 
   if (!data) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 animate-pulse rounded-card bg-muted" />
+          <div key={i} className="h-[68px] animate-pulse rounded-admin bg-admin-border-subtle" />
         ))}
       </div>
     );
@@ -67,32 +68,23 @@ export function AgencyDashboard({ orgId }) {
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map((tile) => (
-        <div
+        <KpiTile
           key={tile.label}
-          className={`rounded-card border bg-white p-6 ${
-            tile.accent ? "border-primary/40" : "border-border"
-          }`}
-        >
-          <p className="text-label-caps uppercase text-muted-foreground">{tile.label}</p>
-          <p
-            className={`mt-2 font-display text-headline-lg ${
-              tile.accent ? "text-primary" : "text-foreground"
-            }`}
-          >
-            {tile.value}
-          </p>
-          <p className="mt-1 text-body-sm text-muted-foreground">
-            {tile.reversed > 0 ? (
+          label={tile.label}
+          value={tile.value}
+          accent={tile.accent}
+          note={
+            tile.reversed > 0 ? (
               <>
                 Less reversals of <Money minor={tile.reversed} currency="USD" />
               </>
             ) : (
               tile.note
-            )}
-          </p>
-        </div>
+            )
+          }
+        />
       ))}
     </div>
   );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AlertTriangle, Lock } from "lucide-react";
 import { fetchAdminDashboard, hasPricingVisibility } from "@/lib/api/admin";
 import { Money } from "@/components/currency/money";
+import { KpiTile } from "@/features/admin/components/admin-kpi-tile";
 import { ErrorState } from "@/components/feedback/error-state";
 
 /**
@@ -14,44 +15,6 @@ import { ErrorState } from "@/components/feedback/error-state";
  * Reading `data.margin.margin_minor` directly would throw for a support or finance
  * admin, taking the whole page down.
  */
-/**
- * A KPI tile at operational density.
- *
- * The previous tile was a 22px-radius card with 20px padding and a 24px value, three to
- * a row — nineteen of them stacked to 1792px, so an operator scrolled 2.3 screens to
- * read the numbers that are the entire point of a dashboard. This one is ~68px tall and
- * sits up to six to a row, which puts the whole set above the fold.
- *
- * Label above value, both left-aligned on one axis: a column of figures is read by
- * scanning down, and centring them breaks that line.
- *
- * Declared at module scope, NOT inside AdminDashboard. A component created during render
- * is a new type on every pass, so React unmounts and remounts every tile each time the
- * dashboard refetches — throwing away their DOM for no reason.
- */
-function Tile({ label, value, alert, accent }) {
-  return (
-    <div
-      className={`rounded-admin border bg-admin-surface px-3 py-2.5 shadow-admin ${
-        alert
-          ? "border-destructive/40"
-          : accent
-            ? "border-admin-accent/40"
-            : "border-admin-border"
-      }`}
-    >
-      <p className="truncate text-admin-label text-admin-text-muted">{label}</p>
-      <p
-        className={`mt-0.5 text-admin-kpi ${
-          alert ? "text-destructive-text" : accent ? "text-admin-accent-ink" : "text-admin-text"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
 export function AdminDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -209,7 +172,7 @@ export function AdminDashboard() {
           <h2 className="mb-1.5 text-admin-caps uppercase text-admin-text-muted">{group.heading}</h2>
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
             {group.tiles.map((tile) => (
-              <Tile key={tile.label} {...tile} />
+              <KpiTile key={tile.label} {...tile} />
             ))}
           </div>
         </section>
@@ -221,9 +184,9 @@ export function AdminDashboard() {
             Platform economics
           </h2>
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
-            <Tile label="Collected" value={money(data.margin?.retail_minor)} />
-            <Tile label="Supplier cost" value={money(data.margin?.wholesale_minor)} />
-            <Tile label="Gross margin" value={money(data.margin?.margin_minor)} accent />
+            <KpiTile label="Collected" value={money(data.margin?.retail_minor)} />
+            <KpiTile label="Supplier cost" value={money(data.margin?.wholesale_minor)} />
+            <KpiTile label="Gross margin" value={money(data.margin?.margin_minor)} accent />
           </div>
         </section>
       ) : (
