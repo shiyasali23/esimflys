@@ -405,10 +405,31 @@ def refresh_usage(profile):
     """
     if not profile.supplier_reference:
         return profile
-    usage = supplier_module.get_supplier_gateway().get_usage(
-        supplier_reference=profile.supplier_reference
+
+    gateway = supplier_module.get_supplier_gateway()
+    reading = {}
+
+    # Two endpoints, deliberately. `/esim/usage/query` returns bytes and nothing else —
+    # its rows carry only dataUsage, esimTranNo, lastUpdateTime and totalData. The
+    # lifecycle words live on the `/esim/query` profile record. Conflating the two is
+    # what left every lifecycle column NULL while the answer was one call away.
+    try:
+        reading.update(gateway.get_lifecycle(supplier_reference=profile.supplier_reference))
+    except Exception as exc:  # noqa: BLE001
+        # Usage is still worth recording if only the lifecycle call fails.
+        logger.warning("Lifecycle read failed for profile %s: %s", profile.pk, exc)
+
+    reading.update(
+        {
+            k: v
+            for k, v in gateway.get_usage(
+                supplier_reference=profile.supplier_reference
+            ).items()
+            if v is not None
+        }
     )
-    changed = lifecycle.apply_supplier_state(profile, usage)
+
+    changed = lifecycle.apply_supplier_state(profile, reading)
     if changed:
         profile.save(update_fields=[*changed, "updated_at"])
     else:

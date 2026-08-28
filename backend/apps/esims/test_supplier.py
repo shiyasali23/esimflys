@@ -405,3 +405,96 @@ class VendorResponseShapeTests(TestCase):
             result = gateway_with(handler).query_esim(order_no="X")
             self.assertIsNone(result["smdp_address"], bad)
             self.assertIsNone(result["qr_payload"], bad)
+
+
+@override_settings(**SUPPLIER_SETTINGS)
+class UsageResponseShapeTests(TestCase):
+    """The real usage parser, against the shape the live API actually returns.
+
+    [MEASURED] 2026-08-28 via the supplier probe. This method had never once returned
+    data in production: it looked for `esimList` while the endpoint answers under
+    `esimUsageList`, then read `totalVolume`/`orderUsage` — the field names of the
+    /esim/query PROFILE record — while a usage row carries `totalData`/`dataUsage`.
+    Two response shapes had been conflated, so every call raised and `last_synced_at`
+    stayed NULL on every profile since launch.
+
+    These tests drive the real gateway rather than the fake one. The fake cannot catch
+    a parsing bug, because it never parses anything.
+    """
+
+    USAGE_ROW = {
+        "esimTranNo": "esim_ref_1",
+        "totalData": 1073741824,
+        "dataUsage": 400000000,
+        "lastUpdateTime": "2026-08-28 10:00:00",
+    }
+
+    def test_reads_the_esim_usage_list_key(self):
+        gateway = gateway_with(lambda request: ok({"esimUsageList": [self.USAGE_ROW]}))
+        result = gateway.get_usage(supplier_reference="esim_ref_1")
+        self.assertEqual(result["total_data_bytes"], 1073741824)
+
+    def test_maps_total_data_and_data_usage_to_remaining(self):
+        gateway = gateway_with(lambda request: ok({"esimUsageList": [self.USAGE_ROW]}))
+        result = gateway.get_usage(supplier_reference="esim_ref_1")
+        self.assertEqual(result["remaining_data_bytes"], 1073741824 - 400000000)
+
+    def test_an_empty_list_is_no_data_not_an_error(self):
+        """Three of five live profiles answer this way simply because nobody has used
+        them. Raising is what turned it into a 500 in the admin panel."""
+        gateway = gateway_with(lambda request: ok({"esimUsageList": []}))
+        self.assertEqual(gateway.get_usage(supplier_reference="esim_ref_1"), {})
+
+    def test_an_untouched_esim_reports_full_remaining(self):
+        row = {**self.USAGE_ROW, "dataUsage": 0}
+        gateway = gateway_with(lambda request: ok({"esimUsageList": [row]}))
+        result = gateway.get_usage(supplier_reference="esim_ref_1")
+        self.assertEqual(result["remaining_data_bytes"], result["total_data_bytes"])
+
+    def test_a_usage_row_carries_no_lifecycle_words(self):
+        """Confirmed by probe: the row keys are exactly dataUsage, esimTranNo,
+        lastUpdateTime, totalData. Reading status from here is what kept the lifecycle
+        columns NULL — it must come from /esim/query instead."""
+        gateway = gateway_with(lambda request: ok({"esimUsageList": [self.USAGE_ROW]}))
+        result = gateway.get_usage(supplier_reference="esim_ref_1")
+        self.assertNotIn("smdp_status", result)
+        self.assertNotIn("esim_status", result)
+
+    def test_lifecycle_comes_from_the_profile_query(self):
+        def handler(request):
+            return ok({
+                "esimList": [{
+                    "esimTranNo": "esim_ref_1",
+                    "iccid": "8944000000000000001",
+                    "ac": "LPA:1$smdp.example.com$ABC123",
+                    "smdpStatus": "ENABLED",
+                    "esimStatus": "IN_USE",
+                    "expiredTime": "2026-09-30 10:00:00",
+                    "totalVolume": 1073741824,
+                    "orderUsage": 400000000,
+                }]
+            })
+
+        gateway = gateway_with(handler)
+        result = gateway.get_lifecycle(supplier_reference="esim_ref_1")
+        self.assertEqual(result["smdp_status"], "ENABLED")
+        self.assertEqual(result["esim_status"], "IN_USE")
+
+    def test_lifecycle_never_returns_activation_credentials(self):
+        """It is called on a routine poll. Credentials are already stored encrypted and
+        must not be handled again just to read a status word."""
+        def handler(request):
+            return ok({
+                "esimList": [{
+                    "esimTranNo": "esim_ref_1",
+                    "iccid": "8944000000000000001",
+                    "ac": "LPA:1$smdp.example.com$SECRET",
+                    "smdpStatus": "RELEASED",
+                    "esimStatus": "GOT_RESOURCE",
+                }]
+            })
+
+        result = gateway_with(handler).get_lifecycle(supplier_reference="esim_ref_1")
+        self.assertNotIn("iccid", result)
+        self.assertNotIn("activation_code", result)
+        self.assertNotIn("qr_payload", result)

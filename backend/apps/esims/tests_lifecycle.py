@@ -196,6 +196,58 @@ class RefreshUsageTests(TestCase):
         self.assertIsNotNone(profile.activated_at)
         self.assertIsNotNone(profile.last_synced_at)
 
+    def test_an_empty_usage_list_is_not_an_error(self):
+        """[MEASURED] three of five live profiles answer with an empty `esimUsageList`
+        simply because nobody has used them yet. Raising here is what turned a normal
+        "no data to report" into a 500 in the admin panel."""
+        profile = self._delivered_profile()
+        gateway_cls = type(get_supplier_gateway())
+        original = gateway_cls.get_usage
+        gateway_cls.get_usage = lambda self, *, supplier_reference: {}
+        try:
+            esim_services.refresh_usage(profile)
+        finally:
+            gateway_cls.get_usage = original
+
+        profile.refresh_from_db()
+        self.assertIsNotNone(profile.last_synced_at)
+
+    def test_usage_and_lifecycle_come_from_different_endpoints(self):
+        """A usage row carries no status words — confirmed by probe, its keys are exactly
+        dataUsage, esimTranNo, lastUpdateTime, totalData. Reading lifecycle from it is
+        what kept every status column NULL."""
+        profile = self._delivered_profile()
+        gateway_cls = type(get_supplier_gateway())
+        gateway_cls.usage_state = {
+            "smdp_status": "ENABLED", "esim_status": "IN_USE",
+            "total_data_bytes": 1000, "remaining_data_bytes": 400,
+        }
+        try:
+            esim_services.refresh_usage(profile)
+        finally:
+            del gateway_cls.usage_state
+
+        profile.refresh_from_db()
+        self.assertEqual(profile.smdp_status, "ENABLED")      # from get_lifecycle
+        self.assertEqual(profile.remaining_data_bytes, 400)   # from get_usage
+        self.assertEqual(profile.status, "active")
+
+    def test_usage_still_recorded_when_the_lifecycle_call_fails(self):
+        profile = self._delivered_profile()
+        gateway_cls = type(get_supplier_gateway())
+        original = gateway_cls.get_lifecycle
+        gateway_cls.get_lifecycle = lambda self, *, supplier_reference: (_ for _ in ()).throw(
+            RuntimeError("query unavailable")
+        )
+        try:
+            esim_services.refresh_usage(profile)
+        finally:
+            gateway_cls.get_lifecycle = original
+
+        profile.refresh_from_db()
+        self.assertIsNotNone(profile.last_synced_at)
+        self.assertIsNotNone(profile.remaining_data_bytes)
+
     def test_last_synced_is_recorded_even_when_nothing_moved(self):
         """"Checked, unchanged" and "never checked" look identical on the admin screen
         unless the poll itself is recorded."""

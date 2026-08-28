@@ -270,27 +270,56 @@ class EsimAccessGateway:
     def get_usage(self, *, supplier_reference):
         """Data used vs remaining. Their figures lag 1–3 hours — never present as live."""
         obj = self._post("/esim/usage/query", {"esimTranNoList": [supplier_reference]})
-        rows = obj.get("esimList") or obj.get("list") or []
+
+        # [MEASURED] against the live API on 2026-08-28, via the supplier probe.
+        #
+        # This method had never once returned data. It looked for `esimList` or `list`;
+        # the endpoint answers under `esimUsageList`. Then it read `totalVolume` and
+        # `orderUsage`; a usage row carries `totalData` and `dataUsage`. Those are the
+        # field names of the /esim/query PROFILE record, not of a usage row, so the two
+        # response shapes had been conflated. Every call fell through to an exception and
+        # `last_synced_at` stayed NULL on every profile since launch.
+        rows = (
+            obj.get("esimUsageList")
+            or obj.get("esimList")
+            or obj.get("list")
+            or []
+        )
         if not rows:
-            # Name the shape we actually got. "returned no rows" is unfalsifiable from
-            # outside the container: it cannot distinguish a reference the supplier does
-            # not know, a response key we are not reading, or a payload field they have
-            # started requiring — and all three look identical in the admin panel as a
-            # bare 500. The keys are structural, not customer data.
-            raise SupplierError(
-                "usage query returned no rows for "
-                f"{supplier_reference[:6]}… — response keys: {sorted(obj)}"
-            )
+            # NOT an error. Three of the five live profiles answer with an empty list
+            # simply because nobody has used them yet, and raising here is what turned a
+            # perfectly normal "no data to report" into a 500 in the admin panel.
+            return {}
+
         row = rows[0]
-        # `esimStatus`, `smdpStatus` and `expiredTime` are in this row already — the
-        # redactor below has always kept them. Only the two volume fields were read, so
-        # the lifecycle columns stayed empty while the answer sat in the response.
+        total = row.get("totalData")
+        used = row.get("dataUsage")
+        remaining = None
+        if total is not None:
+            remaining = max(int(total) - int(used or 0), 0)
         return {
-            "total_data_bytes": row.get("totalVolume"),
-            "remaining_data_bytes": _remaining(row),
-            "esim_status": row.get("esimStatus"),
-            "smdp_status": row.get("smdpStatus"),
-            "expires_at": row.get("expiredTime"),
+            "total_data_bytes": total,
+            "remaining_data_bytes": remaining,
+            # Deliberately absent: a usage row carries NO lifecycle fields. Confirmed by
+            # probe — the row keys are exactly dataUsage, esimTranNo, lastUpdateTime and
+            # totalData. `smdpStatus` and `esimStatus` live on the /esim/query profile,
+            # which is where `get_lifecycle` reads them.
+        }
+
+    def get_lifecycle(self, *, supplier_reference):
+        """Installed / activated / expired, from the profile record.
+
+        Separate from `get_usage` because they are separate endpoints with separate row
+        shapes — conflating them is what kept the lifecycle columns empty. Only the
+        non-secret fields are returned: the query response also carries the activation
+        code and QR payload, which are already stored encrypted and must not be handled
+        again on a routine poll.
+        """
+        result = self.query_esim(esim_tran_no=supplier_reference)
+        return {
+            "esim_status": result.get("esim_status"),
+            "smdp_status": result.get("smdp_status"),
+            "expires_at": result.get("expires_at"),
         }
 
     def probe_usage(self, *, supplier_reference):
@@ -499,12 +528,16 @@ class FakeSupplier:
         # looked like before any of this was recorded.
         state = dict(getattr(self, "usage_state", None) or {})
         return {
-            "total_data_bytes": total,
-            "remaining_data_bytes": total - used,
+            "total_data_bytes": state.get("total_data_bytes", total),
+            "remaining_data_bytes": state.get("remaining_data_bytes", total - used),
+        }
+
+    def get_lifecycle(self, *, supplier_reference):
+        state = dict(getattr(self, "usage_state", None) or {})
+        return {
             "esim_status": state.get("esim_status", "GOT_RESOURCE"),
             "smdp_status": state.get("smdp_status", "RELEASED"),
             "expires_at": state.get("expires_at"),
-            **{k: v for k, v in state.items() if k in ("total_data_bytes", "remaining_data_bytes")},
         }
 
     def probe_usage(self, *, supplier_reference):
