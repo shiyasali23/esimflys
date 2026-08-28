@@ -3,7 +3,11 @@ import time
 
 from django.core.management.base import BaseCommand
 
-from apps.esims.services import claim_and_process_one, reclaim_stale_events
+from apps.esims.services import (
+    claim_and_process_one,
+    reclaim_stale_events,
+    refresh_stale_usage,
+)
 from apps.orders.notifications import send_pending_notifications
 from apps.payments.services import reconcile_stuck_payments
 
@@ -22,6 +26,9 @@ class Command(BaseCommand):
         )
         parser.add_argument("--sleep", type=float, default=2.0)
         parser.add_argument("--reconcile-every", type=float, default=300.0)
+        # 15 minutes. The supplier's own usage figures lag one to three hours, so polling
+        # faster buys nothing real and only spends rate limit.
+        parser.add_argument("--usage-every", type=float, default=900.0)
 
     def handle(self, *args, **options):
         if options["once"]:
@@ -33,10 +40,11 @@ class Command(BaseCommand):
                 self.stdout.write(f"reclaimed {reclaimed} stale job(s)")
             notifications = send_pending_notifications()
             rescued = reconcile_stuck_payments()
+            usage = refresh_stale_usage()
             self.stdout.write(
                 self.style.SUCCESS(
                     f"processed {jobs} supplier job(s), {notifications} notification(s), "
-                    f"reconciled {rescued} payment(s)"
+                    f"reconciled {rescued} payment(s), refreshed {usage} eSIM(s)"
                 )
             )
             return
@@ -46,6 +54,7 @@ class Command(BaseCommand):
             f"reconciling payments every {options['reconcile_every']}s..."
         )
         next_reconcile = 0.0
+        next_usage = 0.0
         while True:
             worked = False
 
@@ -71,6 +80,19 @@ class Command(BaseCommand):
                 except Exception:
                     # A reconciliation failure must never stop provisioning or email.
                     logger.exception("payment reconciliation pass failed")
+
+            # Also on its own clock, and for the same reason: each pass is one supplier
+            # call per stale profile. Without this every eSIM keeps the balance it was
+            # born with — production had five profiles all reading a full allowance,
+            # including one that had really used 382 MB.
+            if now >= next_usage:
+                next_usage = now + options["usage_every"]
+                try:
+                    if refresh_stale_usage():
+                        worked = True
+                except Exception:
+                    # The supplier being unreachable must not stop provisioning or email.
+                    logger.exception("usage refresh pass failed")
 
             if not worked:
                 time.sleep(options["sleep"])

@@ -100,7 +100,50 @@ export function AdminEsims() {
     {
       key: "status",
       header: "Status",
-      render: (row) => <StatusBadge status={row.status} />,
+      render: (row) => (
+        <span>
+          <StatusBadge status={row.status} />
+          {/*
+            The supplier's own words under our derived status. When the two disagree —
+            we say `ready`, the provider says ENABLED — that is the mapper falling
+            behind, not the customer failing to install anything, and support needs to
+            be able to tell those apart at a glance.
+          */}
+          {row.smdp_status || row.esim_status ? (
+            <span className="mt-1 block text-body-sm text-muted-foreground">
+              {[row.smdp_status, row.esim_status].filter(Boolean).join(" · ")}
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      key: "lifecycle",
+      header: "Lifecycle",
+      render: (row) => {
+        const stamp = (value) => (value ? new Date(value).toLocaleDateString() : null);
+        const installed = stamp(row.installed_at);
+        const activated = stamp(row.activated_at);
+        const expires = stamp(row.expires_at);
+        // "Never checked" and "checked, nothing moved" look identical without this.
+        if (!row.last_synced_at) {
+          return <span className="text-body-sm text-muted-foreground">Not yet checked</span>;
+        }
+        return (
+          <span className="text-body-sm">
+            <span className="block text-foreground">
+              {activated
+                ? `Active since ${activated}`
+                : installed
+                  ? `Installed ${installed}`
+                  : "Not installed"}
+            </span>
+            <span className="block text-muted-foreground">
+              {expires ? `Expires ${expires}` : "No expiry reported"}
+            </span>
+          </span>
+        );
+      },
     },
     {
       key: "usage",

@@ -51,6 +51,85 @@ const CREDENTIALS = {
   },
 };
 
+/**
+ * Lifecycle reporting.
+ *
+ * These four columns were serialized by the API and NEVER written by anything, so every
+ * profile in production read `ready` with a full data balance and three NULL timestamps —
+ * including one that had really used 382 MB. The screen must distinguish "we have not
+ * checked" from "we checked and the customer has not installed it", because those lead
+ * support to opposite conclusions.
+ */
+describe("eSIM lifecycle", () => {
+  it("says so plainly when the supplier has never been polled", async () => {
+    mockApi();
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(jsonResponse(listBody([{ ...ESIM_A, last_synced_at: null }]))),
+    );
+    render(<AdminEsims />);
+    expect(await screen.findByText(/not yet checked/i)).toBeTruthy();
+  });
+
+  it("distinguishes polled-but-not-installed from never polled", async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse(
+          listBody([
+            {
+              ...ESIM_A,
+              last_synced_at: "2026-08-28T10:00:00Z",
+              smdp_status: "RELEASED",
+              esim_status: "GOT_RESOURCE",
+            },
+          ]),
+        ),
+      ),
+    );
+    render(<AdminEsims />);
+    expect(await screen.findByText(/not installed/i)).toBeTruthy();
+    expect(screen.queryByText(/not yet checked/i)).toBeNull();
+  });
+
+  it("reports an activated eSIM with its expiry", async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse(
+          listBody([
+            {
+              ...ESIM_A,
+              status: "active",
+              last_synced_at: "2026-08-28T10:00:00Z",
+              installed_at: "2026-08-20T10:00:00Z",
+              activated_at: "2026-08-21T10:00:00Z",
+              expires_at: "2026-09-20T10:00:00Z",
+              smdp_status: "ENABLED",
+              esim_status: "IN_USE",
+            },
+          ]),
+        ),
+      ),
+    );
+    render(<AdminEsims />);
+    expect(await screen.findByText(/active since/i)).toBeTruthy();
+    expect(screen.getByText(/expires/i)).toBeTruthy();
+  });
+
+  /** When our word and the provider's disagree, the mapper is behind — not the customer. */
+  it("shows the supplier's own status words next to ours", async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse(
+          listBody([
+            { ...ESIM_A, last_synced_at: "2026-08-28T10:00:00Z", smdp_status: "ENABLED", esim_status: "IN_USE" },
+          ]),
+        ),
+      ),
+    );
+    render(<AdminEsims />);
+    expect(await screen.findByText(/ENABLED · IN_USE/)).toBeTruthy();
+  });
+});
+
 const listBody = (results) => ({ count: results.length, next: null, previous: null, results });
 
 /** GET the list; POST /reveal/ answers with `reveal`. */

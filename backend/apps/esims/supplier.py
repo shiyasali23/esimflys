@@ -274,9 +274,15 @@ class EsimAccessGateway:
         if not rows:
             raise SupplierError("usage query returned no rows")
         row = rows[0]
+        # `esimStatus`, `smdpStatus` and `expiredTime` are in this row already — the
+        # redactor below has always kept them. Only the two volume fields were read, so
+        # the lifecycle columns stayed empty while the answer sat in the response.
         return {
             "total_data_bytes": row.get("totalVolume"),
             "remaining_data_bytes": _remaining(row),
+            "esim_status": row.get("esimStatus"),
+            "smdp_status": row.get("smdpStatus"),
+            "expires_at": row.get("expiredTime"),
         }
 
     def apply_topup(self, *, supplier_reference, package_code, data_amount_mb=None,
@@ -407,7 +413,18 @@ class FakeSupplier:
         seed = hashlib.sha256(supplier_reference.encode()).hexdigest()
         total = 10 * _GB
         used = int(total * (int(seed[:2], 16) / 255.0))
-        return {"total_data_bytes": total, "remaining_data_bytes": total - used}
+        # `usage_state` lets a test drive a specific lifecycle reading; the default
+        # mirrors a delivered-but-untouched eSIM, which is what every real profile
+        # looked like before any of this was recorded.
+        state = dict(getattr(self, "usage_state", None) or {})
+        return {
+            "total_data_bytes": total,
+            "remaining_data_bytes": total - used,
+            "esim_status": state.get("esim_status", "GOT_RESOURCE"),
+            "smdp_status": state.get("smdp_status", "RELEASED"),
+            "expires_at": state.get("expires_at"),
+            **{k: v for k, v in state.items() if k in ("total_data_bytes", "remaining_data_bytes")},
+        }
 
     def apply_topup(self, *, supplier_reference, package_code, data_amount_mb=None,
                     idempotency_key=None):

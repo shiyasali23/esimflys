@@ -397,6 +397,11 @@ class AdminEsimListSerializer(serializers.ModelSerializer):
             "id", "status", "order_number", "product_name", "country_iso2",
             "iccid_last4", "total_data_bytes", "remaining_data_bytes", "installed_at",
             "activated_at", "expires_at", "last_synced_at", "created_at",
+            # The supplier's own words alongside our derived `status`. When the two
+            # disagree — an eSIM we call `ready` that the provider calls ENABLED — the
+            # raw pair is what tells support the mapper has fallen behind rather than
+            # the customer having done nothing.
+            "smdp_status", "esim_status",
         )
         read_only_fields = fields
 

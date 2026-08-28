@@ -38,6 +38,14 @@ class EsimProfile(UUIDModel, TimestampedModel):
     # re-order — the guard against buying the same eSIM twice.
     supplier_order_no = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(max_length=30, default="pending")
+    # The supplier's own two status words, stored verbatim rather than only mapped.
+    #
+    # `status` above is OUR vocabulary and is derived from these; keeping the raw values
+    # means a supplier state the mapper has not been taught about stays visible to support
+    # instead of silently collapsing into "ready". They are also the only evidence of what
+    # the provider actually said when a customer disputes what happened.
+    smdp_status = models.CharField(max_length=40, null=True, blank=True)
+    esim_status = models.CharField(max_length=40, null=True, blank=True)
     iccid_encrypted = models.BinaryField(null=True, blank=True)
     iccid_hash = models.BinaryField(max_length=32, null=True, blank=True, unique=True)
     iccid_last4 = models.CharField(max_length=4, null=True, blank=True)

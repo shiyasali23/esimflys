@@ -4,7 +4,7 @@ import uuid
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.catalog.models import TopupProduct
@@ -12,6 +12,8 @@ from apps.common import encryption
 from apps.common.exceptions import Conflict, TopupNotSupported
 from apps.orders.models import Order, OrderItem
 from apps.orders.notifications import queue_notification
+
+from . import lifecycle
 
 from . import supplier as supplier_module
 from .models import EsimProfile, SupplierEvent, TopupFulfillment
@@ -394,22 +396,60 @@ def _refresh_order_fulfillment(order_id):
 
 
 def refresh_usage(profile):
+    """Poll the supplier and fold the whole reading in, not just the byte counters.
+
+    This used to write two numbers and a timestamp. The same response carries
+    `smdpStatus`, `esimStatus` and `expiredTime`, which are the only way to know whether
+    an eSIM was ever installed, ever activated, or has expired — so all three columns sat
+    NULL on every profile in production while the answer arrived on every poll.
+    """
     if not profile.supplier_reference:
         return profile
     usage = supplier_module.get_supplier_gateway().get_usage(
         supplier_reference=profile.supplier_reference
     )
-    profile.total_data_bytes = usage.get("total_data_bytes", profile.total_data_bytes)
-    profile.remaining_data_bytes = usage.get(
-        "remaining_data_bytes", profile.remaining_data_bytes
-    )
-    profile.last_synced_at = timezone.now()
-    profile.save(
-        update_fields=[
-            "total_data_bytes", "remaining_data_bytes", "last_synced_at", "updated_at"
-        ]
-    )
+    changed = lifecycle.apply_supplier_state(profile, usage)
+    if changed:
+        profile.save(update_fields=[*changed, "updated_at"])
+    else:
+        # Nothing moved, but the poll DID happen. Recording that is what separates
+        # "checked, unchanged" from "never checked" on the admin screen.
+        profile.last_synced_at = timezone.now()
+        profile.save(update_fields=["last_synced_at", "updated_at"])
     return profile
+
+
+def refresh_stale_usage(*, older_than_minutes=180, limit=50):
+    """Re-poll live eSIMs whose reading has gone stale. Returns how many were refreshed.
+
+    The supplier's own figures lag one to three hours, so polling faster buys nothing and
+    spends rate limit. Only profiles that could still change are considered: a `ready`
+    eSIM might get installed, an `active` one is burning data, but a `failed` or
+    `cancelled` one has nowhere left to go.
+
+    One unreachable profile must not stop the sweep — the supplier is a third party and a
+    single bad reference should not strand every other customer's usage.
+    """
+    cutoff = timezone.now() - timedelta(minutes=older_than_minutes)
+    candidates = (
+        EsimProfile.objects.filter(
+            status__in=("ready", "installed", "active"),
+            supplier_reference__isnull=False,
+        )
+        .filter(Q(last_synced_at__isnull=True) | Q(last_synced_at__lt=cutoff))
+        .order_by(F("last_synced_at").asc(nulls_first=True))[:limit]
+    )
+    refreshed = 0
+    for profile in list(candidates):
+        try:
+            refresh_usage(profile)
+        except Exception as exc:  # noqa: BLE001 — one bad profile must not halt the rest
+            logger.warning(
+                "Usage refresh failed for profile %s: %s", profile.pk, exc
+            )
+            continue
+        refreshed += 1
+    return refreshed
 
 
 def decrypt_credentials(profile):
