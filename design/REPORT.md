@@ -86,14 +86,27 @@ collapse carries `aria-expanded`; `#main-content` present for the skip link.
 - **`?sort=` omitted.** No admin endpoint uses DRF's `OrderingFilter`; every queryset has a
   fixed `.order_by()`. A client-side sort would reorder ONE PAGE while appearing to sort the
   table. Needs a backend change, which you excluded.
-- **Agency portal not rendered.** The signed-in account belongs to no organization, so
-  `/agency/portal` returns "Not found". It shares `AdminSurface` and is covered by tests, but
-  I have no live screenshot or density figure for it and will not invent one.
+- ~~Agency portal not rendered~~ — **now verified.** The working account was added as a
+  member, so the portal loads. Measured live: content **98.1%** of the width beside the
+  sidebar, **60px** above the first card, no document scroll, no storefront header in the
+  DOM — the same figures the platform panel reports. Loading it revealed its KPI cards had
+  never been restyled; they now share one `KpiTile` with the platform dashboard.
+
+  Agency Sales also confirms the referral work from the partner's own side: both
+  DESERTTOURS-attributed orders appear, with the compact table and pagination bar.
 - **Screenshots at 1440×900 / 1920×1080 / 1280×720 not captured.** The browser holding the
   admin session has a fixed 1496×794 viewport; the resizable one has no session. All figures
   above are from 1496×794.
 - **Table `<caption>` missing** on the compact variant — a pre-existing gap, not introduced here.
 - Sidebar is collapsible but not yet a drawer below 1024px.
+
+## Production data left behind
+
+`muhsin@gmail.com` is now an **owner of "Desert Tours Test"**, added so the portal could be
+loaded at all. That is real access on a real organization — remove the membership under
+Agencies when it is no longer wanted. A second member added while proving the Add button
+works from the UI (not just the API) was removed immediately afterwards; only this one
+remains.
 
 ## Backend
 
