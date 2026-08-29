@@ -118,12 +118,24 @@ export function AdminAgencies() {
       header: "Agency",
       render: (row) => (
         <span>
-          <Link
-            href={routes.adminAgency(row.id)}
-            className="block font-medium text-primary hover:underline"
-          >
-            {row.name}
-          </Link>
+          <span className="flex items-center gap-2">
+            <Link
+              href={routes.adminAgency(row.id)}
+              className="font-medium text-primary hover:underline"
+            >
+              {row.name}
+            </Link>
+            {/*
+              An agency whose sales are missing from every platform figure looks, from
+              this row, exactly like a real one that has sold nothing. The badge is what
+              tells an operator which it is before they go looking for the discrepancy.
+            */}
+            {row.is_demo ? (
+              <span className="rounded-full bg-admin-accent-tint px-1.5 py-0.5 text-admin-caps uppercase text-admin-accent-ink">
+                Demo
+              </span>
+            ) : null}
+          </span>
           <span className="block text-body-sm text-muted-foreground">{row.billing_email}</span>
         </span>
       ),

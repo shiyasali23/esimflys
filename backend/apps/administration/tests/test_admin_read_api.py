@@ -505,3 +505,114 @@ class DashboardMarginTests(APITestCase):
         ).data
         self.assertEqual(data["margin"]["retail_minor"], 0)
         self.assertEqual(data["margin"]["wholesale_minor"], 0)
+
+
+@override_settings(SUPPLIER_GATEWAY="fake", PAYMENTS_GATEWAY="fake")
+class DemoAgencyExclusionTests(APITestCase):
+    """Demo agencies must not move the platform's own numbers.
+
+    A demo agency exists so a prospect can sign into the REAL portal and see real screens
+    with a believable history. Its orders are therefore real rows in the real tables, and
+    without this every headline figure would count them — the owner's revenue would be
+    fiction for as long as the demo existed.
+    """
+
+    def setUp(self):
+        build_catalogue()
+        self.admin = platform_user("root2@example.com", superuser=True)
+        self.client.force_authenticate(self.admin)
+
+        self.demo = Organization.objects.create(
+            name="Demo Travels", organization_type="travel_agency",
+            billing_email="d@d.com", status="active", metadata={"demo": True},
+        )
+        self.real = Organization.objects.create(
+            name="Real Travels", organization_type="travel_agency",
+            billing_email="r@r.com", status="active",
+        )
+        create_agency_tracking_code(self.demo, code="DEMOCODE", commission_bps=1200)
+        create_agency_tracking_code(self.real, code="REALCODE", commission_bps=1000)
+
+        self.direct = place_order(email="direct@example.com")
+        settle(self.direct)
+        self.real_order = place_order(email="real@example.com", promo="REALCODE")
+        settle(self.real_order)
+        self.demo_order = place_order(email="demo@example.com", promo="DEMOCODE")
+        settle(self.demo_order)
+
+    def _dashboard(self):
+        return self.client.get(f"{ADMIN}/dashboard/").data
+
+    def test_revenue_excludes_the_demo_agency(self):
+        data = self._dashboard()
+        expected = self.direct.total_minor + self.real_order.total_minor
+        self.assertEqual(data["revenue"]["gross_minor"], expected)
+
+    def test_a_real_agency_is_still_counted(self):
+        """The case the obvious query breaks.
+
+        [MEASURED] `exclude(referring_organization__metadata__demo=True)` makes
+        `{}->'demo'` NULL for every agency that is NOT a demo, and excluding on NULL drops
+        the row — a real agency's orders vanished from revenue entirely. This test is the
+        one that catches it; the demo-exclusion test above passes either way.
+        """
+        data = self._dashboard()
+        self.assertGreaterEqual(data["revenue"]["gross_minor"], self.real_order.total_minor)
+        self.assertEqual(data["orders"]["total"], 2)
+
+    def test_a_direct_sale_with_no_agency_is_still_counted(self):
+        """The other half of the same trap: an order with a NULL agency must survive."""
+        data = self._dashboard()
+        self.assertGreaterEqual(data["revenue"]["gross_minor"], self.direct.total_minor)
+
+    def test_every_figure_agrees_with_every_other(self):
+        """Excluding demo rows from the order count but not the eSIM count would leave the
+        dashboard contradicting itself, which is worse than counting them."""
+        data = self._dashboard()
+        self.assertEqual(data["orders"]["total"], 2)
+        self.assertEqual(data["orders"]["paid"], 2)
+        self.assertEqual(data["esims"]["total"], 2)
+
+    def test_commission_excludes_the_demo_agency(self):
+        create_commission_for_order(self.real_order)
+        create_commission_for_order(self.demo_order)
+        data = self._dashboard()
+        real_only = PartnerCommission.objects.get(organization=self.real).commission_minor
+        self.assertEqual(data["commissions"]["outstanding_minor"], real_only)
+
+    def test_margin_excludes_the_demo_agency_on_both_sides(self):
+        """Revenue and supplier cost are SEPARATE queries — one over orders, one over
+        order items. Filtering only the revenue side leaves the demo's wholesale cost in
+        the total, which understates margin rather than overstating it, and is just as
+        wrong."""
+        data = self._dashboard()
+        real_orders = [self.direct, self.real_order]
+        expected_revenue = sum(o.total_minor for o in real_orders)
+        expected_wholesale = sum(
+            item.wholesale_amount_minor or 0
+            for order in real_orders
+            for item in order.items.all()
+        )
+        self.assertEqual(data["margin"]["retail_minor"], expected_revenue)
+        self.assertEqual(data["margin"]["wholesale_minor"], expected_wholesale)
+        self.assertEqual(
+            data["margin"]["margin_minor"], expected_revenue - expected_wholesale
+        )
+
+    def test_the_revenue_series_excludes_the_demo_agency(self):
+        series = self.client.get(f"{ADMIN}/reports/revenue/").data["series"]
+        total = sum(row["revenue_minor"] for row in series)
+        self.assertEqual(total, self.direct.total_minor + self.real_order.total_minor)
+
+    def test_the_panel_can_see_which_agency_is_a_demo(self):
+        """Excluded from the numbers AND labelled. An operator looking at a real-looking
+        agency whose sales are missing from every report needs to know why."""
+        rows = {r["name"]: r for r in self.client.get(f"{ADMIN}/organizations/").data["results"]}
+        self.assertTrue(rows["Demo Travels"]["is_demo"])
+        self.assertFalse(rows["Real Travels"]["is_demo"])
+
+    def test_never_exposes_the_raw_metadata_column(self):
+        """`is_demo` is derived. Publishing the JSONField would leak whatever else lands
+        in it later."""
+        row = self.client.get(f"{ADMIN}/organizations/").data["results"][0]
+        self.assertNotIn("metadata", row)

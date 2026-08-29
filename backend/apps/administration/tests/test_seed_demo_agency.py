@@ -17,10 +17,14 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 
+from django.contrib.auth import get_user_model
+
 from apps.accounts.models import Organization, PartnerCommission
 from apps.catalog.models import CatalogPlan, Country, Supplier
 from apps.esims.models import EsimProfile
 from apps.orders.models import Order
+
+User = get_user_model()
 
 SCENARIO = {
     "agency": {
@@ -181,6 +185,40 @@ class SeedDemoAgencyTests(TestCase):
             Notification.objects.filter(status="cancelled").exists(),
             "the suppressed notifications should still exist as evidence",
         )
+
+    # -- the agency signs in as itself --------------------------------------------------
+
+    def test_marks_the_agency_as_demo_so_it_leaves_the_platform_figures_alone(self):
+        """Without this the demo's orders are counted as real revenue and the owner's
+        dashboard is fiction for as long as the demo exists."""
+        self._seed(self.tmp)
+        org = Organization.objects.get(name="Test Travels")
+        self.assertTrue(org.metadata.get("demo"))
+
+    def test_flags_an_agency_that_already_existed_without_the_flag(self):
+        """Re-seeding an agency created before the flag existed must not leave it counted
+        as real."""
+        Organization.objects.create(
+            name="Test Travels", organization_type="travel_agency",
+            billing_email="a@b.test", status="active", metadata={},
+        )
+        self._seed(self.tmp)
+        self.assertTrue(Organization.objects.get(name="Test Travels").metadata.get("demo"))
+
+    def test_gives_the_owner_a_password_they_can_sign_in_with(self):
+        self._seed(self.tmp, owner_password="Kozhikode-Umrah-2026")
+        owner = User.objects.get(email="owner@b.test")
+        self.assertTrue(owner.check_password("Kozhikode-Umrah-2026"))
+
+    def test_rejects_a_password_django_would_reject_anywhere_else(self):
+        """A demo account signs into the real portal with real data behind it, so it does
+        not get a weaker rule than any other account."""
+        with self.assertRaises(CommandError):
+            self._seed(self.tmp, owner_password="password")
+
+    def test_leaves_the_account_unusable_when_no_password_is_given(self):
+        self._seed(self.tmp)
+        self.assertFalse(User.objects.get(email="owner@b.test").has_usable_password())
 
     # -- guards -----------------------------------------------------------------------
 

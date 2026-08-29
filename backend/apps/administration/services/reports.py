@@ -16,7 +16,7 @@ from django.db.models import Count, DecimalField, F, Q, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
-from apps.accounts.models import CommissionPayout, PartnerCommission
+from apps.accounts.models import CommissionPayout, Organization, PartnerCommission
 from apps.esims.models import EsimProfile, SupplierEvent
 from apps.orders.models import Notification, Order, OrderItem
 from apps.payments.models import Payment, Refund, WebhookEvent
@@ -29,6 +29,42 @@ LIVE_ESIM_STATES = ("ready", "installed", "active")
 
 #: Commission that is owed but not yet paid out.
 OUTSTANDING_COMMISSION_STATES = ("pending", "available", "approved")
+
+
+def _demo_organization_ids():
+    """Organizations flagged `metadata: {"demo": true}` by `seed_demo_agency`.
+
+    Demo agencies exist so a real prospect can sign in and see the real portal with a
+    believable history. Their orders are therefore real rows in the real tables — which
+    means every platform figure would count them, and the owner's revenue would be
+    fiction for as long as the demo existed.
+    """
+    return Organization.objects.filter(metadata__demo=True).values_list("id", flat=True)
+
+
+def _real(queryset, *, path=""):
+    """Drop demo-agency rows, KEEPING rows with no agency at all.
+
+    [MEASURED] The obvious form is wrong. Traversing the relation —
+    `exclude(referring_organization__metadata__demo=True)` — makes `{}->'demo'` NULL for
+    every agency that is not a demo, and excluding on NULL drops the row: a real agency's
+    orders silently vanished from revenue (31 counted where 33 were expected).
+
+    `__in` against the id is safe because Django emits
+    `NOT (fk IN (...) AND fk IS NOT NULL)`, which keeps direct sales. Confirmed in the
+    generated SQL, not assumed.
+
+    `path` is the lookup prefix to the order, e.g. "" on Order, "order__" on a Payment.
+    """
+    # The ids are passed as a LAZY queryset, never `list(...)`.
+    #
+    # Forcing it to a list runs a SELECT at every call site — ten of them on one
+    # dashboard, which took the page from 15 queries to 25 and tripped the N+1 guard.
+    # Handed the queryset, Django inlines it as a subquery and Postgres evaluates it once
+    # inside the same statement, so the exclusion costs no extra round trip at all.
+    return queryset.exclude(
+        **{f"{path}referring_organization_id__in": _demo_organization_ids()}
+    )
 
 
 def _zero_sum(field):
@@ -49,15 +85,19 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
     ``include_margin`` must only be set for a caller holding a platform capability —
     wholesale cost must never reach an agency.
     """
-    orders = _date_filter(Order.objects.all(), "created_at", date_from, date_to)
+    # Every aggregate below is filtered the same way. Excluding demo rows from the
+    # order count but not the eSIM count would leave the dashboard contradicting
+    # itself — 33 orders against 112 eSIMs — which is worse than counting them.
+    orders = _real(_date_filter(Order.objects.all(), "created_at", date_from, date_to))
     settled = orders.filter(payment_status__in=SETTLED_PAYMENT_STATES)
 
     order_totals = settled.aggregate(
         gross_revenue_minor=_zero_sum("total_minor"),
         paid_order_count=Count("id"),
     )
-    refunded = _date_filter(
-        Refund.objects.filter(status="succeeded"), "created_at", date_from, date_to
+    refunded = _real(
+        _date_filter(Refund.objects.filter(status="succeeded"), "created_at", date_from, date_to),
+        path="payment__order__",
     ).aggregate(total=_zero_sum("amount_minor"))["total"]
 
     status_breakdown = {
@@ -69,7 +109,7 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
         for row in orders.values("payment_status").annotate(count=Count("id")).order_by()
     }
 
-    esims = EsimProfile.objects.aggregate(
+    esims = _real(EsimProfile.objects.all(), path="order_item__order__").aggregate(
         total=Count("id"),
         live=Count("id", filter=Q(status__in=LIVE_ESIM_STATES)),
         failed=Count("id", filter=Q(status__in=("failed", "manual_review"))),
@@ -77,7 +117,9 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
 
     # NB: aggregate aliases must not shadow a field name they also reference — Django
     # raises "'x' is an aggregate" when it resolves the alias before the expression.
-    commission_totals = PartnerCommission.objects.aggregate(
+    commission_totals = PartnerCommission.objects.exclude(
+        organization_id__in=_demo_organization_ids()
+    ).aggregate(
         outstanding_total=Coalesce(
             Sum(
                 F("commission_minor") - F("reversed_minor"),
@@ -97,14 +139,15 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
     }
 
     operations = {
-        "supplier_jobs_pending": SupplierEvent.objects.filter(
-            status__in=("pending", "retrying", "processing")
+        "supplier_jobs_pending": _real(
+            SupplierEvent.objects.filter(status__in=("pending", "retrying", "processing")),
+            path="order_item__order__",
         ).count(),
-        "supplier_jobs_manual_review": SupplierEvent.objects.filter(
-            status="manual_review"
+        "supplier_jobs_manual_review": _real(
+            SupplierEvent.objects.filter(status="manual_review"), path="order_item__order__"
         ).count(),
-        "notifications_failed": Notification.objects.filter(
-            status__in=("failed", "retrying")
+        "notifications_failed": _real(
+            Notification.objects.filter(status__in=("failed", "retrying")), path="order__"
         ).count(),
         "webhooks_rejected": WebhookEvent.objects.filter(status="rejected").count(),
         # A rejected signature is not the same as a rejected delivery: it means the
@@ -116,7 +159,7 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
         # Paid, but no eSIM. The single condition that means a customer has been charged
         # and has nothing to show for it, which is the one thing that must never sit
         # unnoticed. Ten minutes is comfortably longer than the 11s a healthy order took.
-        "paid_without_esim": Order.objects.filter(
+        "paid_without_esim": _real(Order.objects.all()).filter(
             payment_status__in=SETTLED_PAYMENT_STATES,
             fulfillment_status__in=("pending", "processing", "failed"),
             created_at__lt=timezone.now() - timedelta(minutes=10),
@@ -167,7 +210,7 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
             )
         )
         wholesale = _date_filter(
-            OrderItem.objects.filter(
+            _real(OrderItem.objects.all(), path="order__").filter(
                 order__payment_status__in=SETTLED_PAYMENT_STATES,
                 wholesale_amount_minor__isnull=False,
             ),
@@ -190,9 +233,11 @@ def platform_dashboard(*, date_from=None, date_to=None, include_margin=False):
 
 def revenue_timeseries(*, date_from=None, date_to=None, limit=90):
     """Daily settled revenue, newest last. Bounded by ``limit`` days."""
-    queryset = _date_filter(
-        Order.objects.filter(payment_status__in=SETTLED_PAYMENT_STATES),
-        "created_at", date_from, date_to,
+    queryset = _real(
+        _date_filter(
+            Order.objects.filter(payment_status__in=SETTLED_PAYMENT_STATES),
+            "created_at", date_from, date_to,
+        )
     )
     rows = (
         queryset.annotate(day=TruncDate("created_at"))

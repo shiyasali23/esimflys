@@ -34,6 +34,11 @@ User = get_user_model()
 
 class OrganizationSerializer(serializers.ModelSerializer):
     member_count = serializers.IntegerField(read_only=True)
+    # Derived, NOT the raw `metadata` JSONField. Exposing the whole column would publish
+    # whatever anybody drops into it later; this publishes one boolean whose meaning is
+    # fixed. Demo agencies are excluded from every platform figure, so an operator
+    # looking at a real-looking agency needs to be told which one it is.
+    is_demo = serializers.SerializerMethodField()
 
     class Meta:
         model = Organization
@@ -52,14 +57,18 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "suspended_at",
             "suspension_reason",
             "member_count",
+            "is_demo",
             "created_at",
             "updated_at",
         )
         # Status moves only through the lifecycle service, never a bare PATCH.
         read_only_fields = (
             "id", "status", "approved_at", "suspended_at", "suspension_reason",
-            "created_at", "updated_at",
+            "is_demo", "created_at", "updated_at",
         )
+
+    def get_is_demo(self, obj):
+        return bool((obj.metadata or {}).get("demo"))
 
 
 class OrganizationCreateSerializer(serializers.ModelSerializer):

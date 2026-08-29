@@ -181,3 +181,24 @@ describe("display", () => {
     expect(screen.getByText("fraud review")).toBeTruthy();
   });
 });
+
+describe("demo agencies", () => {
+  /**
+   * A demo agency is excluded from every platform figure, so from this row it looks
+   * exactly like a real agency that has sold nothing. The badge is what stops an
+   * operator investigating a discrepancy that is intentional.
+   */
+  it("labels an agency whose sales are excluded from the platform totals", async () => {
+    mockApi([org({ is_demo: true })]);
+    render(<AdminAgencies />);
+    await screen.findByText("Sunrise Travel");
+    expect(screen.getByText(/^demo$/i)).toBeTruthy();
+  });
+
+  it("does not label a real agency", async () => {
+    mockApi([org({ is_demo: false })]);
+    render(<AdminAgencies />);
+    await screen.findByText("Sunrise Travel");
+    expect(screen.queryByText(/^demo$/i)).toBeNull();
+  });
+});

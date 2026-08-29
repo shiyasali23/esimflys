@@ -143,7 +143,14 @@ export function AgencyShell({ orgId, title, children }) {
             </select>
           </label>
           ) : !resolving ? (
-            <StatusBadge status={organization.status} />
+            <>
+              {organization.is_demo ? (
+                <span className="rounded-full bg-admin-accent-tint px-1.5 py-0.5 text-admin-caps uppercase text-admin-accent-ink">
+                  Demo
+                </span>
+              ) : null}
+              <StatusBadge status={organization.status} />
+            </>
           ) : null}
           {/* Clearing the membership cache is part of signing out, not a side effect of
               the next sign-in: the next account on this browser must not inherit it. */}

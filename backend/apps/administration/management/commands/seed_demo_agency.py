@@ -26,6 +26,8 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.test import override_settings
@@ -58,6 +60,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--force", action="store_true",
             help="Allow seeding when DEBUG=False. Never do this on a real database.",
+        )
+        parser.add_argument(
+            "--owner-password",
+            default=None,
+            help=(
+                "Password for the agency owner, so they can sign in and see their own "
+                "portal. Omit and the account is created with no usable password."
+            ),
         )
         parser.add_argument(
             "--wipe", action="store_true",
@@ -107,7 +117,7 @@ class Command(BaseCommand):
             self._silence_notifications()
 
     def _run(self, scenario, rng, options):
-        organization, code = self._agency(scenario["agency"])
+        organization, code = self._agency(scenario["agency"], options.get("owner_password"))
         spec_bps = scenario["agency"]["commission_bps"] / 100
         if options["wipe"]:
             self._wipe(organization)
@@ -130,6 +140,13 @@ class Command(BaseCommand):
             f"{totals['failed']} failed, {totals['esims']} eSIMs.\n"
             f"Referral link: {settings.FRONTEND_BASE_URL}/r/{code.code}  ({spec_bps}% commission)"
         ))
+        if getattr(self, "_credentials", None):
+            email, password = self._credentials
+            self.stdout.write(self.style.WARNING(
+                f"\nAgency sign-in: {email} / {password}\n"
+                f"  {settings.FRONTEND_BASE_URL}/agency\n"
+                "  Printed once, here only — it is not stored anywhere in plain text.\n"
+            ))
 
     def _silence_notifications(self):
         """Stop the demo's confirmation and QR emails from ever being attempted.
@@ -175,7 +192,7 @@ class Command(BaseCommand):
             resolved.append((plan, entry["weight"]))
         return resolved
 
-    def _agency(self, spec):
+    def _agency(self, spec, owner_password=None):
         organization, _ = Organization.objects.get_or_create(
             name=spec["name"],
             defaults={
@@ -184,8 +201,17 @@ class Command(BaseCommand):
                 "country": spec["country"],
                 "status": "active",
                 "approved_at": timezone.now(),
+                # The flag every platform aggregate reads. Without it this agency's
+                # orders are counted as real revenue, and the owner's dashboard becomes
+                # fiction for as long as the demo exists.
+                "metadata": {"demo": True},
             },
         )
+        # Also set on an organization that already existed, so re-seeding an agency
+        # created before this flag existed does not leave it counted as real.
+        if not (organization.metadata or {}).get("demo"):
+            organization.metadata = {**(organization.metadata or {}), "demo": True}
+            organization.save(update_fields=["metadata"])
         if organization.status != "active":
             organization.status = "active"
             organization.approved_at = timezone.now()
@@ -195,8 +221,19 @@ class Command(BaseCommand):
             email=spec["owner_email"],
             defaults={"first_name": spec["name"].split()[0], "last_name": "Operations"},
         )
-        if created:
-            # Unusable password: this account exists so the portal has an owner to show,
+        if owner_password:
+            # Run Django's own validators, the same ones the admin panel's member form
+            # uses. A demo account still signs into the real portal with real data
+            # behind it, so it does not get a weaker rule than any other account.
+            try:
+                validate_password(owner_password, owner)
+            except ValidationError as exc:
+                raise CommandError("Owner password rejected: " + " ".join(exc.messages))
+            owner.set_password(owner_password)
+            owner.save(update_fields=["password"])
+            self._credentials = (owner.email, owner_password)
+        elif created:
+            # No password given: the account exists so the portal has an owner to show,
             # not so anybody can sign in as it. Credentials are issued from the panel.
             owner.set_unusable_password()
             owner.save(update_fields=["password"])
