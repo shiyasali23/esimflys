@@ -1,0 +1,85 @@
+{
+  "_comment": [
+    "A demo scenario, not a Django fixture. `seed_demo_agency` reads this and builds the",
+    "rows through the real services — the pricer, the promo reserver, the supplier gateway,",
+    "the commission calculator — so the result obeys every constraint and validation the",
+    "live system has. A loaddata fixture would bypass all of them and could encode totals",
+    "that the pricer would never produce.",
+    "",
+    "Edit this file to change the story. Nothing here is hardcoded in the command."
+  ],
+
+  "agency": {
+    "name": "Alhind Travels",
+    "billing_email": "accounts@alhindtravels.example",
+    "country": "IN",
+    "owner_email": "ops@alhindtravels.example",
+    "tracking_code": "ALHIND",
+    "commission_bps": 1200
+  },
+
+  "destination_slug": "saudi-arabia",
+
+  "batches": [
+    { "label": "Umrah — 23 August",   "departs": "2026-08-23", "nights": 12, "travellers": [27, 30] },
+    { "label": "Umrah — 6 September", "departs": "2026-09-06", "nights": 10, "travellers": [25, 29] },
+    { "label": "Umrah — 16 September","departs": "2026-09-16", "nights": 14, "travellers": [26, 30] },
+    { "label": "Umrah — 27 September","departs": "2026-09-27", "nights": 10, "travellers": [25, 28] }
+  ],
+
+  "_plan_mix_comment": [
+    "Weighted by what a pilgrim on a 10-14 night trip actually buys. The 10 GB plan",
+    "dominates because the trip is long enough to need it and video calls home are the",
+    "main use. The 1 GB/7-day is rare — it does not cover the trip — but a few budget",
+    "travellers take it anyway, and a demo that hides that hides a real support case."
+  ],
+  "plan_mix": [
+    { "product_code": "SA-10GB-30D-V1", "weight": 38 },
+    { "product_code": "SA-5GB-30D-V1",  "weight": 24 },
+    { "product_code": "SA-20GB-30D-V1", "weight": 15 },
+    { "product_code": "SA-UNL-7D-V1",   "weight": 10 },
+    { "product_code": "SA-3GB-30D-V1",  "weight": 8 },
+    { "product_code": "SA-1GB-7D-V1",   "weight": 5 }
+  ],
+
+  "_realism_comment": [
+    "Distributions taken from what this platform's own production data actually looked",
+    "like, not invented. `never_installed` and `installed_not_activated` exist because",
+    "both happened to real customers here: one had the eSIM on the phone with Data",
+    "Roaming off and no signal, which is the single most common support ticket.",
+    "`payment_failed` keeps a few unhappy rows on the screen, because a demo where every",
+    "order succeeds teaches an operator nothing about where to look when one does not."
+  ],
+  "realism": {
+    "payment_failed_pct": 4,
+    "order_placed_days_before_departure": [3, 12],
+    "travelling": {
+      "activated_pct": 80,
+      "installed_not_activated_pct": 12,
+      "never_installed_pct": 8,
+      "data_used_pct_range": [15, 92]
+    },
+    "upcoming": {
+      "activated_pct": 0,
+      "installed_not_activated_pct": 0,
+      "never_installed_pct": 100,
+      "data_used_pct_range": [0, 0]
+    }
+  },
+
+  "_names_comment": "Kerala-origin names — Alhind Travels is a Kozhikode operator and its Umrah groups are overwhelmingly Malayali.",
+  "names": {
+    "first": [
+      "Abdul Rahman", "Muhammed", "Fathima", "Ayesha", "Suhail", "Rashid", "Nasrin",
+      "Shameem", "Ibrahim", "Zainab", "Yusuf", "Haseena", "Kunhimon", "Safiya",
+      "Basheer", "Rukiya", "Anwar", "Jameela", "Siddique", "Nafeesa", "Hamza",
+      "Sakeena", "Ashraf", "Mariyam", "Noushad", "Thasneem", "Faisal", "Salma",
+      "Jaleel", "Razia", "Shafeeq", "Ummu Kulsu", "Riyas", "Sameera", "Abdulla"
+    ],
+    "last": [
+      "Kutty", "Musaliar", "Haji", "Koya", "Thangal", "Moideen", "Bava", "Hassan",
+      "Marakkar", "Kunju", "Puthiyapurayil", "Chekkutty", "Valappil", "Karuvatta",
+      "Pallikkal", "Areekkal", "Cheruvath", "Manappat", "Kottakkal", "Vengara"
+    ]
+  }
+}
