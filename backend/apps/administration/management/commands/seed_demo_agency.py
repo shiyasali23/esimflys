@@ -74,6 +74,19 @@ class Command(BaseCommand):
                 "accounts. Re-run with --force only if you are certain."
             )
 
+        if not settings.DEBUG:
+            # Say plainly what is about to happen. `--force` is a decision someone made
+            # about a real database, and it deserves more than silence — the rows this
+            # writes land in the same tables the revenue figures are summed from.
+            self.stdout.write(self.style.WARNING(
+                "\nWriting DEMO trading data to a non-DEBUG database.\n"
+                "  · These orders, payments and commissions are counted by the dashboard\n"
+                "    alongside real ones — revenue and margin will include them.\n"
+                "  · No real eSIM is bought: the supplier gateway is pinned to `fake`.\n"
+                "  · No email is sent: demo notifications are cancelled, not queued.\n"
+                "  · Re-run with --wipe to remove every row this created.\n"
+            ))
+
         scenario = self._read(options["scenario"])
         rng = random.Random(options["seed"])
 
