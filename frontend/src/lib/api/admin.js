@@ -424,3 +424,4 @@ export function fetchOrderTimeline(id) {
 export function adminSearch(term) {
   return api.get(`/admin/search/${query({ q: term })}`);
 }
+

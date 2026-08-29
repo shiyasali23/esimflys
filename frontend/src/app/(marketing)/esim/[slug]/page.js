@@ -129,7 +129,7 @@ export default async function CountryPage({ params }) {
                       <>
                         Prepaid travel data from{" "}
                         <span className="font-semibold text-foreground">
-                          <Price usd={perDay} />/day
+                          <Price usd={perDay} exact />/day
                         </span>
                         . Install by QR code and keep your number for calls and texts.
                       </>

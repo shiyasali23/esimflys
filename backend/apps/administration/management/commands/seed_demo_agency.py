@@ -37,7 +37,7 @@ from apps.catalog.models import CatalogPlan
 from apps.esims import services as esim_services
 from apps.esims.models import EsimProfile
 from apps.orders import services as order_services
-from apps.orders.models import Order
+from apps.orders.models import Notification, Order
 from apps.payments.models import Payment
 
 User = get_user_model()
@@ -91,6 +91,7 @@ class Command(BaseCommand):
         # even a misconfigured environment cannot spend money here.
         with override_settings(SUPPLIER_GATEWAY="fake"):
             self._run(scenario, rng, options)
+            self._silence_notifications()
 
     def _run(self, scenario, rng, options):
         organization, code = self._agency(scenario["agency"])
@@ -116,6 +117,27 @@ class Command(BaseCommand):
             f"{totals['failed']} failed, {totals['esims']} eSIMs.\n"
             f"Referral link: {settings.FRONTEND_BASE_URL}/r/{code.code}  ({spec_bps}% commission)"
         ))
+
+    def _silence_notifications(self):
+        """Stop the demo's confirmation and QR emails from ever being attempted.
+
+        Provisioning queues a notification per eSIM, exactly as it should — but every
+        address in this scenario is `@example.com`, a reserved domain that accepts no
+        mail. Left queued, the worker would hand two hundred guaranteed-undeliverable
+        messages to Resend, and a burst of hard bounces is how a sending domain's
+        reputation is damaged. The real customers' order confirmations go out through
+        that same domain.
+
+        Marked `cancelled` rather than deleted: the rows are the evidence that the demo
+        deliberately sent nothing, and deleting them would leave an eSIM whose delivery
+        has no record either way.
+        """
+        silenced = Notification.objects.filter(
+            status__in=("queued", "retrying"),
+            recipient__endswith="@example.com",
+        ).update(status="cancelled", failure_message="Demo data — not sent.")
+        if silenced:
+            self.stdout.write(f"  suppressed {silenced} demo notification(s)")
 
     # -- pieces -----------------------------------------------------------------------
 

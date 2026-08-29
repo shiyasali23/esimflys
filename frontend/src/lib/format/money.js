@@ -61,7 +61,7 @@ export function fromMinorUnits(minor, currency = BASE_CURRENCY) {
  * at the limit, price below the supplier's wholesale cost and turn a sale into a
  * silent loss.
  */
-export function convertUsdMinor(baseMinor, currency, rate, buffer = 1) {
+export function convertUsdMinor(baseMinor, currency, rate, buffer = 1, { charm = true } = {}) {
   const code = String(currency || "").toUpperCase();
   const base = Number(baseMinor);
   if (!Number.isFinite(base)) return 0;
@@ -81,7 +81,24 @@ export function convertUsdMinor(baseMinor, currency, rate, buffer = 1) {
   // the money taken, before the supplier is even paid.
   const unbuffered = ceilMinor(baseAmount * numericRate * factor);
 
-  if (!roundingStep) return buffered;
+  /*
+    `charm: false` is for DERIVED display figures — today, only the "from X/day" rate, which
+    is `retail_price / validity_days` and is never a sum anybody is charged.
+
+    Charm rounding is calibrated for plan prices, where a step of one whole unit turns 5.87
+    into 5.99. Applied to a per-day rate it destroys the number instead: the four countries
+    the home page leads with cost $0.27, $0.57, $0.33 and $0.30, and EUR/GBP/AUD/CAD all use
+    `roundingStep: 100`, so every one of them rounded up to the same 0.99. Four different
+    prices, one displayed value, and Saudi Arabia shown at roughly 3.7x its real rate.
+
+    USD escaped only because of the early return above, which is why this was invisible to
+    anyone testing in dollars while every euro visitor saw it.
+
+    Opting out here cannot reintroduce the page-vs-receipt bug this module exists to prevent:
+    that risk lives on amounts the backend charges, and this is not one. Plan prices keep the
+    full mirrored algorithm.
+  */
+  if (!roundingStep || !charm) return buffered;
 
   let rounded = Math.ceil(buffered / roundingStep) * roundingStep - charmOffset;
   if (rounded < unbuffered) rounded += roundingStep;
@@ -121,12 +138,12 @@ export function formatMinor(minor, currency = BASE_CURRENCY) {
  * into INR that is the difference between showing Rs 599 and showing Rs 699 for an
  * order the card is debited Rs 599 for. Keep the two apart.
  */
-export function formatUsd(usdAmount, currency = BASE_CURRENCY, fx = {}) {
+export function formatUsd(usdAmount, currency = BASE_CURRENCY, fx = {}, options = {}) {
   const code = String(currency || "").toUpperCase();
   const rate = fx?.rates?.[code];
   if (code === BASE_CURRENCY || rate == null) {
     return formatMoney(Number(usdAmount) || 0, BASE_CURRENCY);
   }
-  const minor = convertUsdMinor(usdToMinor(usdAmount), code, rate, fx.buffer ?? 1);
+  const minor = convertUsdMinor(usdToMinor(usdAmount), code, rate, fx.buffer ?? 1, options);
   return formatMinor(minor, code);
 }

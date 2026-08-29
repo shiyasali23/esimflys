@@ -108,7 +108,7 @@ export function Hero({ chips, countries }) {
                       <CountryFlag country={c} /> {c.name}
                       {c.perDayFrom ? (
                         <span className="font-semibold text-primary">
-                          <Price usd={c.perDayFrom} />/d
+                          <Price usd={c.perDayFrom} exact />/d
                         </span>
                       ) : null}
                     </Link>

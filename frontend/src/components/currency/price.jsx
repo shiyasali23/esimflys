@@ -24,9 +24,15 @@ import { useRates, useOfferedCurrencies } from "./rates-provider.client";
  * denomination shipped, and `public/llms.txt` was repeating the same stale claim to AI
  * crawlers until it was corrected alongside this.
  *
- * @param {{ usd: number, className?: string }} props
+ * `exact` turns OFF charm rounding, and belongs on derived figures only — the "from X/day"
+ * rate, which is `retail / validity` and is never charged. Without it every per-day price
+ * below one unit collapsed to 0.99 in EUR, GBP, AUD and CAD, so unrelated countries all
+ * advertised the same price. Never pass it for a plan price: those must keep the rounding
+ * the backend charges with.
+ *
+ * @param {{ usd: number, className?: string, exact?: boolean }} props
  */
-export function Price({ usd, className }) {
+export function Price({ usd, className, exact = false }) {
   const fx = useRates();
   const codes = useOfferedCurrencies();
 
@@ -34,7 +40,7 @@ export function Price({ usd, className }) {
     <span className={`price tabular-nums ${className || ""}`}>
       {codes.map((code) => (
         <span key={code} data-c={code} data-canonical={code === BASE_CURRENCY || undefined}>
-          {formatUsd(usd, code, fx)}
+          {formatUsd(usd, code, fx, { charm: !exact })}
         </span>
       ))}
     </span>

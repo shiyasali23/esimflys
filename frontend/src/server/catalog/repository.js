@@ -1,6 +1,7 @@
 import "server-only";
 import catalog from "@/data/catalog.json";
 import { withNetworks } from "./adapters";
+import { FEATURED_SLUGS } from "@/config/featured";
 
 /**
  * The catalogue, read from `src/data/catalog.json` — baked at build time by
@@ -52,8 +53,21 @@ export async function getCountryBySlug(slug) {
   return COUNTRIES.find((c) => c.slug === slug) || null;
 }
 
+/**
+ * The curated home-page line-up, in `FEATURED_SLUGS` order.
+ *
+ * This used to be `COUNTRIES.slice(0, limit)` — the first N by `sortOrder`, which meant the
+ * shop's shop window was decided by a spreadsheet column and ignored `isPopular` entirely.
+ *
+ * Unknown or deactivated slugs are dropped rather than rendered as holes, and if the list
+ * somehow resolves to nothing the `isPopular` countries stand in, so the home page can
+ * never come back empty because of a typo in a config file.
+ */
 export async function getFeaturedCountries(limit = 8) {
-  return COUNTRIES.slice(0, limit);
+  const bySlug = new Map(COUNTRIES.map((c) => [c.slug, c]));
+  const curated = FEATURED_SLUGS.map((slug) => bySlug.get(slug)).filter(Boolean);
+  const chosen = curated.length ? curated : COUNTRIES.filter((c) => c.isPopular);
+  return chosen.slice(0, limit);
 }
 
 export async function getPopularCountries(limit = 8) {

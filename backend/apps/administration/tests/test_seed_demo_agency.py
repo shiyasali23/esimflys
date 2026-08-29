@@ -168,6 +168,20 @@ class SeedDemoAgencyTests(TestCase):
         self._seed(self.tmp, wipe=True)
         self.assertEqual(Order.objects.count(), count)
 
+    def test_never_leaves_a_demo_email_queued_for_sending(self):
+        """Every address in the scenario is `@example.com`, which accepts no mail. Handing
+        two hundred guaranteed hard bounces to the sending domain is how its reputation is
+        damaged — and the real customers' confirmations go out through that same domain."""
+        from apps.orders.models import Notification
+
+        self._seed(self.tmp)
+        pending = Notification.objects.filter(status__in=("queued", "retrying"))
+        self.assertEqual(pending.count(), 0, "demo notifications were left queued to send")
+        self.assertTrue(
+            Notification.objects.filter(status="cancelled").exists(),
+            "the suppressed notifications should still exist as evidence",
+        )
+
     # -- guards -----------------------------------------------------------------------
 
     @override_settings(DEBUG=False)

@@ -10,12 +10,15 @@ import { CtaBand } from "@/features/home/components/cta-band";
 import { StatsBand } from "@/features/home/components/stats-band";
 import { Faq } from "@/features/home/components/faq";
 import { getAllCountries, getHomeDestinations } from "@/server/catalog/repository";
+import { FEATURED_SLUGS, HERO_CHIP_COUNT } from "@/config/featured";
 
 export const metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
-  const destinations = await getHomeDestinations(8);
-  const chips = await getHomeDestinations(4);
+  // The grid shows the whole curated line-up; the hero shows the first HERO_CHIP_COUNT of
+  // the same list, so the two can never disagree about order.
+  const destinations = await getHomeDestinations(FEATURED_SLUGS.length);
+  const chips = await getHomeDestinations(HERO_CHIP_COUNT);
   const searchCountries = (await getAllCountries()).map((c) => ({
     slug: c.slug,
     name: c.name,

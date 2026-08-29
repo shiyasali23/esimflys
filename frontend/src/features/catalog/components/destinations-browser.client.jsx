@@ -35,7 +35,7 @@ function DestinationCard({ c }) {
       </span>
       {c.perDayFrom ? (
         <span className="shrink-0 text-sm font-semibold text-cta-text">
-          <Price usd={c.perDayFrom} />/d
+          <Price usd={c.perDayFrom} exact />/d
         </span>
       ) : null}
       <ArrowRight

@@ -52,7 +52,7 @@ function DestCard({ c, badge }) {
       */}
       {c.perDayFrom ? (
         <p className="mt-auto pt-3 text-sm font-semibold text-cta-text">
-          from <span className="whitespace-nowrap"><Price usd={c.perDayFrom} /> / day</span>
+          from <span className="whitespace-nowrap"><Price usd={c.perDayFrom} exact /> / day</span>
         </p>
       ) : null}
     </Link>
