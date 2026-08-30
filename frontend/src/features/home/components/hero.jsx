@@ -8,7 +8,7 @@ import home from "@/content/home.json";
 export function Hero({ chips, countries }) {
   const { hero } = home;
   return (
-    <section className="relative -mt-20 overflow-x-clip bg-background">
+    <section className="relative -mt-16 overflow-x-clip bg-background sm:-mt-20">
       {/*
         A radial gradient, not a blurred circle.
 
@@ -41,8 +41,8 @@ export function Hero({ chips, countries }) {
         className="pointer-events-none absolute -right-24 top-1/3 h-96 w-96 rounded-full"
         style={{ backgroundImage: "radial-gradient(circle, rgb(249 115 22 / 0.10) 0%, transparent 70%)" }}
       />
-      <div className="relative mx-auto max-w-6xl px-6 pb-6 pt-[4.5rem] md:pb-8 md:pt-24">
-        <div className="relative rounded-[2rem] border border-secondary-container bg-gradient-to-br from-secondary-container/50 via-white/80 to-white/80 p-5 shadow-xl min-[360px]:p-6 sm:rounded-[2.5rem] sm:p-8 md:p-10">
+      <div className="relative mx-auto max-w-6xl px-3 pb-6 pt-16 min-[360px]:px-4 sm:px-6 sm:pt-[4.5rem] md:pb-8 md:pt-24">
+        <div className="relative rounded-[2rem] border border-secondary-container bg-gradient-to-br from-secondary-container/50 via-white/80 to-white/80 px-4 py-5 shadow-xl min-[360px]:px-5 min-[360px]:py-6 sm:rounded-[2.5rem] sm:p-8 md:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-2">
             {/*
               `min-w-0` is load-bearing, not defensive.

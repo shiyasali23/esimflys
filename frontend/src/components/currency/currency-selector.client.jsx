@@ -30,14 +30,14 @@ export function CurrencySelector({ className, overHero = false }) {
   return (
     <div
       className={cn(
-        "relative inline-flex h-9 items-center rounded-full border font-body text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-ring",
+        "relative inline-flex h-8 items-center rounded-full border font-body text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-ring sm:h-9",
         overHero
           ? "border-white/40 bg-white/10 text-white hover:bg-white/20"
           : "border-border bg-transparent text-foreground hover:bg-muted",
         className,
       )}
     >
-      <Globe className="pointer-events-none absolute left-3 h-4 w-4 opacity-80" aria-hidden />
+      <Globe className="pointer-events-none absolute left-3 hidden h-4 w-4 opacity-80 sm:block" aria-hidden />
       <select
         value={currency}
         onChange={(event) => select(event.target.value, offered)}
@@ -52,7 +52,7 @@ export function CurrencySelector({ className, overHero = false }) {
           landscape rather than in portrait — narrower than it sounds, but the fix is two
           pixels on a three-letter code inside an `h-9` pill, which still fits.
         */
-        className="h-full cursor-pointer appearance-none bg-transparent pl-9 pr-9 text-base text-inherit focus:outline-none focus-visible:outline-none"
+        className="h-full cursor-pointer appearance-none bg-transparent pl-3 pr-8 text-base text-inherit focus:outline-none focus-visible:outline-none sm:pl-9 sm:pr-9"
       >
         {offered.map((code) => (
           <option key={code} value={code} className="bg-white font-medium text-foreground">
@@ -60,7 +60,7 @@ export function CurrencySelector({ className, overHero = false }) {
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 opacity-80" aria-hidden />
+      <ChevronDown className="pointer-events-none absolute right-2 h-4 w-4 opacity-80 sm:right-3" aria-hidden />
     </div>
   );
 }

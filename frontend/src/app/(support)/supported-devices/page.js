@@ -14,7 +14,7 @@ export const metadata = buildMetadata({
 export default function SupportedDevicesPage() {
   return (
     <>
-      <section className="relative -mt-20 overflow-hidden bg-gradient-to-br from-primary via-primary to-[#0f766e] text-white">
+      <section className="relative -mt-16 overflow-hidden bg-gradient-to-br from-primary via-primary to-[#0f766e] text-white sm:-mt-20">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 pb-14 pt-32 md:pb-20 md:pt-44 lg:grid-cols-2">
           <div>
             <h1 className="font-display text-4xl font-bold uppercase md:text-5xl">

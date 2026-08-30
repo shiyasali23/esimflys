@@ -10,7 +10,7 @@ export default function ShopLayout({ children }) {
   return (
     <>
       <Header />
-      <main id="main-content" className="pt-20">
+      <main id="main-content" className="pt-16 sm:pt-20">
         {children}
       </main>
       <Footer compact />
