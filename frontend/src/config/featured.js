@@ -52,12 +52,14 @@ export const FEATURED_SLUGS = [
 /**
  * How many of the list the hero shows as quick-pick chips.
  *
- * Not the full list, deliberately. The chips sit directly under the H1 in a wrapping flex
- * row, and the hero's measured job is to put the headline and the search box on screen
- * fast — eighteen chips wrap to roughly five rows on a phone and push the search control
- * below the fold. Eight is two tidy rows. The rest of the list is one scroll away in
- * "Where travelers go", which is a grid built for it.
+ * Not the full list, deliberately. The chips sit directly under the H1, and the hero's
+ * measured job is to put the headline and the search box on screen fast — eighteen chips
+ * would run to nine rows on a phone and push the search control far below the fold. The
+ * rest of the list is one scroll away in "Where travelers go", which is a grid built for it.
  *
- * Raise this if the whole list really should be in the hero; it is the only number to change.
+ * SIX, because the chips are laid out in a fixed grid: three columns from `md` up, two
+ * below it. Six fills both exactly — two tidy rows on a desktop, three on a phone, with no
+ * short final row. Any count that is not a common multiple of 2 and 3 leaves a ragged
+ * last row, so change this in steps of six.
  */
-export const HERO_CHIP_COUNT = 8;
+export const HERO_CHIP_COUNT = 6;

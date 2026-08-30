@@ -98,16 +98,45 @@ export function Hero({ chips, countries }) {
               ) : null}
               <div className="mt-7 flex flex-col items-start gap-4 min-[360px]:mt-8 min-[360px]:gap-5">
                 <HeroSearch countries={countries} />
-                <div className="flex flex-wrap items-center gap-2">
+                {/*
+                  A fixed grid, not a wrapping flex row. Wrapping sized each chip to its
+                  own content, so the rows came out ragged and no two column edges lined
+                  up. Two columns on a phone and three from `md` gives equal cells and a
+                  straight right edge; `HERO_CHIP_COUNT` is six so both fill exactly.
+
+                  [MEASURED] The name and the price CANNOT share a line here, at any
+                  viewport. A grid track is a fixed width where the old flex chip sized
+                  itself to its content, and the price is the one part that must never be
+                  clipped, so it holds its ~55px while the name absorbs the shortfall.
+                  At 1440 the cell is 160px and the name was left 37px of it — "Saudi
+                  Arabia" needs 85px, so every one of the six truncated. At 375 the cell is
+                  134.5px and it is worse.
+
+                  So the price sits on its own line. That buys the name the full cell width
+                  and, as a bonus, reads as a price under a label rather than a fragment
+                  trailing a clipped country name.
+
+                  The name WRAPS rather than truncating. [MEASURED] at 320px the cell is
+                  111px and "Saudi Arabia" needs 85px against 73px available, so with
+                  `truncate` it read "Saudi Arab…". A clipped country name is the one thing
+                  in this chip a traveller cannot afford to misread, and it is also the
+                  failure mode that returns the moment a longer name is added to
+                  `FEATURED_SLUGS`. Wrapping degrades to a taller chip instead, which grid
+                  absorbs by equalising the row — no overflow at any width, ever.
+                */}
+                <div className="grid w-full grid-cols-2 gap-2 md:grid-cols-3">
                   {chips.map((c) => (
                     <Link
                       key={c.slug}
                       href={`/esim/${c.slug}`}
-                      className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-border bg-muted px-4 text-sm font-medium text-foreground transition-colors hover:bg-card hover:shadow-l2"
+                      className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl border border-border bg-muted px-2 py-2 text-sm font-medium text-foreground transition-colors hover:bg-card hover:shadow-l2 sm:px-3"
                     >
-                      <CountryFlag country={c} /> {c.name}
+                      <span className="flex min-w-0 max-w-full items-center gap-1.5">
+                        <CountryFlag country={c} />
+                        <span className="min-w-0 text-center">{c.name}</span>
+                      </span>
                       {c.perDayFrom ? (
-                        <span className="font-semibold text-primary">
+                        <span className="text-xs font-semibold text-primary">
                           <Price usd={c.perDayFrom} exact />/d
                         </span>
                       ) : null}
