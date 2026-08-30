@@ -149,18 +149,19 @@ class Command(BaseCommand):
             ))
 
     def _silence_notifications(self):
-        """Stop the demo's confirmation and QR emails from ever being attempted.
+        """Belt-and-braces sweep for demo notifications left sendable by an older run.
 
-        Provisioning queues a notification per eSIM, exactly as it should — but every
-        address in this scenario is `@example.com`, a reserved domain that accepts no
-        mail. Left queued, the worker would hand two hundred guaranteed-undeliverable
-        messages to Resend, and a burst of hard bounces is how a sending domain's
-        reputation is damaged. The real customers' order confirmations go out through
-        that same domain.
+        The real guarantee lives at creation: `queue_notification` records anything
+        addressed to a reserved domain as `cancelled`, so the worker never sees it.
 
-        Marked `cancelled` rather than deleted: the rows are the evidence that the demo
-        deliberately sent nothing, and deleting them would leave an eSIM whose delivery
-        has no record either way.
+        [MEASURED] This sweep used to BE the mechanism, and it was racy — it runs once at
+        the end, but the worker polls every two seconds and had already claimed one of
+        the 108 travellers into `processing`. That message made five real attempts and
+        collected five 422s from Resend before anyone looked. A post-hoc filter on
+        ("queued", "retrying") cannot close a window that opens while orders are still
+        being written; deciding at creation has no window at all.
+
+        Kept because rows written before that fix may still be sitting queued.
         """
         silenced = Notification.objects.filter(
             status__in=("queued", "retrying"),

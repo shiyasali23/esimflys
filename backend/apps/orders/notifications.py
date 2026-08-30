@@ -20,7 +20,49 @@ TEMPLATES = {
 }
 
 
+#: Domains reserved by RFC 2606 and RFC 6761. Mail to them cannot be delivered by
+#: anybody, ever — they exist precisely so documentation and test data have addresses
+#: that are guaranteed not to reach a real person.
+RESERVED_TLDS = (".test", ".example", ".invalid", ".localhost")
+RESERVED_DOMAINS = ("example.com", "example.net", "example.org")
+
+
+def is_undeliverable(recipient):
+    """Whether this address is one nobody can ever receive mail at."""
+    address = str(recipient or "").strip().lower()
+    local, _, domain = address.rpartition("@")
+    # Anything that is not `something@something` cannot be mailed. This also covers a
+    # string with no "@" at all: `rpartition` puts the whole string in `domain` and
+    # leaves `local` empty when the separator is missing.
+    if not local or not domain:
+        return True
+    if domain.endswith(RESERVED_TLDS):
+        return True
+    # Subdomains are reserved too: `sub.example.com` is as undeliverable as
+    # `example.com`. Matched with a leading dot so `myexample.com` — a domain somebody
+    # may really own — is not caught by it.
+    return domain in RESERVED_DOMAINS or any(
+        domain.endswith(f".{reserved}") for reserved in RESERVED_DOMAINS
+    )
+
+
 def queue_notification(*, template_code, recipient, idempotency_key, user=None, order=None, esim_profile=None):
+    """Queue one message, unless the address is one that cannot receive mail.
+
+    A reserved address is recorded as `cancelled` rather than `queued`, so it is never
+    handed to the provider. Sending to it is not a failure that might succeed on retry —
+    it is a guaranteed hard bounce, and a burst of those is how a sending domain's
+    reputation is damaged for every real customer using it.
+
+    [MEASURED] The demo seeder writes ~108 `@example.com` travellers. Suppressing them
+    after the run was racy: the worker polls every two seconds and had already claimed one
+    into `processing`, which then made FOUR real attempts and collected four 422s from
+    Resend before anyone looked. Deciding at creation removes the window entirely.
+
+    The row is still written. An eSIM whose delivery has no record at all is worse than
+    one recorded as deliberately not sent.
+    """
+    undeliverable = is_undeliverable(recipient)
     notification, _ = Notification.objects.get_or_create(
         idempotency_key=idempotency_key,
         defaults={
@@ -30,7 +72,12 @@ def queue_notification(*, template_code, recipient, idempotency_key, user=None, 
             "order": order,
             "esim_profile": esim_profile,
             "channel": "email",
-            "status": "queued",
+            "status": "cancelled" if undeliverable else "queued",
+            "failure_message": (
+                "Reserved address (RFC 2606) — not deliverable, never sent."
+                if undeliverable
+                else None
+            ),
         },
     )
     return notification
