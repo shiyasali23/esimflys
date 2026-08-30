@@ -49,6 +49,16 @@ export const metadata = {
   },
   description: SITE.description,
   robots: { index: true, follow: true },
+  /*
+    Search Console ownership. Next renders this as
+    <meta name="google-site-verification" content="..."> in <head>.
+
+    Not a secret — the token is public by design, it is served in the HTML of every page
+    and only proves control of this site. Committed so the verification survives redeploys;
+    Google un-verifies a property if the proof disappears, and a static export rebuilds the
+    <head> on every deploy, so this cannot live as a one-off manual edit.
+  */
+  verification: { google: "CQx5ssKp8zPSX9VGwlcR71v3iwzy3RmZdYiH0sCl_eU" },
   openGraph: {
     type: "website",
     siteName: SITE.name,
