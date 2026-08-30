@@ -61,14 +61,20 @@ export function Hero({ chips, countries }) {
             */}
             <div className="min-w-0">
               {/*
-                `items-start` and a balanced wrap. The label is 38 characters of tracked
-                caps — it cannot fit one line on any phone, so it always wraps, and with
-                `items-center` the shield centred itself against two lines while the
-                greedy wrap left "NUMBER" alone on the second. Balanced, it breaks after
-                the separator, and the icon sits on the first line where it reads as a
-                prefix rather than a bullet.
+                Hidden below `sm`. The label is 38 characters of tracked caps that cannot
+                fit one line on any phone, so it always wrapped to two — roughly 60px of
+                the scarcest space on the page, spent on claims the viewer is about to
+                read anyway: "No roaming fees" and "Keep your own number" are the first
+                two items in the TrustTicker immediately below, from `content/site.json`.
+                Nothing is lost on a phone; the headline and the search box move up.
+
+                From `sm` it returns, and `items-start` + a balanced wrap still matter
+                there: with `items-center` the shield centred itself against two lines
+                while the greedy wrap left "NUMBER" alone on the second. Balanced, it
+                breaks after the separator and the icon sits on the first line, reading
+                as a prefix rather than a bullet.
               */}
-              <span className="inline-flex max-w-full items-start gap-2 text-balance rounded-3xl bg-secondary-container px-3.5 py-1.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.06em] text-on-secondary-container min-[360px]:rounded-full min-[360px]:px-4 min-[360px]:text-label-caps">
+              <span className="hidden max-w-full items-start gap-2 text-balance rounded-3xl bg-secondary-container px-3.5 py-1.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.06em] text-on-secondary-container min-[360px]:rounded-full min-[360px]:px-4 min-[360px]:text-label-caps sm:inline-flex">
                 <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
                 No roaming fees · Keep your own number
               </span>
@@ -79,7 +85,7 @@ export function Hero({ chips, countries }) {
                 One step down at the narrowest widths, and nothing changes on a normal
                 phone.
               */}
-              <h1 className="mt-4 max-w-3xl font-display text-[30px] font-bold uppercase leading-[1.05] text-foreground min-[360px]:mt-5 min-[360px]:text-4xl sm:text-5xl md:text-6xl">
+              <h1 className="max-w-3xl font-display text-[30px] font-bold uppercase leading-[1.05] text-foreground min-[360px]:text-4xl sm:mt-5 sm:text-5xl md:text-6xl">
                 {hero.titleLines.map((line) => (
                   <span
                     key={line}
