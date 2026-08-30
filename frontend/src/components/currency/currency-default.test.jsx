@@ -4,6 +4,8 @@ import { render, screen } from "@testing-library/react";
 import { NoFlashCurrencyScript } from "./no-flash-script";
 import { CurrencySelector } from "./currency-selector.client";
 import { RatesProvider } from "./rates-provider.client";
+import { DEFAULT_DISPLAY_CURRENCY } from "@/config/currencies";
+import shipped from "@/data/rates.json";
 
 /** Run the inline script exactly as the browser would, and read what it decided. */
 function resolve({ offered, cookie = "", language = "en-US", timeZone = "UTC" }) {
@@ -28,11 +30,17 @@ function resolve({ offered, cookie = "", language = "en-US", timeZone = "UTC" })
 afterEach(() => document.documentElement.removeAttribute("data-currency"));
 
 describe("default display currency", () => {
-  it("defaults to INR when the backend quotes it", () => {
-    expect(resolve({ offered: ["USD", "INR"], language: "en" })).toBe("INR");
+  /**
+   * Asserted against the CONSTANT, not a literal. These tests are about the mechanism —
+   * that the last step in the chain is reached and applied — and hard-coding the value
+   * made four of them fail as a unit the moment the default legitimately moved, which
+   * says nothing about whether the fallback still works.
+   */
+  it("applies DEFAULT_DISPLAY_CURRENCY when no signal is recognised", () => {
+    expect(resolve({ offered: ["USD", "INR"], language: "en" })).toBe(DEFAULT_DISPLAY_CURRENCY);
   });
 
-  it("falls back to USD when INR is not quoted", () => {
+  it("falls back to USD when the default itself is not quoted", () => {
     expect(resolve({ offered: ["USD"], language: "en" })).toBe("USD");
   });
 
@@ -74,7 +82,7 @@ describe("default display currency", () => {
   it("falls back to the default when neither signal is recognised", () => {
     expect(
       resolve({ offered: ["USD", "INR"], language: "xx", timeZone: "Africa/Lagos" }),
-    ).toBe("INR");
+    ).toBe(DEFAULT_DISPLAY_CURRENCY);
   });
 
   /**
@@ -83,9 +91,9 @@ describe("default display currency", () => {
    * remaining step below the timezone is the default.
    */
   it("ignores a detected currency the backend is not quoting", () => {
-    expect(
-      resolve({ offered: ["USD", "INR"], language: "en", timeZone: "Europe/Berlin" }),
-    ).toBe("INR");
+    const got = resolve({ offered: ["USD", "INR"], language: "en", timeZone: "Europe/Berlin" });
+    expect(got).not.toBe("EUR");
+    expect(got).toBe(DEFAULT_DISPLAY_CURRENCY);
   });
 
   /** With a usable locale below it, an unquoted timezone falls through to that instead. */
@@ -100,7 +108,51 @@ describe("default display currency", () => {
   });
 
   it("ignores a cookie naming a currency no longer quoted", () => {
-    expect(resolve({ offered: ["USD", "INR"], cookie: "cur=EUR", language: "en" })).toBe("INR");
+    // The case that matters after a withdrawal: a returning visitor who picked EUR back
+    // when it was offered must not keep being shown a price nobody will charge.
+    const got = resolve({ offered: ["USD", "INR"], cookie: "cur=EUR", language: "en" });
+    expect(got).not.toBe("EUR");
+    expect(got).toBe(DEFAULT_DISPLAY_CURRENCY);
+  });
+});
+
+/**
+ * These run against what is actually SHIPPED — the committed `rates.json` and the real
+ * constant — rather than a hand-written `offered` list. Every test above passes a list in
+ * by hand, so all of them stayed green while the deployed pairing was wrong.
+ *
+ * [MEASURED] Trimming `rates.json` from nine currencies to two, with the default still
+ * "INR", resolved Germany, London, Dubai, Tokyo AND Riyadh to INR: their own signals no
+ * longer matched anything quoted, so every one of them fell through to the default. The
+ * currency on screen is the currency Stripe charges, so that bills a card in Riyadh in
+ * rupees. Withdrawing currencies re-opens, from underneath, the same hole the precedence
+ * fix closed from above.
+ */
+describe("the shipped table and default, together", () => {
+  const OFFERED = Object.keys(shipped.rates);
+
+  it("only offers what the backend quotes", () => {
+    expect(OFFERED).toEqual(["USD", "INR"]);
+  });
+
+  it("the default is a currency that is actually quoted", () => {
+    // Otherwise the last step of the chain is dead and everyone unmatched gets BASE by
+    // accident rather than by decision.
+    expect(OFFERED).toContain(DEFAULT_DISPLAY_CURRENCY);
+  });
+
+  it.each([
+    ["Germany", "de-DE", "Europe/Berlin"],
+    ["London", "en-GB", "Europe/London"],
+    ["Dubai", "ar-AE", "Asia/Dubai"],
+    ["Riyadh", "ar-SA", "Asia/Riyadh"],
+    ["Tokyo", "ja-JP", "Asia/Tokyo"],
+  ])("does not bill a visitor in %s in rupees", (_name, language, timeZone) => {
+    expect(resolve({ offered: OFFERED, language, timeZone })).toBe("USD");
+  });
+
+  it("still gives an Indian visitor INR, so UPI survives", () => {
+    expect(resolve({ offered: OFFERED, language: "en-US", timeZone: "Asia/Kolkata" })).toBe("INR");
   });
 });
 

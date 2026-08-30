@@ -3,18 +3,11 @@
     "source": "GET /api/v1/catalog/rates/",
     "generatedBy": "scripts/generate-catalog.mjs",
     "generatedAt": null,
-    "note": "Verified 2026-08-14: all nine match GET /api/v1/catalog/rates/ exactly. These are now CHARGING rates, not display-only \u2014 checkout sends the on-screen currency, so what this table renders is what Stripe bills. Proven end to end: a 10 GB Saudi plan renders \u20b91,359.00 here and its PaymentIntent is 135900 INR. Keep in step with the backend: fx.current_rates() and fx.latest_rate() both resolve through latest_rate, so a stored FxRate row beats settings.FX_RATES in BOTH, and a change there needs `npm run catalog` here or the storefront quotes a price it will not charge."
+    "note": "Trimmed 2026-08-30 to the two currencies the backend actually quotes. It held nine (USD EUR GBP INR AED SAR JPY AUD CAD), verified against the API on 2026-08-14, but the backend has since withdrawn seven and now answers {\"INR\":\"88\",\"USD\":\"1\"}. These are CHARGING rates, not display-only: checkout sends the on-screen currency, so a table richer than the backend's does not offer more choice, it quotes prices the backend will not honour. That is what put 'Prices are shown in EUR, but this order is charged in USD' on the payment page. Restoring a currency here means restoring it on the BACKEND first and then running `npm run catalog`; adding a row by hand re-creates the same mismatch. fx.current_rates() and fx.latest_rate() both resolve through latest_rate, so a stored FxRate row beats settings.FX_RATES in both."
   },
   "rates": {
     "USD": 1,
-    "EUR": 0.92,
-    "GBP": 0.79,
-    "INR": 88,
-    "AED": 3.67,
-    "SAR": 3.75,
-    "JPY": 157,
-    "AUD": 1.52,
-    "CAD": 1.36
+    "INR": 88
   },
   "buffer": 1.03
 }

@@ -18,19 +18,30 @@
 export const BASE_CURRENCY = "USD";
 
 /**
- * What a visitor sees when nothing better is known — deliberately NOT `BASE_CURRENCY`.
+ * What a visitor sees when nothing better is known.
  *
- * The two answer different questions. `BASE_CURRENCY` is what the order is charged in
- * and what the structured data declares; it is money, and it does not move. This is a
- * display preference for a visitor whose locale tells us nothing useful, and India is
- * the primary market.
+ * USD, and it has to be. This is the LAST step in `no-flash-script`'s precedence — the
+ * answer for a visitor whose locale and timezone tell us nothing we can quote — so it is
+ * the value everyone unmatched receives, not a mild preference.
  *
- * It is a *preference*, not a guarantee: the backend withdraws a currency whose rate
- * has gone stale, and `no-flash-script` falls back to `BASE_CURRENCY` when this one is
- * not being quoted. Honouring it blindly would leave an empty gap where the price
- * should be, because the CSS only reveals a span that was actually rendered.
+ * [MEASURED] It was "INR", chosen when the backend quoted nine currencies and India was
+ * the primary market. That was safe only because a German visitor's own signals resolved
+ * to EUR and overrode it. The backend now quotes USD and INR alone, so every European,
+ * Gulf and East Asian signal fails the `ok()` gate and falls through to this line.
+ * Simulating the deployed script across seven locales: with "INR" here, Germany, London,
+ * Dubai, Tokyo AND Riyadh all resolve to INR. With "USD", each gets USD and an Indian
+ * visitor still gets INR from `Asia/Kolkata`.
+ *
+ * That is not cosmetic. Checkout sends the on-screen currency, so serving INR to a
+ * shopper in Riyadh does not merely look wrong — it bills their card in rupees. This is
+ * the same failure the file's history already records once, where DEFAULT sat above the
+ * detection steps and served INR to everyone on earth; withdrawing currencies re-opens
+ * the identical hole from underneath.
+ *
+ * Restore "INR" here ONLY together with a backend that quotes EUR, GBP, AED, SAR and JPY
+ * again, so the detection steps have something to override it with.
  */
-export const DEFAULT_DISPLAY_CURRENCY = "INR";
+export const DEFAULT_DISPLAY_CURRENCY = "USD";
 
 /**
  * `roundingStep` and `charmOffset` are in MINOR units, which is why they differ so
