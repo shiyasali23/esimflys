@@ -273,11 +273,32 @@ describe("where travellers go", () => {
     expect(link.getAttribute("href")).toBe("/esim/saudi-arabia");
   });
 
-  it("badges only the countries the catalogue flagged", () => {
+  /**
+   * Only `best_value` is labelled now. "Popular" sat on three of the first five cards,
+   * so the thing meant to single a destination out was the grid's most repeated element
+   * and told a reader nothing once three neighbours wore it too.
+   */
+  it("labels a best-value destination", () => {
+    const withBestValue = COUNTRIES.map((c) =>
+      c.slug === "thailand" ? { ...c, homepageBadge: "best_value" } : c,
+    );
+    render(<WhereTravelersGo destinations={withBestValue} />);
+
+    const thailand = screen.getAllByRole("link", { name: /Thailand/ })[0];
+    expect(within(thailand).getByText(/best value/i)).toBeTruthy();
+  });
+
+  it("no longer labels anything Popular", () => {
+    // COUNTRIES flags Saudi Arabia as `homepageBadge: "popular"`, so this fixture
+    // genuinely exercises the branch rather than passing for want of data.
+    expect(COUNTRIES.some((c) => c.homepageBadge === "popular")).toBe(true);
     render(<WhereTravelersGo destinations={COUNTRIES} />);
 
-    const saudi = screen.getAllByRole("link", { name: /Saudi Arabia/ })[0];
-    expect(within(saudi).getByText(/popular/i)).toBeTruthy();
+    expect(screen.queryByText(/popular/i)).toBeNull();
+  });
+
+  it("leaves an unflagged destination unlabelled", () => {
+    render(<WhereTravelersGo destinations={COUNTRIES} />);
 
     const iceland = screen.getAllByRole("link", { name: /Iceland/ })[0];
     expect(within(iceland).queryByText(/popular|best value/i)).toBeNull();

@@ -22,6 +22,8 @@
  *
  * ORDER IS INTENTIONAL — the array order is the display order.
  *
+ * REMOVED 2026-08-30 by request: qatar, oman, nepal, cambodia.
+ *
  * NOTE: Armenia was requested for this list and is deliberately absent. It does not exist
  * in the catalogue at all — no country record and no plans, verified against
  * `data/catalog.json` (68 countries, none with iso2 "AM"). It has to be added to the
@@ -42,11 +44,7 @@ export const FEATURED_SLUGS = [
   "vietnam",
   "sri-lanka",
   "turkey",
-  "qatar",
-  "oman",
   "egypt",
-  "nepal",
-  "cambodia",
 ];
 
 /**
