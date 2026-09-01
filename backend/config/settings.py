@@ -268,6 +268,30 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="eSIMFlys <no-reply@esimflys.com>")
+
+#: Where a customer's reply actually lands.
+#
+# DEFAULT_FROM_EMAIL is a no-reply address, so every transactional email sets Reply-To to
+# this instead. Without it, hitting Reply — the first thing anyone does when an eSIM will
+# not connect abroad — writes to a mailbox nobody reads, and an unanswered question about
+# a card charge is how a chargeback starts.
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", default="work4estolondon@gmail.com")
+
+#: Whether the eSIM email carries the activation code and QR, or only a link to fetch them.
+#
+# This REVERSES an earlier decision, deliberately and reversibly. The eSIM email used to
+# withhold both and say "sign in to your eSIMFlys account to view and install", which is
+# safer in the abstract and unusable in practice: the customer has no mobile data until
+# this eSIM works, so the one moment they need these details is the moment they cannot
+# load a website to get them. It sent travellers to a login screen they could not reach.
+#
+# The security it bought was thin. The LPA string is single use and dies on install, and
+# the threat it guards against — someone reading the customer's inbox — also gets a
+# password reset from that same inbox, so the account gate stops nobody who is already
+# there. Every major competitor emails the QR for this reason.
+#
+# Set to False to restore the old behaviour; `tests_email_quality` covers both branches.
+EMAIL_INCLUDE_ACTIVATION = env.bool("EMAIL_INCLUDE_ACTIVATION", default=True)
 # Used by ResendEmailBackend. The SMTP settings above stay readable so a deployment
 # can fall back to EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend on a host
 # that does allow SMTP, without any code change.

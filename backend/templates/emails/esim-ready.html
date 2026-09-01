@@ -1,34 +1,92 @@
-<!doctype html>
-<html>
-  <body>
-    <h1>Your eSIM is ready</h1>
-    <p>Your eSIM for order <strong>{{ order_number }}</strong> has been provisioned.</p>
-    {% if esim %}
-    <p>Plan: {{ esim.order_item.product_name }} ({{ esim.order_item.country_name }}).</p>
-    {% endif %}
-    <p>
-      For your security, your QR code and activation details are not included in this email.
-      Please sign in to your eSIMFlys account to view and install your eSIM.
-    </p>
-    {# The two facts that decide whether the eSIM works. A real customer installed
-       correctly, had no internet for an hour and concluded the product was broken:
-       the profile was on the phone (smdpStatus INSTALLATION, device iPhone 13) and had
-       never attached to a network, because these plans roam on a foreign IMSI and Data
-       Roaming was off. Enabling it took the same eSIM to ENABLED / IN_USE immediately.
-       The single-use line stops the rescan that produces iOS's alarming "Unable to
-       Activate eSIM". This email is what someone reads after closing the page. #}
-    <h2>Two things to know before you install</h2>
-    <ul>
-      <li>
-        <strong>Turn on Data Roaming</strong> for the eSIM line once it is installed
-        {% if esim %}and you are in {{ esim.order_item.country_name }}{% endif %}.
-        These plans connect through a local partner network, so without Data Roaming the
-        eSIM installs correctly but never gets a signal.
-      </li>
-      <li>
-        <strong>Your QR code works once.</strong> After it installs, scanning it again
-        will fail — that is normal and does not mean anything is wrong.
-      </li>
-    </ul>
-  </body>
-</html>
+{% extends "emails/_base.html" %}
+
+{% block preheader %}Your {{ plan_name }} eSIM is ready — install it before you fly, and turn on Data Roaming when you land.{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 8px;font-size:24px;line-height:30px;font-weight:700;color:#0f172a;">Your eSIM is ready</h1>
+<p style="margin:0 0 24px;font-size:15px;line-height:23px;color:#475569;">
+  Order <strong style="color:#0f172a;">{{ order_number }}</strong>{% if plan_name %} · {{ plan_name }}{% endif %}
+</p>
+
+{% if plan_name %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+  <tr><td style="padding:16px 18px;font-size:14px;line-height:22px;color:#475569;">
+    <strong style="color:#0f172a;">{{ plan_name }}</strong>{% if country_name %}<br>{{ country_name }}{% endif %}
+    {% if data_label %}<br>{{ data_label }}{% endif %}{% if validity_label %} · {{ validity_label }}{% endif %}
+  </td></tr>
+</table>
+{% endif %}
+
+{% comment %}
+The activation details are IN the email now, not behind a sign-in.
+
+The previous version said "Please sign in to your eSIMFlys account to view and install
+your eSIM" — for security. That reasoning inverts on this product: the customer has no
+mobile data until this eSIM works, so the one moment they need these details is the one
+moment they cannot reach a website to get them. It sent travellers to a login screen
+they could not load.
+
+The manual code is printed as text and the QR only as an image, in that order and not
+the reverse. Every major client blocks remote images by default, so a QR-only email is
+blank for most recipients on first open; the text string always renders, and iOS
+"Enter Details Manually" and Android's manual entry both take exactly this LPA string.
+{% endcomment %}
+{% if activation_code %}
+<h2 style="margin:0 0 10px;font-size:17px;line-height:24px;font-weight:700;color:#0f172a;">Install your eSIM</h2>
+<p style="margin:0 0 14px;font-size:15px;line-height:23px;color:#475569;">
+  Install over Wi-Fi <strong style="color:#0f172a;">before you travel</strong>. Scan this QR code with another device, or copy the code below into your phone's manual entry screen.
+</p>
+
+{% if qr_code_url %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;">
+  <tr><td align="center" style="padding:14px;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:10px;">
+    <img src="{{ qr_code_url }}" width="180" height="180" alt="Activation QR code for order {{ order_number }}"
+         style="display:block;border:0;width:180px;height:180px;">
+  </td></tr>
+</table>
+{% endif %}
+
+<p style="margin:0 0 6px;font-size:13px;line-height:20px;color:#64748b;">Manual activation code</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">
+  <tr><td style="padding:12px 14px;background-color:#0f172a;border-radius:10px;">
+    <span style="font-family:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;line-height:20px;color:#e2e8f0;word-break:break-all;">{{ activation_code }}</span>
+  </td></tr>
+</table>
+{% else %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+  <tr><td style="background-color:#f97316;border-radius:999px;">
+    <a href="{{ site_url }}/orders/lookup" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">View your eSIM</a>
+  </td></tr>
+</table>
+{% endif %}
+
+{% comment %}
+The two facts that decide whether the eSIM works at all.
+
+A real customer installed correctly, had no internet for an hour, and concluded the
+product was broken: the profile was on the phone (smdpStatus INSTALLATION, iPhone 13)
+and had never attached to a network, because these plans roam on a foreign IMSI and
+Data Roaming was off. Enabling it took the same eSIM to ENABLED / IN_USE immediately.
+The single-use line pre-empts the rescan that produces iOS's alarming "Unable to
+Activate eSIM".
+
+This block used to be written with {# #}, which in Django is a SINGLE-LINE comment. As
+a multi-line block it is not a comment at all — it rendered verbatim into the email, and
+customers were reading this engineering note as body copy. That is the bug this rewrite
+starts from; see esim-ready template tests.
+{% endcomment %}
+<h2 style="margin:0 0 10px;font-size:17px;line-height:24px;font-weight:700;color:#0f172a;">Two things to know</h2>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 8px;background-color:#eff6ff;border:1px solid #dbeafe;border-radius:10px;">
+  <tr><td style="padding:14px 18px;font-size:14px;line-height:22px;color:#1e3a8a;">
+    <strong>Turn on Data Roaming</strong> for the eSIM line once it is installed{% if country_name %} and you are in {{ country_name }}{% endif %}.
+    These plans connect through a local partner network, so with Data Roaming off the eSIM
+    installs correctly but never gets a signal.
+  </td></tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 4px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+  <tr><td style="padding:14px 18px;font-size:14px;line-height:22px;color:#475569;">
+    <strong style="color:#0f172a;">Your QR code works once.</strong> After it installs, scanning it again
+    will fail — that is normal and does not mean anything is wrong.
+  </td></tr>
+</table>
+{% endblock %}

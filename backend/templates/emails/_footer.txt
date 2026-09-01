@@ -1,0 +1,10 @@
+
+--
+Questions about this order? Reply to this email, or write to {{ support_email }}.
+A real person answers.
+
+Find your order: {{ site_url }}/orders/lookup
+Help centre:     {{ site_url }}/help
+
+eSIMFlys - travel eSIM data in 60+ countries.
+This is a transactional message about your order, not marketing.

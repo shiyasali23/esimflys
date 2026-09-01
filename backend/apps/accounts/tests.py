@@ -214,7 +214,9 @@ class AgencyPasswordResetPolicyTests(APITestCase):
         OrganizationMember.objects.create(
             organization=self.agency, user=self.agent, role="owner", status="active"
         )
-        User.objects.create_user(email="shopper@example.com", password="CustPass!2345")
+        # NOT @example.com: mail to a reserved domain is refused before sending, which
+        # is correct and would make this assert nothing about reset policy.
+        User.objects.create_user(email="shopper@gmail.com", password="CustPass!2345")
 
     def test_agency_self_service_reset_sends_no_email(self):
         from django.core import mail
@@ -242,7 +244,7 @@ class AgencyPasswordResetPolicyTests(APITestCase):
         from django.core import mail
 
         response = self.client.post(
-            "/api/v1/auth/password-reset/", {"email": "shopper@example.com"}, format="json"
+            "/api/v1/auth/password-reset/", {"email": "shopper@gmail.com"}, format="json"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 1)

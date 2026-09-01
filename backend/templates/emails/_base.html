@@ -1,0 +1,86 @@
+{% comment %}
+The shell every transactional email renders into.
+
+TABLES, and inline styles only. Not a stylistic choice: Outlook renders through Word's
+HTML engine, which ignores float, flex and grid, and Gmail strips <style> blocks in
+several of its clients. A <div> layout that looks right in a browser collapses to a
+single unstyled column there — which is what the previous emails were, since they had
+no styling at all and relied on the client's default <h1> and <p>.
+
+Every colour is written out rather than referenced, because there is no CSS variable
+support to rely on and no stylesheet to load.
+{% endcomment %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ email_title|default:"eSIMFlys" }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+{% comment %}
+The preheader: the grey line a client shows next to the subject in the inbox list.
+Left empty, Gmail scrapes the first visible text instead, which was "Your eSIM for
+order ESF-… has been provisioned" — the subject again. Hidden with zero height AND
+zero opacity, then padded with entities so no other body text is pulled in after it.
+{% endcomment %}
+<div style="display:none;font-size:1px;color:#f1f5f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{% block preheader %}{% endblock %}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f1f5f9;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;">
+
+        <tr>
+          <td align="left" style="padding:0 4px 16px;">
+            <a href="{{ site_url }}" style="text-decoration:none;">
+              <img src="{{ site_url }}/icons/icon-192.png" width="36" height="36" alt="eSIMFlys"
+                   style="vertical-align:middle;border:0;border-radius:8px;display:inline-block;">
+              <span style="vertical-align:middle;padding-left:10px;font-size:19px;font-weight:700;letter-spacing:-0.3px;color:#2563eb;">eSIMFlys</span>
+            </a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:32px 28px;">
+            {% block content %}{% endblock %}
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:20px 4px 0;font-size:13px;line-height:20px;color:#64748b;">
+            {% comment %}
+            A real reply-to address, said out loud. The previous emails came from
+            no-reply@ and named no way to reach anybody, so a customer with a problem
+            had nowhere to go but the card statement — which is how a support question
+            becomes a chargeback.
+            {% endcomment %}
+            <p style="margin:0 0 10px;">
+              Questions about this order? Reply to this email, or write to
+              <a href="mailto:{{ support_email }}" style="color:#2563eb;text-decoration:underline;">{{ support_email }}</a>.
+              A real person answers.
+            </p>
+            <p style="margin:0 0 10px;">
+              <a href="{{ site_url }}/orders/lookup" style="color:#64748b;text-decoration:underline;">Find your order</a>
+              &nbsp;·&nbsp;
+              <a href="{{ site_url }}/help" style="color:#64748b;text-decoration:underline;">Help centre</a>
+              &nbsp;·&nbsp;
+              <a href="{{ site_url }}/supported-devices" style="color:#64748b;text-decoration:underline;">Supported devices</a>
+            </p>
+            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:18px;">
+              eSIMFlys — travel eSIM data in 60+ countries.<br>
+              You are receiving this because you placed an order with us. This is a
+              transactional message about that order, not marketing.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

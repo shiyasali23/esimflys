@@ -1,0 +1,10 @@
+YOUR REFUND HAS BEEN PROCESSED
+
+We've refunded your eSIMFlys order {{ order_number }}.
+{% if refund_total %}
+Refunded: {{ refund_total }}
+{% endif %}
+It goes back to your original payment method. Most banks show it within 5-10
+working days; the exact timing is theirs, not ours. If it hasn't appeared after
+that, reply to this email with your order number and we'll chase it.
+{% include "emails/_footer.txt" %}

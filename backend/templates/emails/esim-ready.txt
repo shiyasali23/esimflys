@@ -1,0 +1,28 @@
+YOUR ESIM IS READY
+{% if plan_name %}
+{{ plan_name }}{% if country_name %} - {{ country_name }}{% endif %}{% if data_label %}
+{{ data_label }}{% if validity_label %} - {{ validity_label }}{% endif %}{% endif %}
+{% endif %}
+Order {{ order_number }}
+{% if activation_code %}
+INSTALL YOUR ESIM
+Install over Wi-Fi BEFORE you travel.
+
+Manual activation code (paste this into your phone's manual entry screen):
+
+  {{ activation_code }}
+{% if qr_code_url %}
+QR code: {{ qr_code_url }}
+{% endif %}{% else %}
+View your eSIM: {{ site_url }}/orders/lookup
+{% endif %}
+TWO THINGS TO KNOW
+
+1. Turn on Data Roaming for the eSIM line once it is installed{% if country_name %} and you
+   are in {{ country_name }}{% endif %}. These plans connect through a local partner
+   network, so with Data Roaming off the eSIM installs correctly but never gets
+   a signal.
+
+2. Your QR code works once. After it installs, scanning it again will fail -
+   that is normal and does not mean anything is wrong.
+{% include "emails/_footer.txt" %}

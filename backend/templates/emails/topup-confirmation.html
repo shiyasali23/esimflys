@@ -1,10 +1,22 @@
-<!doctype html>
-<html>
-  <body>
-    <h1>Your top-up is complete</h1>
-    <p>The data top-up for your eSIM (order <strong>{{ order_number }}</strong>) has been applied.</p>
-    {% if esim %}
-    <p>Your eSIM is ready to keep using — no reinstall needed.</p>
-    {% endif %}
-  </body>
-</html>
+{% extends "emails/_base.html" %}
+
+{% block preheader %}Your data top-up is live — no reinstall needed.{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 8px;font-size:24px;line-height:30px;font-weight:700;color:#0f172a;">Your top-up is live</h1>
+<p style="margin:0 0 20px;font-size:15px;line-height:23px;color:#475569;">
+  The data top-up for order <strong style="color:#0f172a;">{{ order_number }}</strong> has been applied.
+</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;background-color:#eff6ff;border:1px solid #dbeafe;border-radius:10px;">
+  <tr><td style="padding:14px 18px;font-size:14px;line-height:22px;color:#1e3a8a;">
+    <strong>Nothing to install.</strong> The data was added to the eSIM already on your
+    phone — don't scan a QR code again, and don't remove the plan.
+  </td></tr>
+</table>
+
+<p style="margin:0;font-size:15px;line-height:23px;color:#475569;">
+  If your phone still shows no data, toggle Airplane mode once, and check that Data
+  Roaming is still on for the eSIM line.
+</p>
+{% endblock %}

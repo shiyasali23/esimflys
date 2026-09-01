@@ -1,0 +1,13 @@
+THANK YOU FOR YOUR ORDER
+
+Order {{ order_number }} is confirmed.
+{% if items %}
+{% for item in items %}  {{ item.product_name }}{% if item.country_name %} ({{ item.country_name }}){% endif %} - {{ item.line_total }}
+{% endfor %}{% endif %}
+Total paid: {{ total_paid }}
+
+We're preparing your eSIM now. You'll get a second email with your QR code and
+activation details as soon as it's ready - usually within a minute.
+
+Track this order: {{ site_url }}/orders/lookup
+{% include "emails/_footer.txt" %}

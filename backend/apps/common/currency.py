@@ -66,6 +66,40 @@ def is_supported(currency):
     return str(currency or "").upper() in CURRENCY_DECIMALS
 
 
+#: Symbols for the currencies a customer can actually be charged in. Anything absent
+#: falls back to the ISO code, which is correct-but-plain rather than wrong.
+CURRENCY_SYMBOLS = {
+    "USD": "$", "EUR": "\u20ac", "GBP": "\u00a3", "INR": "\u20b9", "JPY": "\u00a5",
+    "AED": "AED ", "SAR": "SAR ", "AUD": "A$", "CAD": "C$", "SGD": "S$",
+}
+
+
+def format_minor(amount_minor, currency):
+    """Minor units -> something a customer can read: 1499 USD becomes "$14.99".
+
+    [MEASURED] The order-confirmation email printed
+    ``Total paid: 1499 USD (minor units)``. A customer who paid $14.99 was shown the
+    integer the database happens to store and the phrase "minor units", which reads
+    either as a 100x overcharge or as a broken system. This is the only place that
+    decision should be made, so no template can invent its own.
+
+    Zero-decimal currencies are handled by `decimals_for`, not assumed: dividing JPY by
+    100 would under-report a yen price by two orders of magnitude.
+    """
+    code = str(currency or BASE_CURRENCY).upper()
+    try:
+        places = decimals_for(code)
+    except UnsupportedCurrency:
+        places = 2
+    amount = (Decimal(int(amount_minor or 0)) / (Decimal(10) ** places)).quantize(
+        Decimal(1).scaleb(-places)
+    )
+    symbol = CURRENCY_SYMBOLS.get(code)
+    if symbol:
+        return f"{symbol}{amount:,.{places}f}"
+    return f"{amount:,.{places}f} {code}"
+
+
 def to_minor_units(amount, currency):
     """Human amount (Decimal/str) -> integer minor units for storage and for Stripe."""
     factor = Decimal(10) ** decimals_for(currency)

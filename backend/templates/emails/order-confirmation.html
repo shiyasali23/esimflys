@@ -1,11 +1,52 @@
-<!doctype html>
-<html>
-  <body>
-    <h1>Thank you for your order</h1>
-    <p>Your eSIMFlys order <strong>{{ order_number }}</strong> is confirmed.</p>
-    {% if order %}
-    <p>Total paid: {{ order.total_minor }} {{ order.currency }} (minor units).</p>
-    {% endif %}
-    <p>We're preparing your eSIM now. You'll get another email as soon as it's ready to install.</p>
-  </body>
-</html>
+{% extends "emails/_base.html" %}
+
+{% block preheader %}We have your order {{ order_number }}. Your eSIM is being prepared and arrives in a second email.{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 8px;font-size:24px;line-height:30px;font-weight:700;color:#0f172a;">Thank you for your order</h1>
+<p style="margin:0 0 24px;font-size:15px;line-height:23px;color:#475569;">
+  Order <strong style="color:#0f172a;">{{ order_number }}</strong> is confirmed.
+</p>
+
+{% if items %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 8px;border:1px solid #e2e8f0;border-radius:10px;">
+  {% for item in items %}
+  <tr>
+    <td style="padding:14px 18px;font-size:14px;line-height:21px;color:#0f172a;{% if not forloop.last %}border-bottom:1px solid #e2e8f0;{% endif %}">
+      <strong>{{ item.product_name }}</strong>
+      {% if item.country_name %}<br><span style="color:#64748b;">{{ item.country_name }}</span>{% endif %}
+    </td>
+    <td align="right" style="padding:14px 18px;font-size:14px;line-height:21px;color:#0f172a;white-space:nowrap;{% if not forloop.last %}border-bottom:1px solid #e2e8f0;{% endif %}">
+      {{ item.line_total }}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% comment %}
+`total_paid` is formatted by `common.currency.format_minor`, never by the template.
+
+[MEASURED] this line used to read "Total paid: {{ order.total_minor }} {{ order.currency }}
+(minor units)", so a customer who paid $14.99 was shown "Total paid: 1499 USD (minor
+units)" — the raw integer the column stores, with the phrase "minor units" beside it. It
+reads as a 100x overcharge.
+{% endcomment %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">
+  <tr>
+    <td style="padding:14px 18px 0;font-size:15px;line-height:22px;font-weight:700;color:#0f172a;">Total paid</td>
+    <td align="right" style="padding:14px 18px 0;font-size:18px;line-height:22px;font-weight:700;color:#0f172a;white-space:nowrap;">{{ total_paid }}</td>
+  </tr>
+</table>
+
+<p style="margin:0 0 20px;font-size:15px;line-height:23px;color:#475569;">
+  We're preparing your eSIM now. You'll get a second email with your QR code and
+  activation details as soon as it's ready — usually within a minute.
+</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="background-color:#2563eb;border-radius:999px;">
+    <a href="{{ site_url }}/orders/lookup" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Track this order</a>
+  </td></tr>
+</table>
+{% endblock %}

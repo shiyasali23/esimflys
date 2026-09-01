@@ -417,7 +417,15 @@ class NotificationTests(TestCase):
         )
         self.assertEqual(Notification.objects.filter(idempotency_key="dup").count(), 1)
 
-    def test_esim_ready_email_excludes_secrets(self):
+    @override_settings(EMAIL_INCLUDE_ACTIVATION=False)
+    def test_esim_ready_email_excludes_secrets_when_withholding_is_configured(self):
+        """The withholding branch, kept reachable and kept tested.
+
+        `EMAIL_INCLUDE_ACTIVATION` now defaults to True, because a traveller has no
+        mobile data until the eSIM works and cannot reach a login screen to fetch the
+        code. This test pins the OFF branch so turning it back off is one env var and
+        still provably withholds both the activation code and the QR payload.
+        """
         cart, _ = services.create_cart(user=None)
         services.add_item(cart, product_code="FR-5GB-30D", quantity=1)
         order = services.checkout(cart_id=cart.id, customer_email="a@b.com")
@@ -434,3 +442,23 @@ class NotificationTests(TestCase):
         )
         self.assertNotIn(credentials["activation_code"], bodies)
         self.assertNotIn(credentials["qr_payload"], bodies)
+
+    @override_settings(EMAIL_INCLUDE_ACTIVATION=True)
+    def test_esim_ready_email_carries_the_activation_code_by_default(self):
+        """The shipped default. Without this the customer is told to sign in to a site
+        they cannot load, because the eSIM they are installing IS their internet."""
+        cart, _ = services.create_cart(user=None)
+        services.add_item(cart, product_code="FR-5GB-30D", quantity=1)
+        order = services.checkout(cart_id=cart.id, customer_email="a@b.com")
+        esim_services.enqueue_provisioning_for_order(order)
+        while esim_services.claim_and_process_one():
+            pass
+        send_pending_notifications()
+
+        profile = EsimProfile.objects.get(order_item__order=order)
+        credentials = esim_services.decrypt_credentials(profile)
+        bodies = "\n".join(
+            message.body + "\n".join(c for c, _ in message.alternatives)
+            for message in mail.outbox
+        )
+        self.assertIn(credentials["activation_code"], bodies)

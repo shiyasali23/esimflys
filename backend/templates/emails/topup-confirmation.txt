@@ -1,0 +1,10 @@
+YOUR TOP-UP IS LIVE
+
+The data top-up for order {{ order_number }} has been applied.
+
+NOTHING TO INSTALL. The data was added to the eSIM already on your phone - don't
+scan a QR code again, and don't remove the plan.
+
+If your phone still shows no data, toggle Airplane mode once, and check that Data
+Roaming is still on for the eSIM line.
+{% include "emails/_footer.txt" %}

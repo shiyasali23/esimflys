@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.utils.encoding import force_bytes, force_str
@@ -12,6 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.orders.notifications import send_password_reset
 from apps.administration.audit import record_audit
 from apps.common.exceptions import InvalidCredentials
 
@@ -110,13 +110,17 @@ class PasswordResetView(APIView):
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
-            send_mail(
-                "eSIMFlys — reset your password",
-                f"Use these values to reset your password.\nuid: {uid}\ntoken: {token}",
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=True,
-            )
+            # This used to be `send_mail` with the body "Use these values to reset your
+            # password.\nuid: MQ\ntoken: c9x8…" — the two raw API values, with no URL,
+            # handed to a customer who had no way to act on them. It also ran with
+            # fail_silently=True, so a send that failed outright looked identical to one
+            # that arrived.
+            #
+            # `send_password_reset` renders the real link the frontend's
+            # /auth/reset-password route reads, through the same shell, plain-text part
+            # and Reply-To as every other email. It logs rather than raises, so the
+            # response stays identical whether or not the address exists.
+            send_password_reset(user=user, uid=uid, token=token)
         return Response(
             {"detail": "If an account exists for that email, reset instructions have been sent."}
         )
