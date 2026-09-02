@@ -8,7 +8,13 @@ Order {{ order_number }}
 INSTALL YOUR ESIM
 Install over Wi-Fi BEFORE you travel.
 
-Manual activation code (paste this into your phone's manual entry screen):
+{% if install_url %}On iPhone (iOS 17.4+), tap to install:
+
+  {{ install_url }}
+
+On Android, or an older iPhone, use this instead.
+
+{% endif %}Manual activation code (paste this into your phone's manual entry screen):
 
   {{ activation_code }}
 {% if qr_code_url %}

@@ -46,6 +46,23 @@ blank for most recipients on first open; the text string always renders, and iOS
 </table>
 {% endif %}
 
+{% if install_url %}
+{% comment %}
+One tap, for the iPhones that support it (iOS 17.4+). Labelled as the iPhone route
+rather than presented as the primary action, because `esimsetup.apple.com` has no A
+record — iOS resolves it inside the OS, and on any other device the same link fails as
+"Server Not Found". The email cannot detect the device, so it says which one this is
+for and keeps the manual code directly beneath as the route that always works.
+{% endcomment %}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;">
+  <tr><td style="background-color:#2563eb;border-radius:999px;">
+    <a href="{{ install_url }}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Install on iPhone</a>
+  </td></tr>
+</table>
+<p style="margin:0 0 20px;font-size:13px;line-height:20px;color:#64748b;">
+  One tap on iPhone (iOS 17.4 or later). On Android, or an older iPhone, use the code below.
+</p>
+{% endif %}
 <p style="margin:0 0 6px;font-size:13px;line-height:20px;color:#64748b;">Manual activation code</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">
   <tr><td style="padding:12px 14px;background-color:#0f172a;border-radius:10px;">

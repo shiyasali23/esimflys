@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import logging
+import re
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -300,7 +301,33 @@ def _credentials(profile):
     except Exception:
         logger.exception("could not decrypt credentials for profile %s", profile.pk)
         return {}
+    payload = creds.get("qr_payload") or creds.get("activation_code")
     return {
         "activation_code": creds.get("activation_code"),
         "qr_code_url": creds.get("qr_code_url"),
+        "install_url": _apple_install_url(payload),
     }
+
+
+#: `LPA:1$<smdp-host>$<matching-id>` — the string an eSIM QR encodes.
+LPA_PATTERN = re.compile(r"^LPA:1\$[^$\s]+\$[^$\s]+$")
+
+
+def _apple_install_url(payload):
+    """Apple's universal link for one-tap eSIM installation, iOS 17.4 and later.
+
+    The base URL is lowercase and the LPA string is appended RAW: every published
+    example does it that way, and an LPA payload contains no character that needs
+    percent-encoding, so encoding would only risk a handler that parses naively.
+
+    Returns None for anything that is not an LPA string. A malformed one produces a
+    link that opens the iOS installer empty — a dead end that reads as a broken
+    product, where the manual code beneath it would have worked.
+
+    `esimsetup.apple.com` has no A record; iOS resolves it inside the OS. On any other
+    device the link therefore fails as "Server Not Found", which is why the email
+    labels it as the iPhone route rather than presenting it as the primary action.
+    """
+    if not payload or not LPA_PATTERN.match(payload):
+        return None
+    return f"https://esimsetup.apple.com/esim_qrcode_provisioning?carddata={payload}"

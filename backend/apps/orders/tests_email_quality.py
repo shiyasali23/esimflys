@@ -155,3 +155,38 @@ class DeliveredMessageShape(TestCase):
         rendered = subject.format(**notifications._context(note))
         self.assertIn("{order_number}", subject, "subject must interpolate the order")
         self.assertNotIn("{", rendered, "subject left an unfilled placeholder")
+
+
+class OneTapInstallLink(TestCase):
+    """Apple's universal link, iOS 17.4+.
+
+    `esimsetup.apple.com` has no A record — iOS resolves it inside the OS — so on any
+    other device the same link dies as "Server Not Found". That is why the email labels
+    it as the iPhone route and keeps the manual code directly beneath it.
+    """
+
+    def test_builds_the_documented_url_with_the_payload_verbatim(self):
+        url = notifications._apple_install_url("LPA:1$rsp.redtea.io$ABC123")
+        self.assertEqual(
+            url,
+            "https://esimsetup.apple.com/esim_qrcode_provisioning?carddata=LPA:1$rsp.redtea.io$ABC123",
+        )
+        self.assertNotIn("%24", url, "the $ must not be percent-encoded")
+        self.assertTrue(url.startswith("https://esimsetup.apple.com/esim_qrcode_provisioning"))
+
+    def test_refuses_anything_that_is_not_an_lpa_string(self):
+        for bad in ("", None, "not-an-lpa", "LPA:1$only-one-part", "http://evil.test/x"):
+            self.assertIsNone(notifications._apple_install_url(bad), bad)
+
+    def test_the_email_offers_it_and_still_shows_the_manual_code(self):
+        ctx = dict(CASES["esim-ready"], install_url="https://esimsetup.apple.com/x")
+        for ext in ("html", "txt"):
+            out = render_to_string(f"emails/esim-ready.{ext}", ctx)
+            self.assertIn("https://esimsetup.apple.com/x", out)
+            self.assertIn("LPA:1$rsp.redtea.io$CDB21D06", out, "manual code must remain")
+            self.assertIn("17.4", out, "must say which devices it works on")
+
+    def test_the_email_omits_the_button_when_there_is_no_link(self):
+        out = render_to_string("emails/esim-ready.html", CASES["esim-ready"])
+        self.assertNotIn("esimsetup.apple.com", out)
+        self.assertIn("LPA:1$rsp.redtea.io$CDB21D06", out)

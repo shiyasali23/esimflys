@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { EsimInstall } from "@/features/esims/components/esim-install.client";
 import Link from "next/link";
 import { CheckCircle2, QrCode as QrIcon, Mail, Clock, AlertCircle } from "lucide-react";
 import { pollOrderUntilDelivered, isPaid, isDelivered, isTerminalFailure } from "@/lib/api/orders";
 import { listEsims, getEsim } from "@/lib/api/esims";
 import { readOrderContext } from "@/features/checkout/order-context";
-import { QrCode } from "@/components/media/qr-code.client";
 import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -215,24 +215,10 @@ export function ConfirmationView() {
 
       <div className="grid gap-8 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-white p-8 text-center">
-          <h2 className="mb-4 font-display text-headline-md text-foreground">Your eSIM QR</h2>
+          <h2 className="mb-4 font-display text-headline-md text-foreground">Install your eSIM</h2>
           {credentials ? (
             <>
-              <QrCode payload={credentials.qr_payload} />
-              <dl className="mt-4 space-y-2 text-left text-body-sm">
-                <div>
-                  <dt className="text-muted-foreground">SM-DP+ address</dt>
-                  <dd className="break-all font-medium text-foreground">
-                    {credentials.smdp_address}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Activation code</dt>
-                  <dd className="break-all font-medium text-foreground">
-                    {credentials.activation_code}
-                  </dd>
-                </div>
-              </dl>
+              <EsimInstall credentials={credentials} />
               <p className="mt-4 text-body-sm text-muted-foreground">
                 <Mail size={14} className="inline" aria-hidden /> Also sent to your email.
               </p>

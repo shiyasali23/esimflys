@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
+import { EsimInstall } from "@/features/esims/components/esim-install.client";
 import { Search, AlertCircle, Mail } from "lucide-react";
 import { lookupOrder, isDelivered } from "@/lib/api/orders";
 import { fieldErrors } from "@/lib/api/errors";
-import { QrCode } from "@/components/media/qr-code.client";
 import { Money } from "@/components/currency/money";
 import { Container } from "@/components/ui/container";
 
@@ -142,23 +142,7 @@ export function OrderLookupView() {
                     {esim.product_name}
                   </p>
                   {esim.credentials ? (
-                    <>
-                      <QrCode payload={esim.credentials.qr_payload} />
-                      <dl className="mt-4 space-y-2 text-body-sm">
-                        <div>
-                          <dt className="text-muted-foreground">SM-DP+ address</dt>
-                          <dd className="break-all font-medium text-foreground">
-                            {esim.credentials.smdp_address}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground">Activation code</dt>
-                          <dd className="break-all font-medium text-foreground">
-                            {esim.credentials.activation_code}
-                          </dd>
-                        </div>
-                      </dl>
-                    </>
+                    <EsimInstall credentials={esim.credentials} />
                   ) : (
                     <p className="text-body-sm text-muted-foreground">
                       This eSIM is still being prepared ({esim.status}). Check back shortly.

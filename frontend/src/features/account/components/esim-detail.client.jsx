@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import { EsimInstall } from "@/features/esims/components/esim-install.client";
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { getEsim, refreshEsimUsage, isEsimPending, isEsimReady } from "@/lib/api/esims";
 import { useSession } from "@/features/auth/use-session.client";
 import { ErrorState } from "@/components/feedback/error-state";
 import { formatBytes, usageRatio } from "@/lib/format/units";
-import { QrCode } from "@/components/media/qr-code.client";
 import { TopupPanel } from "./topup-panel.client";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -168,21 +168,7 @@ export function EsimDetail({ esimId }) {
         <h2 className="mb-4 font-display text-headline-md text-foreground">Activation</h2>
         {credentials ? (
           <>
-            <QrCode payload={credentials.qr_payload} />
-            <dl className="mt-4 space-y-3 text-left text-body-sm">
-              <div>
-                <dt className="text-muted-foreground">SM-DP+ address</dt>
-                <dd className="break-all font-medium text-foreground">{credentials.smdp_address}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Activation code</dt>
-                <dd className="break-all font-medium text-foreground">{credentials.activation_code}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">ICCID</dt>
-                <dd className="break-all font-medium text-foreground">{credentials.iccid}</dd>
-              </div>
-            </dl>
+            <EsimInstall credentials={credentials} showIccid />
           </>
         ) : (
           <p className="py-8 text-body-md text-muted-foreground" aria-busy={pending}>
