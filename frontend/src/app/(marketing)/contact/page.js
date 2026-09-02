@@ -10,7 +10,7 @@ import Link from "next/link";
 export const metadata = buildMetadata({
   title: "Contact Us",
   description:
-    "Reach eSIMFlys support any time, day or night. Email support@esimflys.com about a plan, an order, or installing your eSIM, or send a message from this page.",
+    "Reach eSIMFlys support any time, day or night. Email work4estolondon@gmail.com about a plan, an order, or installing your eSIM, or send a message from this page.",
   path: "/contact",
 });
 

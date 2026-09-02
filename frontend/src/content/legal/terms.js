@@ -252,7 +252,7 @@ export const TERMS = {
         {
           p: [
             "Customer support: ",
-            { href: "mailto:support@esimflys.com", label: "support@esimflys.com" },
+            { href: "mailto:work4estolondon@gmail.com", label: "work4estolondon@gmail.com" },
           ],
         },
       ],

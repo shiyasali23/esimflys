@@ -48,13 +48,22 @@ export const SITE = {
     streetAddress: null,
   },
   support: {
-    email: "support@esimflys.com",
     /*
-      The domain address, not the Gmail one, and deliberately: it is what all four legal
-      documents already publish (8 references), so anything else creates a contradiction on
-      the pages a customer reads when a purchase has gone wrong. The Gmail account remains
-      the business contact behind it.
+      The Gmail, and it is the address that actually receives mail.
+
+      This read `support@esimflys.com` — chosen for consistency with the legal documents
+      rather than because the mailbox existed. `esimflys.com` has MX records, but nothing
+      confirmed a `support@` box behind them, and a published address that bounces is
+      worse than none: it sits in the Organization schema, on /about and /contact, and on
+      the four legal pages someone reads when a purchase has gone wrong. All six
+      references moved together, so nothing contradicts.
+
+      The backend already replies from here — `settings.SUPPORT_EMAIL` is the Reply-To on
+      every transactional email — so this makes the site agree with the mail that is
+      already going out. Switch back only once a real support@ mailbox is confirmed to
+      deliver, and change all six places in the same commit.
     */
+    email: "work4estolondon@gmail.com",
     businessEmail: "work4estolondon@gmail.com",
     hours: "24/7",
     responseTime: "We aim to reply within a few hours, day or night.",
