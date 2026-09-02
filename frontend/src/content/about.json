@@ -1,0 +1,31 @@
+{
+  "title": "About eSIMFlys",
+  "intro": "eSIMFlys is a travel connectivity store. We sell prepaid, data-only eSIM plans that get you online the moment you land, with no physical SIM to collect, no roaming bill afterwards, and no need to change the number you already use.",
+  "sections": [
+    {
+      "h": "Who operates eSIMFlys",
+      "p": "eSIMFlys is the travel eSIM service of 4estolondon, based in London, United Kingdom. The shop, the support desk and the billing are all run by the same small team, so the people answering your message are the people who run the service."
+    },
+    {
+      "h": "What we sell",
+      "p": "Prepaid data plans for eSIM-capable phones across 68 countries, with 385 plans to choose from by data allowance and validity. Every plan is data-only. It runs alongside the SIM you already have, so your usual number keeps handling calls and texts while the eSIM carries the data."
+    },
+    {
+      "h": "How you get connected",
+      "p": "Pick a destination, choose a plan by how much data you need and how long you are away, and pay. Your eSIM arrives by email as a QR code, usually within a minute or two. Install it over Wi-Fi before you travel, leave the line switched off, and turn it on when you land. Most plans start counting from that first connection abroad, not from the moment you pay."
+    },
+    {
+      "h": "How our pricing works",
+      "p": "Every plan is authored in US dollars, and that is the price the catalogue is built on. Where a live exchange rate exists for your currency, checkout charges you in the currency you were shown; where it does not, the charge falls back to US dollars. There are no contracts, no deposits and no auto-renewals. A plan is a one-time purchase that expires when its data or its days run out."
+    },
+    {
+      "h": "Support, around the clock",
+      "p": "Travel problems do not keep office hours. A flight lands at 3am, an eSIM will not activate, a QR code was deleted by mistake. Support runs 24 hours a day, every day, and reaching a person who can actually look at your order is the part of this service we care most about getting right."
+    },
+    {
+      "h": "Where we are going",
+      "p": "eSIMFlys launched in 2026 and is deliberately growing one destination at a time. Rather than listing every country at once, we write real coverage notes for each market we cover, naming the networks the eSIM connects to and the activation rules that actually apply there. That work is ongoing, and the destination list grows as it is finished."
+    }
+  ],
+  "cta": { "label": "Explore destinations", "href": "/destinations" }
+}

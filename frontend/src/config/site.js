@@ -25,7 +25,40 @@ function resolveBaseUrl() {
 
 export const SITE = {
   name: "eSIMFlys",
-  legalName: "eSIMFlys Global",
+  /*
+    The trading name is eSIMFlys; the operating company is 4estolondon, London, UK.
+    `legalName` previously read "eSIMFlys Global", which was a placeholder for an entity
+    that does not exist. It is used in Organization structured data, so a wrong value there
+    is a wrong claim about who takes the money.
+
+    STILL MISSING, and only the business can supply them: the exact registered entity name
+    as it appears at Companies House, the company registration number, and the registered
+    office address. Until those exist the schema states the operator and the city only,
+    which is true, rather than inventing a registration.
+  */
+  legalName: "4estolondon",
+  operator: {
+    name: "4estolondon",
+    city: "London",
+    country: "United Kingdom",
+    countryCode: "GB",
+    /** @type {string | null} Companies House number — publish once confirmed. */
+    registrationNumber: null,
+    /** @type {string | null} Full registered office address — publish once confirmed. */
+    streetAddress: null,
+  },
+  support: {
+    email: "support@esimflys.com",
+    /*
+      The domain address, not the Gmail one, and deliberately: it is what all four legal
+      documents already publish (8 references), so anything else creates a contradiction on
+      the pages a customer reads when a purchase has gone wrong. The Gmail account remains
+      the business contact behind it.
+    */
+    businessEmail: "work4estolondon@gmail.com",
+    hours: "24/7",
+    responseTime: "We aim to reply within a few hours, day or night.",
+  },
   baseUrl: resolveBaseUrl(),
   tagline: "Instant Travel eSIM Data",
   description:

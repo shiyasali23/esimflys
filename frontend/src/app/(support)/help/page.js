@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Download, Zap, Smartphone, CreditCard, Globe, Activity, Shield, Wrench } from "lucide-react";
 import help from "@/content/help.json";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/components/seo/json-ld";
+import { itemListJsonLd } from "@/lib/seo/jsonld";
 
 export const metadata = buildMetadata({
   title: "Help Center",
@@ -17,6 +19,13 @@ const ICONS = {
 export default function HelpPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
+      {/* Mirrors the eight category cards below, each of which is a real link in the DOM. */}
+      <JsonLd
+        data={itemListJsonLd(
+          "eSIMFlys help centre categories",
+          help.categories.map((c) => ({ name: c.title, path: `/help/${c.slug}` })),
+        )}
+      />
       <h1 className="font-display text-4xl font-bold uppercase md:text-5xl">{help.hub.title}</h1>
       <p className="mt-4 max-w-2xl text-muted-foreground">{help.hub.subtitle}</p>
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

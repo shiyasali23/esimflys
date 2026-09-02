@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import content from "@/content/what-is-esim.json";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/components/seo/json-ld";
+import { techArticleJsonLd } from "@/lib/seo/jsonld";
 
 export const metadata = buildMetadata({
   title: "What is an eSIM?",
@@ -12,6 +14,15 @@ export const metadata = buildMetadata({
 export default function WhatIsEsimPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
+      <JsonLd
+        data={techArticleJsonLd({
+          title: content.title,
+          description: content.intro,
+          path: "/what-is-esim",
+          // Real last-change date of content/what-is-esim.json, from version control.
+          dateModified: "2026-07-25",
+        })}
+      />
       <h1 className="font-display text-4xl font-bold uppercase md:text-5xl">{content.title}</h1>
       <p className="mt-6 text-lg text-muted-foreground">{content.intro}</p>
       <div className="mt-10 space-y-8">

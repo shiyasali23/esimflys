@@ -9,14 +9,79 @@
     "Keep your own number"
   ],
   "appStores": [
-    { "label": "App Store", "status": "coming-soon" },
-    { "label": "Google Play", "status": "coming-soon" }
+    {
+      "label": "App Store",
+      "status": "coming-soon"
+    },
+    {
+      "label": "Google Play",
+      "status": "coming-soon"
+    }
   ],
   "social": [],
   "stats": [
-    { "label": "Countries covered", "value": "60+" },
-    { "label": "Data plans", "value": "385" },
-    { "label": "Networks", "value": "4G / 5G" },
-    { "label": "Typical setup", "value": "2 min" }
-  ]
+    {
+      "label": "Countries covered",
+      "value": "60+"
+    },
+    {
+      "label": "Data plans",
+      "value": "385"
+    },
+    {
+      "label": "Networks",
+      "value": "4G / 5G"
+    },
+    {
+      "label": "Typical setup",
+      "value": "2 min"
+    }
+  ],
+  "socialProfiles": [
+    {
+      "label": "Instagram",
+      "key": "instagram",
+      "url": null
+    },
+    {
+      "label": "Facebook",
+      "key": "facebook",
+      "url": null
+    },
+    {
+      "label": "X",
+      "key": "x",
+      "url": null
+    },
+    {
+      "label": "LinkedIn",
+      "key": "linkedin",
+      "url": null
+    },
+    {
+      "label": "TikTok",
+      "key": "tiktok",
+      "url": null
+    },
+    {
+      "label": "YouTube",
+      "key": "youtube",
+      "url": null
+    },
+    {
+      "label": "Trustpilot",
+      "key": "trustpilot",
+      "url": null
+    }
+  ],
+  "payments": {
+    "processor": "Stripe",
+    "methods": [
+      "Visa",
+      "Mastercard",
+      "American Express",
+      "Apple Pay",
+      "Google Pay"
+    ]
+  }
 }

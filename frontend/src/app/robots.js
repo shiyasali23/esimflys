@@ -20,9 +20,18 @@ export default function robots() {
     rules: {
       userAgent: "*",
       allow: "/",
-      // `/search` used to be listed here and no such route has ever existed under
-      // src/app — a stale rule that only ever confused the next reader.
-      disallow: ["/api/"],
+      /*
+        `/search` used to be listed here and no such route has ever existed under src/app —
+        a stale rule that only ever confused the next reader.
+
+        `/accounts/` is the allauth surface the Worker proxies to Django. It is linked from
+        70 pages (the Google sign-in button) and every one of those links 302s straight to
+        accounts.google.com, so there is nothing there to index. On a domain this new the
+        crawl budget is small enough that 70 pointers to a redirect are worth not spending.
+        Unlike /checkout and /account, this path has no HTML of its own to carry a noindex,
+        so robots.txt is the only place it can be expressed.
+      */
+      disallow: ["/api/", "/accounts/"],
     },
     sitemap: `${SITE.baseUrl}/sitemap.xml`,
   };

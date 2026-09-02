@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AppStoreBadge, GooglePlayBadge } from "@/components/media/store-badges";
+import { SocialLinks } from "@/components/layout/social-links";
+import { PaymentBadges } from "@/components/media/payment-badges";
 import nav from "@/content/nav.json";
 import site from "@/content/site.json";
 
@@ -56,6 +58,7 @@ export function Footer({ compact = false }) {
           <div className="col-span-2 md:col-span-1">
             <div className="font-display text-2xl font-bold uppercase text-primary">{site.brand}</div>
             <p className="mt-3 max-w-xs text-body-sm text-muted-foreground">{site.tagline}</p>
+            <PaymentBadges className="mt-5" />
             <div className="mt-5 flex flex-wrap gap-3">
               {site.appStores.map((a) => {
                 const Badge = APP_STORE_BADGES[a.label];
@@ -107,7 +110,10 @@ export function Footer({ compact = false }) {
       </div>
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-1 px-6 py-4 text-body-sm text-muted-foreground md:flex-row md:gap-3 md:py-6">
-          <p className="py-2 md:py-0">© {year} {site.brand}. All rights reserved.</p>
+          <p className="py-2 md:py-0">
+            © {year} {site.brand}. Operated by 4estolondon, London, United Kingdom.
+          </p>
+          <SocialLinks className="-my-2" />
           {site.social.length > 0 ? (
             <div className="-my-2 flex gap-1">
               {site.social.map((s) => (

@@ -1,5 +1,6 @@
 import { SITE } from "@/config/site";
 import { routes } from "@/config/routes";
+import { publishableProfiles } from "@/components/layout/social-links";
 
 /**
  * JSON-LD builders — supported types only, mirroring visible content (blueprint §27).
@@ -22,14 +23,67 @@ export function faqPageJsonLd(faqs) {
 }
 
 export function organizationJsonLd() {
+  const { operator, support } = SITE;
   const org = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE.name,
+    legalName: SITE.legalName,
     url: SITE.baseUrl,
     logo: `${SITE.baseUrl}/icons/logo-512.png`,
+    /*
+      Who actually takes the money, stated in the markup as well as on /about.
+
+      This is the strongest entity signal the site has available. It is also the honest one:
+      eSIMFlys is a trading name, and the operating company is 4estolondon in London. Every
+      field below is either supplied by the business or omitted — nothing here is inferred.
+    */
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: operator.city,
+      addressCountry: operator.countryCode,
+      ...(operator.streetAddress ? { streetAddress: operator.streetAddress } : {}),
+    },
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: support.email,
+        availableLanguage: "English",
+        /* 24/7, expressed the way schema.org models opening hours. */
+        hoursAvailable: {
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+          ],
+          opens: "00:00",
+          closes: "23:59",
+        },
+      },
+    ],
   };
-  // sameAs intentionally omitted until real, verified social profiles exist (no fabrication).
+
+  if (operator.registrationNumber) {
+    org.identifier = {
+      "@type": "PropertyValue",
+      name: "Company registration number",
+      value: operator.registrationNumber,
+    };
+  }
+
+  /*
+    `sameAs` only ever lists profiles that exist.
+
+    `content/site.json` holds a slot per network with `url: null` until one is created, and
+    this filter drops every empty slot. A fabricated or dead profile URL is worse than an
+    absent one: sameAs is a primary input to entity resolution, and pointing it at nothing
+    teaches Google the wrong thing about who this company is. The same filter drives the
+    visible links in `components/layout/social-links.jsx`, so the page and the markup can
+    never disagree.
+  */
+  const sameAs = publishableProfiles().map((p) => p.url);
+  if (sameAs.length) org.sameAs = sameAs;
+
   return org;
 }
 
@@ -133,30 +187,78 @@ export function glossaryJsonLd(terms) {
 }
 
 /**
+ * A list of named, linkable things that the page visibly renders.
+ *
+ * Google maps no rich result to a bare ItemList, so none of these earn a SERP feature. They
+ * are here so an answer engine can enumerate what a hub page contains without inferring it
+ * from anchor text, which is the whole job of pages like /destinations and /help.
+ *
+ * The rule every caller follows: the list mirrors what is actually in the rendered DOM. Where
+ * a page hides detail behind interaction (the device tabs, for example) only the visible
+ * level is described, never the hidden contents.
+ *
+ * @param {string} name
+ * @param {{ name: string, path: string }[]} items
+ */
+export function itemListJsonLd(name, items) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      ...(it.path ? { url: new URL(it.path, SITE.baseUrl).toString() } : {}),
+    })),
+  };
+}
+
+/**
  * ItemList for the /destinations index — mirrors the country links visible on the page.
  *
- * Google maps no rich result to a bare ItemList, so this is not decoration for the SERP: it
- * is here because /destinations is the catalogue's index page and it previously offered a
- * machine reader nothing but 68 anchors and ~35 words of prose. The list is what the page
- * IS, so stating it lets an answer engine enumerate coverage without scraping link text.
- *
- * Every country the page renders is included, including the noindex ones. The rule followed
- * here is "markup mirrors visible content" — the links are on the page and crawlable, and
- * omitting them would describe a page that does not exist.
+ * Every country the page renders is included, including the noindex ones: the links are on
+ * the page and crawlable, so omitting them would describe a page that does not exist.
  *
  * @param {{ slug: string, name: string }[]} countries
  */
 export function destinationsItemListJsonLd(countries) {
+  return itemListJsonLd(
+    "Travel eSIM destinations",
+    countries.map((c) => ({ name: c.name, path: routes.country(c.slug) })),
+  );
+}
+
+/**
+ * TechArticle for the explainer at /what-is-esim.
+ *
+ * TechArticle rather than Article: this is reference material explaining how a technology
+ * works, not news or opinion. Neither earns a rich result — the value is that an answer
+ * engine asked "what is an eSIM" can identify this page as a definitional source with a
+ * stated publisher, rather than as one more commercial page.
+ *
+ * `dateModified` is the real last-change date of the underlying content file, taken from
+ * version control at authoring time. It is not a build timestamp; stamping "now" on every
+ * deploy would be a fabricated freshness signal.
+ *
+ * @param {{ title: string, description: string, path: string, dateModified?: string }} opts
+ */
+export function techArticleJsonLd({ title, description, path, dateModified }) {
+  const url = new URL(path, SITE.baseUrl).toString();
   return {
     "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: "Travel eSIM destinations",
-    numberOfItems: countries.length,
-    itemListElement: countries.map((c, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: c.name,
-      url: new URL(routes.country(c.slug), SITE.baseUrl).toString(),
-    })),
+    "@type": "TechArticle",
+    headline: title,
+    description,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    publisher: {
+      "@type": "Organization",
+      name: SITE.name,
+      url: SITE.baseUrl,
+      logo: `${SITE.baseUrl}/icons/logo-512.png`,
+    },
+    ...(dateModified ? { dateModified } : {}),
   };
 }
