@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { fetchAdminOrder, cancelOrder, fetchOrderTimeline } from "@/lib/api/admin";
+import { Ban, ArrowLeft } from "lucide-react";
+import {
+  fetchAdminOrder,
+  cancelOrder,
+  cancelAdminEsim,
+  fetchOrderTimeline,
+} from "@/lib/api/admin";
 import { AdminRefundPanel } from "@/features/admin/components/admin-refund-panel.client";
 import { fromMinor, formatBytes, planAllowance, usageRatio } from "@/lib/format/units";
 import { StatusBadge } from "@/components/data/status-badge";
@@ -27,6 +32,8 @@ export function AdminOrderDetail({ orderId }) {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [armed, setArmed] = useState(null);
+  const [busyEsim, setBusyEsim] = useState(null);
   const [notice, setNotice] = useState(null);
   const [timeline, setTimeline] = useState(null);
 
@@ -37,6 +44,38 @@ export function AdminOrderDetail({ orderId }) {
    * an operator to think something is broken. A paid order is a refund, and the refund
    * panel below is where that lives.
    */
+  /**
+   * Cancel one eSIM from the order it belongs to, without a detour to the eSIMs screen.
+   *
+   * Keyed per row: `armed` holds the id of the one eSIM currently asking for
+   * confirmation, so arming a second disarms the first. A single shared boolean would
+   * light up every row at once, and on an order with two eSIMs that is exactly how the
+   * wrong one gets returned to the supplier.
+   *
+   * The server's guard is what actually protects an in-use eSIM; this is only the
+   * affordance. A 409 carries a sentence written for the operator, so it is shown as-is.
+   */
+  async function cancelEsim(esimId) {
+    setBusyEsim(esimId);
+    setNotice(null);
+    try {
+      await cancelAdminEsim(esimId);
+      setOrder(await fetchAdminOrder(orderId));
+      setNotice({ tone: "success", text: "eSIM cancelled and returned to the supplier." });
+      setArmed(null);
+    } catch (err) {
+      setNotice({
+        tone: "error",
+        text:
+          err?.status === 403
+            ? "Your role can't cancel an eSIM — this needs the refunds capability."
+            : err?.message || "We couldn't cancel that eSIM.",
+      });
+    } finally {
+      setBusyEsim(null);
+    }
+  }
+
   async function cancel() {
     setCancelling(true);
     setNotice(null);
@@ -231,7 +270,40 @@ export function AdminOrderDetail({ orderId }) {
                           : ""}
                       </p>
                     </div>
-                    <StatusBadge status={esim.status} />
+                    <div className="flex shrink-0 items-center gap-2">
+                      <StatusBadge status={esim.status} />
+                      {esim.status !== "cancelled" ? (
+                        armed === esim.id ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => cancelEsim(esim.id)}
+                              disabled={busyEsim !== null}
+                              className="rounded-full bg-destructive px-3 py-1.5 text-label-bold text-destructive-foreground hover:brightness-110 disabled:opacity-50"
+                            >
+                              {busyEsim === esim.id ? "Cancelling…" : "Confirm"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setArmed(null)}
+                              disabled={busyEsim !== null}
+                              className="rounded-full border border-border px-3 py-1.5 text-label-bold text-foreground hover:bg-muted disabled:opacity-50"
+                            >
+                              Keep
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setArmed(esim.id)}
+                            disabled={busyEsim !== null}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-destructive px-3 py-1.5 text-label-bold text-destructive-text hover:bg-destructive/5 disabled:opacity-50"
+                          >
+                            <Ban size={14} aria-hidden /> Cancel
+                          </button>
+                        )
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}

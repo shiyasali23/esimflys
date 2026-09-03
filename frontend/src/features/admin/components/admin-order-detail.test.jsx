@@ -134,3 +134,95 @@ describe("orders that took money", () => {
     expect(screen.queryByRole("button", { name: /cancel this order/i })).toBeNull();
   });
 });
+
+/**
+ * Cancelling one eSIM from the order it belongs to.
+ *
+ * `cancel_esim` had no caller at all, so refunds returned the money and left the eSIM
+ * live with the wholesale cost spent — three production profiles read "cancelled" while
+ * the supplier still listed them as ours. This is the affordance; the server's guard is
+ * what actually refuses a used or in-use one.
+ */
+const esim = (overrides) => ({
+  id: "esim-1",
+  product_name: "France 5 GB",
+  iccid_last4: "1234",
+  status: "ready",
+  total_data_bytes: 5_000_000_000,
+  remaining_data_bytes: 5_000_000_000,
+  ...overrides,
+});
+
+describe("cancelling an eSIM from the order page", () => {
+  const withEsims = (...list) => order({ esims: list, status: "paid", payment_status: "paid" });
+
+  it("offers a cancel action on a live eSIM", async () => {
+    mockApi({ detail: withEsims(esim()) });
+    render(<AdminOrderDetail orderId="ord-1" />);
+    expect(await screen.findByRole("button", { name: /^cancel$/i })).toBeTruthy();
+  });
+
+  it("does not offer it on one already cancelled", async () => {
+    mockApi({ detail: withEsims(esim({ status: "cancelled" })) });
+    render(<AdminOrderDetail orderId="ord-1" />);
+    await screen.findByText(/France 5 GB/);
+    expect(screen.queryByRole("button", { name: /^cancel$/i })).toBeNull();
+  });
+
+  it("arms first and only posts on the second click", async () => {
+    mockApi({ detail: withEsims(esim()) });
+    render(<AdminOrderDetail orderId="ord-1" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^cancel$/i }));
+    expect(writes().length).toBe(0);
+
+    await userEvent.click(screen.getByRole("button", { name: /confirm/i }));
+    await waitFor(() => expect(writes().length).toBe(1));
+    expect(String(writes()[0][0])).toContain("/admin/esims/esim-1/cancel/");
+    expect(writes()[0][1].method).toBe("POST");
+  });
+
+  /**
+   * The bit that matters on a two-eSIM order: a single shared flag would light up every
+   * row at once, which is exactly how the wrong eSIM gets returned to the supplier.
+   */
+  it("arms only the row that was clicked", async () => {
+    mockApi({ detail: withEsims(esim(), esim({ id: "esim-2", product_name: "Spain 1 GB" })) });
+    render(<AdminOrderDetail orderId="ord-1" />);
+
+    const cancels = await screen.findAllByRole("button", { name: /^cancel$/i });
+    expect(cancels).toHaveLength(2);
+    await userEvent.click(cancels[0]);
+
+    expect(screen.getAllByRole("button", { name: /confirm/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^cancel$/i })).toHaveLength(1);
+  });
+
+  it("shows the server's refusal verbatim", async () => {
+    mockApi({
+      detail: withEsims(esim()),
+      write: () =>
+        jsonResponse(
+          { error: { code: "conflict", message: "412 MB has already been used", fields: {} } },
+          409,
+        ),
+    });
+    render(<AdminOrderDetail orderId="ord-1" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^cancel$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /confirm/i }));
+
+    expect(await screen.findByText(/412 MB has already been used/)).toBeTruthy();
+  });
+
+  it("backs out without posting", async () => {
+    mockApi({ detail: withEsims(esim()) });
+    render(<AdminOrderDetail orderId="ord-1" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /^cancel$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /keep/i }));
+
+    expect(writes().length).toBe(0);
+    expect(await screen.findByRole("button", { name: /^cancel$/i })).toBeTruthy();
+  });
+});
