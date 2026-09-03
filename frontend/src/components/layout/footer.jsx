@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ChevronRight, Globe, Lock, Mail, ShieldCheck } from "lucide-react";
+import { ChevronRight, Lock, Mail } from "lucide-react";
 import { SocialLinks } from "@/components/layout/social-links";
-import { PAYMENT_MARKS } from "@/components/media/payment-marks";
 import nav from "@/content/nav.json";
 import site from "@/content/site.json";
 import { SITE } from "@/config/site";
@@ -50,54 +49,6 @@ export function Footer({ compact = false }) {
   return (
     <footer className="border-t border-border bg-background">
       <div className="mx-auto max-w-6xl px-6 py-12 md:py-16">
-      {/*
-        FIRST, above the sitemap, not last under it.
-
-        What a shop takes and how it is protected is the reassurance a hesitant buyer is
-        looking for, and at the bottom of a 600px footer most people never scroll to it.
-        Putting it at the top means it is the first thing the footer says.
-
-        Payment marks run FULL WIDTH rather than inside the brand column. [MEASURED] in a
-        five-column grid that column is about 190px, and "American Express" is wider than
-        the column on its own — so `flex-wrap` gave every badge a row of its own and the
-        result read as five stacked boxes.
-      */}
-      <div className="mb-10">
-        <div className="grid gap-6 rounded-card border border-border bg-muted/40 p-6 md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-8">
-          <div className="flex gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container">
-              <ShieldCheck className="h-[18px] w-[18px] text-primary" aria-hidden />
-            </span>
-            <div>
-              <p className="text-label-bold text-foreground">Secure payments</p>
-              <p className="mt-0.5 text-body-sm text-muted-foreground">
-                Payments processed by {site.payments.processor}. Card details never reach
-                our servers.
-              </p>
-            </div>
-          </div>
-
-          <ul className="flex flex-wrap items-center justify-center gap-2 md:border-x md:border-border md:px-8">
-            {site.payments.methods.map((method) => {
-              const Mark = PAYMENT_MARKS[method];
-              return Mark ? <Mark key={method} /> : null;
-            })}
-          </ul>
-
-          <div className="flex gap-3 md:justify-self-end">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-container">
-              <Globe className="h-[18px] w-[18px] text-primary" aria-hidden />
-            </span>
-            <div>
-              <p className="text-label-bold text-foreground">Global coverage</p>
-              <p className="mt-0.5 text-body-sm text-muted-foreground">
-                {SITE.countryCount}+ countries · delivered by email in minutes
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-5 md:gap-10">
           <div className="col-span-2 md:col-span-1">
             <div className="font-display text-2xl font-bold uppercase text-primary">{site.brand}</div>

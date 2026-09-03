@@ -1,5 +1,6 @@
 import { Compass } from "lucide-react";
 import { Header } from "@/components/layout/header";
+import { TrustBand } from "@/components/layout/trust-band";
 import { Footer } from "@/components/layout/footer";
 import { Container } from "@/components/ui/container";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -28,6 +29,7 @@ export default function NotFound() {
           />
         </Container>
       </main>
+      <TrustBand />
       <Footer />
     </>
   );

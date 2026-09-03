@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header";
+import { TrustBand } from "@/components/layout/trust-band";
 import { Footer } from "@/components/layout/footer";
 
 /** Marketing/support/content shell: global Header + Footer. */
@@ -9,6 +10,7 @@ export default function MarketingLayout({ children }) {
       <main id="main-content" className="pt-16 sm:pt-20">
         {children}
       </main>
+      <TrustBand />
       <Footer />
     </>
   );
