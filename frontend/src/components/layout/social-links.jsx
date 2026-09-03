@@ -1,4 +1,5 @@
 import site from "@/content/site.json";
+import { SocialMark } from "@/components/media/social-marks";
 
 /**
  * Validated social profile links, rendered only for profiles that actually exist.
@@ -13,11 +14,10 @@ import site from "@/content/site.json";
  * — the page still renders and the build still passes. So a slot has to be a well-formed
  * https URL to count, and a malformed one is dropped exactly like an empty one.
  *
- * Icons are text labels, deliberately. lucide-react removed its brand icons upstream over
- * trademark concerns, and hand-redrawing the Instagram, X, TikTok or YouTube marks would be
- * both legally murky and visibly poor at 16px. To use the real marks, download each
- * platform's own brand kit, drop the SVGs in `public/icons/social/{key}.svg`, and render an
- * <img> beside the label — the `key` field is already there for exactly that.
+ * Icons are the platforms' own glyphs, from `media/social-marks`, keyed on the same `key`
+ * field. They were text labels because lucide-react dropped its brand icons upstream; a
+ * word in a footer is not what anyone scans for, and at 20px the glyph is the only form
+ * that reads. A key with no glyph renders nothing rather than an empty box.
  */
 function isPublishable(profile) {
   // The try/catch below is the actual guard — `new URL(null)` throws and lands there, so
@@ -43,11 +43,13 @@ export function SocialLinks({ className }) {
 
   return (
     <nav aria-label="Social profiles" className={className}>
-      <ul className="flex flex-wrap items-center gap-1">
+      <ul className="flex flex-wrap items-center gap-2">
         {profiles.map((p) => (
           <li key={p.key}>
             <a
               href={p.url}
+              aria-label={p.label}
+              title={p.label}
               /*
                 `rel="me"` states that this profile and this site are the same entity — the
                 convention identity verifiers read. `noopener` because these open in a new
@@ -55,9 +57,9 @@ export function SocialLinks({ className }) {
               */
               rel="me noopener"
               target="_blank"
-              className="inline-flex min-h-11 items-center px-2 text-body-sm text-muted-foreground transition-colors hover:text-primary"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-l2"
             >
-              {p.label}
+              <SocialMark platform={p.key} className="h-[18px] w-[18px]" />
             </a>
           </li>
         ))}
