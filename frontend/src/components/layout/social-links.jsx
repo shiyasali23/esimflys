@@ -20,6 +20,10 @@ import site from "@/content/site.json";
  * <img> beside the label — the `key` field is already there for exactly that.
  */
 function isPublishable(profile) {
+  // The try/catch below is the actual guard — `new URL(null)` throws and lands there, so
+  // an empty slot is rejected either way. This early return is a fast path for the
+  // common case (every slot is empty today), not a correctness requirement; removing it
+  // changes no behaviour, which mutation testing confirmed.
   if (!profile?.url) return false;
   try {
     return new URL(profile.url).protocol === "https:";
