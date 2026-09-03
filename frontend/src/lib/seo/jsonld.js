@@ -1,6 +1,6 @@
 import { SITE } from "@/config/site";
 import { routes } from "@/config/routes";
-import { publishableProfiles } from "@/components/layout/social-links";
+import { ownedProfiles } from "@/components/layout/social-links";
 
 /**
  * JSON-LD builders — supported types only, mirroring visible content (blueprint §27).
@@ -77,11 +77,14 @@ export function organizationJsonLd() {
     `content/site.json` holds a slot per network with `url: null` until one is created, and
     this filter drops every empty slot. A fabricated or dead profile URL is worse than an
     absent one: sameAs is a primary input to entity resolution, and pointing it at nothing
-    teaches Google the wrong thing about who this company is. The same filter drives the
-    visible links in `components/layout/social-links.jsx`, so the page and the markup can
-    never disagree.
+    teaches Google the wrong thing about who this company is.
+
+    `ownedProfiles`, NOT `publishableProfiles`. The footer also carries icons for slots
+    marked `owned: false` — links to a platform's front door, shown because the design
+    asks for them while no real accounts exist yet. Those are navigation, not identity,
+    and claiming instagram.com as `sameAs` would assert this company IS that page.
   */
-  const sameAs = publishableProfiles().map((p) => p.url);
+  const sameAs = ownedProfiles().map((p) => p.url);
   if (sameAs.length) org.sameAs = sameAs;
 
   return org;

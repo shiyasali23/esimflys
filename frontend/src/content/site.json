@@ -4,7 +4,7 @@
   "ticker": [
     "Clear per-day pricing",
     "Scan a QR, connect on arrival",
-    "Local 4G/5G in 60+ countries",
+    "Local 4G/5G in 68 countries",
     "No roaming fees",
     "Keep your own number"
   ],
@@ -22,7 +22,7 @@
   "stats": [
     {
       "label": "Countries covered",
-      "value": "60+"
+      "value": "68"
     },
     {
       "label": "Data plans",
@@ -41,17 +41,20 @@
     {
       "label": "Instagram",
       "key": "instagram",
-      "url": null
+      "url": "https://www.instagram.com/",
+      "owned": false
     },
     {
       "label": "Facebook",
       "key": "facebook",
-      "url": null
+      "url": "https://www.facebook.com/",
+      "owned": false
     },
     {
       "label": "X",
       "key": "x",
-      "url": null
+      "url": "https://x.com/",
+      "owned": false
     },
     {
       "label": "LinkedIn",

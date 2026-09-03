@@ -32,9 +32,22 @@ function isPublishable(profile) {
   }
 }
 
-/** Shared by the footer and by `sameAs`, so one rule governs both. */
+/** Everything valid enough to render as a footer icon. */
 export function publishableProfiles() {
   return (site.socialProfiles || []).filter(isPublishable);
+}
+
+/**
+ * Only profiles this business actually owns.
+ *
+ * `sameAs` is an identity claim — it tells Google "these accounts and this company are
+ * the same entity". A slot marked `owned: false` is a link to a platform's front door,
+ * not to a profile of ours, so it may appear as a footer icon but must never appear
+ * here. Asserting ownership of instagram.com would be a false statement about the
+ * business with nothing to flag it.
+ */
+export function ownedProfiles() {
+  return publishableProfiles().filter((p) => p.owned !== false);
 }
 
 export function SocialLinks({ className }) {
@@ -51,11 +64,13 @@ export function SocialLinks({ className }) {
               aria-label={p.label}
               title={p.label}
               /*
-                `rel="me"` states that this profile and this site are the same entity — the
-                convention identity verifiers read. `noopener` because these open in a new
-                tab; no `nofollow`, because these are our own profiles, not untrusted links.
+                `rel="me"` states that this profile and this site are the same entity —
+                the convention identity verifiers read — so it is only correct on a
+                profile we own. A slot marked `owned: false` points at a platform's front
+                door instead, and gets `nofollow` rather than an identity claim we cannot
+                make. `noopener` on both, because they open in a new tab.
               */
-              rel="me noopener"
+              rel={p.owned === false ? "noopener nofollow" : "me noopener"}
               target="_blank"
               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-l2"
             >
