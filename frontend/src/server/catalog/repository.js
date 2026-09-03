@@ -75,6 +75,60 @@ export async function getPopularCountries(limit = 8) {
 }
 
 /**
+ * Countries to suggest at the foot of a country page, nearest-region first.
+ *
+ * This replaced `getPopularCountries(7)`, and the reason is a crawl problem rather than a
+ * merchandising one. That call returns the first seven `isPopular` entries by `sortOrder`,
+ * and `sortOrder` 0-6 are all inside the ten editorially approved countries — so every one
+ * of the 68 country pages linked to the same six approved destinations. The internal link
+ * graph was a closed loop: the only pages Google had indexed pointed exclusively at each
+ * other, and there was no route from an indexed page to any of the 58 `noindex` ones except
+ * `/destinations`, which Google had not crawled.
+ *
+ * Region-first fixes that as a side effect of being genuinely more useful. Someone reading
+ * the Thailand page is far likelier to also want Vietnam or Cambodia than Morocco, and
+ * those neighbours are exactly the unapproved pages that needed a way in.
+ *
+ * Suggestions are NOT filtered by index status. A `noindex` country page is live, buyable
+ * and crawlable — `noindex, follow` — so linking to it is honest for a shopper and is the
+ * whole point for a crawler. Approval controls whether a page may be INDEXED, not whether
+ * it may be linked.
+ *
+ * Falls back to filling from other regions so a country in a thin region still shows a full
+ * row rather than one lonely neighbour.
+ */
+export async function getRelatedCountries(slug, limit = 6) {
+  const current = await getCountryBySlug(slug);
+  if (!current) return [];
+
+  const others = COUNTRIES.filter((c) => c.slug !== slug);
+  const sameRegion = others.filter((c) => c.region === current.region);
+  const elsewhere = others.filter((c) => c.region !== current.region && c.isPopular);
+
+  /*
+    Each country starts the regional list at its OWN position, so neighbouring pages suggest
+    different neighbours instead of all repeating the region's first six.
+
+    Without this rotation the ordering is `sortOrder` for everyone, so every page in a region
+    shows an identical row: [MEASURED] 19 of the 68 pages rendered the same six links, and
+    only 27 of 68 countries were reachable through related links at all. Rotating by position
+    spreads the coverage without inventing relevance — every suggestion is still a country in
+    the same region, just a different slice of it.
+
+    Deterministic on purpose. This runs at build time for a static export, so it must produce
+    the same output on every build; an index-based rotation does, where anything random would
+    reshuffle the internal link graph on each deploy.
+  */
+  const regionAll = COUNTRIES.filter((c) => c.region === current.region);
+  const pos = Math.max(0, regionAll.findIndex((c) => c.slug === slug));
+  const rotated = sameRegion.length
+    ? [...sameRegion.slice(pos % sameRegion.length), ...sameRegion.slice(0, pos % sameRegion.length)]
+    : [];
+
+  return [...rotated, ...elsewhere].slice(0, limit);
+}
+
+/**
  * The generator only ever writes active plans, because the public API only returns
  * active ones. An empty array is therefore the real production state for a country
  * whose plans are paused — not an error, and not something to paper over.

@@ -16,7 +16,7 @@ import {
   getCountrySlugs,
   getPerDayFrom,
   getPlansForCountry,
-  getPopularCountries,
+  getRelatedCountries,
 } from "@/server/catalog/repository";
 import { toClientPlans } from "@/features/catalog/lib/to-client-plan";
 import { getCountryContent } from "@/content/countries";
@@ -62,7 +62,7 @@ export default async function CountryPage({ params }) {
   const plans = await getPlansForCountry(slug);
   const clientPlans = toClientPlans(plans);
   const content = getCountryContent(slug);
-  const related = (await getPopularCountries(7)).filter((c) => c.slug !== slug).slice(0, 6);
+  const related = await getRelatedCountries(slug, 6);
   const perDay = await getPerDayFrom(slug);
   const introText =
     content?.intro ||

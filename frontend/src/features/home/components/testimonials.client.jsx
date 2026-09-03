@@ -4,6 +4,19 @@ import useEmblaCarousel from "embla-carousel-react";
 import { Star } from "lucide-react";
 import reviews from "@/content/reviews.json";
 
+/**
+ * Renders nothing until real reviews exist.
+ *
+ * This carousel previously showed eight invented reviewers with five-star ratings on the
+ * live home page, from placeholder data whose own file said "replace with your own verified
+ * customer reviews before launch". Fabricated consumer reviews are unlawful in the UK under
+ * the DMCC Act 2024 and under equivalent EU and FTC rules, and this is a London company
+ * taking card payments.
+ *
+ * The guard is here rather than only at the call site so the component cannot reintroduce
+ * the problem if someone renders it again later. Fill `content/reviews.json` with genuine
+ * reviews and it comes back on its own.
+ */
 export function Testimonials() {
   const [ref, embla] = useEmblaCarousel({ loop: true, align: "start", dragFree: true });
 
@@ -12,6 +25,8 @@ export function Testimonials() {
     const id = setInterval(() => embla.scrollNext(), 3000);
     return () => clearInterval(id);
   }, [embla]);
+
+  if (!reviews.items?.length) return null;
 
   return (
     <section id="testimonials" className="bg-muted py-20">

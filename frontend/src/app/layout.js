@@ -44,7 +44,7 @@ const inter = Inter({
 export const metadata = {
   metadataBase: new URL(SITE.baseUrl),
   title: {
-    default: `${SITE.tagline} for 60+ Countries | ${SITE.name}`,
+    default: `${SITE.tagline} for ${SITE.countryCount} Countries | ${SITE.name}`,
     template: `%s | ${SITE.name}`,
   },
   description: SITE.description,
@@ -62,7 +62,7 @@ export const metadata = {
   openGraph: {
     type: "website",
     siteName: SITE.name,
-    title: `${SITE.tagline} for 60+ Countries | ${SITE.name}`,
+    title: `${SITE.tagline} for ${SITE.countryCount} Countries | ${SITE.name}`,
     description: SITE.description,
     url: SITE.baseUrl,
     // The home page and the 404 declare no openGraph of their own, so they inherit this

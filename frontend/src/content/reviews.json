@@ -2,15 +2,6 @@
   "eyebrow": "What travelers say",
   "title": "Reviews from every kind of trip.",
   "subtitle": "Travelers across business trips, family weeks and city hops, sharing what worked and what didn't.",
-  "note": "Sample reviews shown for layout — replace with your own verified customer reviews before launch.",
-  "items": [
-    { "initial": "A", "name": "Amara N.", "trip": "9 days in Japan", "rating": 5, "verified": false, "text": "Bought a 10GB plan the morning of my flight, scanned the QR at the gate, and it connected on landing. Used it everywhere from city subways to a quiet countryside inn." },
-    { "initial": "L", "name": "Leo P.", "trip": "Long weekend in Lisbon", "rating": 4, "verified": false, "text": "Boarding pass on my phone, ride from arrivals, hotel check-in — all on the eSIM before I'd cleared customs." },
-    { "initial": "S", "name": "Sofia R.", "trip": "Business trip · Madrid", "rating": 4, "verified": false, "text": "Took a minute to figure out which plan size fit a four-day trip, but once it activated it just worked through Maps and calls back to the office." },
-    { "initial": "D", "name": "Diego B.", "trip": "Three city-hop weekends", "rating": 5, "verified": false, "text": "I'm in and out of a few cities most months, so I just buy a fresh data plan on the way to the airport. Faster than dealing with kiosks." },
-    { "initial": "H", "name": "Hiroko T.", "trip": "Family trip · Croatia", "rating": 5, "verified": false, "text": "Two kids, one ferry with no Wi-Fi, and a lot of 'can I see the map again?'. The data plan kept us navigating and messaging the whole week." },
-    { "initial": "R", "name": "Ravi K.", "trip": "3 weeks · India", "rating": 5, "verified": false, "text": "Hopping between cities, the data held up in places I didn't expect signal. Booking rides, calling guesthouses, sending photos home — none of it was a fight." },
-    { "initial": "E", "name": "Elena M.", "trip": "Backpacking SE Asia", "rating": 4, "verified": false, "text": "Grabbed a fresh plan for each stop as I went. Setup was quick every time, so I barely thought about data." },
-    { "initial": "O", "name": "Owen S.", "trip": "Cruise stops · Greek Islands", "rating": 4, "verified": false, "text": "Several ports in ten days. The eSIM handled most of them well, and I was back online by the time we docked. Did the job." }
-  ]
+  "note": "Intentionally empty. This file previously held eight invented reviewers with star ratings that rendered on the live home page. Publishing fabricated consumer reviews is prohibited under the UK Digital Markets, Competition and Consumers Act 2024 (turnover-based penalties) and the equivalent EU and FTC rules. Repopulate ONLY with genuine, verifiable customer reviews, and add Review/AggregateRating schema only then.",
+  "items": []
 }

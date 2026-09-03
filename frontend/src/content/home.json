@@ -2,10 +2,10 @@
   "hero": {
     "titleLines": [
       "Instant travel eSIM data.",
-      "60+ countries.",
+      "68 countries.",
       "Online when you land."
     ],
-    "highlightLine": "60+ countries.",
+    "highlightLine": "68 countries.",
     "cta": {
       "label": "Choose a destination",
       "href": "/destinations"
@@ -13,7 +13,7 @@
   },
   "whatIsEsim": {
     "title": "What is an eSIM?",
-    "body": "An eSIM is a digital SIM built into your phone — no plastic card to insert. Buy a data plan online, scan a QR code, and your device connects to a local network, skipping roaming fees and airport SIM kiosks. Prepaid travel eSIM data in 60+ countries, activated in minutes.",
+    "body": "An eSIM is a digital SIM built into your phone — no plastic card to insert. Buy a data plan online, scan a QR code, and your device connects to a local network, skipping roaming fees and airport SIM kiosks. Prepaid travel eSIM data in 68 countries, activated in minutes.",
     "href": "/what-is-esim"
   },
   "whereTravelersGo": {
@@ -29,7 +29,7 @@
     "title": "Buy it. Scan it. Land online.",
     "subtitle": "The whole setup is built to stay obvious under travel pressure: choose a plan, pay once, scan the QR, and keep moving without hunting for a plastic SIM on arrival.",
     "features": [
-      "Plans for 60+ countries",
+      "Plans for 68 countries",
       "Instant QR installation",
       "Main SIM stays active"
     ],
@@ -93,7 +93,7 @@
     },
     "assurances": [
       "Instant QR delivery",
-      "Coverage in 60+ destinations",
+      "Coverage in 68 destinations",
       "No roaming surprises"
     ]
   },

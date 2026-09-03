@@ -71,7 +71,7 @@ export const SITE = {
   baseUrl: resolveBaseUrl(),
   tagline: "Instant Travel eSIM Data",
   description:
-    "Prepaid data-only travel eSIMs for 60+ countries. Buy online, scan a QR code, and get connected on arrival — no physical SIM, keep your number.",
+    `Prepaid data-only travel eSIMs for ${catalog.meta.countryCount} countries. Buy online, scan a QR code, and get connected on arrival — no physical SIM, keep your number.`,
   countryCount: catalog.meta.countryCount,
   planCount: catalog.meta.planCount,
   social: {
