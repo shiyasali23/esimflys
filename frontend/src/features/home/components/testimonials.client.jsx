@@ -5,17 +5,25 @@ import { Star } from "lucide-react";
 import reviews from "@/content/reviews.json";
 
 /**
- * Renders nothing until real reviews exist.
+ * Customer reviews on the home page.
  *
- * This carousel previously showed eight invented reviewers with five-star ratings on the
- * live home page, from placeholder data whose own file said "replace with your own verified
- * customer reviews before launch". Fabricated consumer reviews are unlawful in the UK under
- * the DMCC Act 2024 and under equivalent EU and FTC rules, and this is a London company
- * taking card payments.
+ * HISTORY, because it is easy to get this wrong twice. The file shipped carrying a
+ * template's note — "Sample reviews shown for layout — replace with your own verified
+ * customer reviews before launch" — and every entry had `verified: false`. Read on its
+ * own that says the reviews are placeholders, so they were removed. The owner then
+ * confirmed they are genuine customers, carried over from the business this site
+ * rebrands, and that the note was the template's leftover rather than a statement about
+ * the content. They are restored on that basis.
  *
- * The guard is here rather than only at the call site so the component cannot reintroduce
- * the problem if someone renders it again later. Fill `content/reviews.json` with genuine
- * reviews and it comes back on its own.
+ * The `verified` flag is gone from the data at the owner's instruction. Nothing ever
+ * checked it, so a "Verified" badge rendered from it was a claim the page could not
+ * support. The conditional below is left in place and simply never fires: if a review
+ * platform is wired up later and the flag starts meaning something, it works.
+ *
+ * The null guard is the part to keep. Fabricated consumer reviews are an offence under
+ * the UK DMCC Act 2024, and this is a London company taking card payments — so the
+ * section must be able to disappear cleanly rather than render an empty shell, and
+ * emptying the file has to be a safe operation.
  */
 export function Testimonials() {
   const [ref, embla] = useEmblaCarousel({ loop: true, align: "start", dragFree: true });
