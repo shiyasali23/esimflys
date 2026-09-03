@@ -473,6 +473,93 @@ def refresh_stale_usage(*, older_than_minutes=180, limit=50):
     return refreshed
 
 
+def _used_bytes(profile):
+    """Bytes consumed, or None when the counters cannot answer.
+
+    There is no `data_used_mb` column — usage is `total_data_bytes` minus
+    `remaining_data_bytes`, and either can be NULL on a profile whose usage has never
+    been polled. None means "cannot tell from the counters", which is different from
+    zero, so the caller falls back to the lifecycle statuses rather than reading an
+    unknown as unused.
+    """
+    total, remaining = profile.total_data_bytes, profile.remaining_data_bytes
+    if total is None or remaining is None:
+        return None
+    return max(0, total - remaining)
+
+
+def esim_cancellation_blocker(profile):
+    """Why this eSIM must not be cancelled at the supplier, or None if it is safe.
+
+    One guard, every caller — the admin endpoint and the refund flow both ask this. Two
+    copies of a money guard is one copy that eventually disagrees, and the disagreement
+    here shows up as a traveller cut off mid-trip.
+
+    The rule that matters is usage. Once a customer has consumed data the supplier will
+    not credit the cancellation, so cancelling buys nothing and destroys a service
+    somebody may be standing in an airport relying on. That is a hard refusal, not a
+    warning: the money is already gone either way, and the only remaining variable is
+    whether the customer still has what they paid for.
+    """
+    if not profile.supplier_reference:
+        return "this eSIM has no supplier reference, so there is nothing to cancel"
+    if profile.status == "cancelled" or (profile.esim_status or "") in lifecycle.CANCELLED_ESIM:
+        return "already cancelled"
+    if (profile.esim_status or "") in lifecycle.ACTIVE_ESIM:
+        return "the customer is using it right now — cancelling would cut off their data"
+    used = _used_bytes(profile)
+    if used:
+        return (
+            f"{used / 1_000_000:.0f} MB has already been used — the supplier will not "
+            "credit a used eSIM, so this would destroy the service and refund nothing"
+        )
+    if (profile.esim_status or "") in lifecycle.FINISHED_ESIM:
+        return "already used up or expired, so there is nothing to reclaim"
+    return None
+
+
+def cancel_esim_at_supplier(profile, *, actor=None, request=None):
+    """Hand an unused eSIM back to the supplier and record that we did.
+
+    The counterpart to provisioning, and until now it did not exist: `cancel_esim` sat on
+    the gateway with no caller anywhere in the codebase, so refunding a customer returned
+    their money and left the eSIM live with the wholesale cost already spent. Three
+    profiles in production carried `status="cancelled"` while the supplier still listed
+    them as ours.
+
+    Idempotent by the guard above — a second call sees `already cancelled` and refuses,
+    so a double-click cannot double-count.
+
+    Raises `SupplierError` on a supplier failure and leaves the profile untouched. That
+    matters most when this runs alongside a refund: the money has already moved, so the
+    caller must be able to see the cancellation failed and retry it WITHOUT anything
+    trying to reverse the refund.
+    """
+    blocker = esim_cancellation_blocker(profile)
+    if blocker:
+        raise ValueError(blocker)
+
+    gateway = supplier_module.get_supplier_gateway()
+    gateway.cancel_esim(supplier_reference=profile.supplier_reference)
+
+    profile.status = "cancelled"
+    profile.esim_status = "CANCEL"
+    profile.save(update_fields=["status", "esim_status", "updated_at"])
+
+    from apps.administration.audit import record_audit
+
+    record_audit(
+        action="esim.cancelled_at_supplier",
+        actor=actor,
+        obj=profile,
+        request=request,
+        # No free-text reason is collected. Who and what is the audit trail that matters,
+        # and a required text box on a destructive action gets filled with "." anyway.
+        context={"supplier_reference": profile.supplier_reference},
+    )
+    return profile
+
+
 def decrypt_credentials(profile):
     version = profile.encryption_key_version
     if version is None:

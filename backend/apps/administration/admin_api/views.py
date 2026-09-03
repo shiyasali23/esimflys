@@ -756,7 +756,34 @@ class AdminOrderRefundView(PlatformAPIView):
             context={"order_number": order.order_number, "status": refund.status},
             request=request,
         )
-        return Response(AdminRefundSerializer(refund).data, status=201)
+
+        # The inventory half, once the money half has settled.
+        #
+        # ORDER MATTERS, and so does the isolation. The refund is already through Stripe
+        # by this line; a supplier failure here must never look like a failed refund or
+        # trigger anything that reverses one. So each eSIM is attempted independently,
+        # every outcome is reported, and NOTHING raises — the response still carries the
+        # refund, with a per-eSIM account of what came back.
+        esim_results = []
+        if payload.validated_data.get("cancel_esims", True):
+            for item in order.items.select_related("esim_profile"):
+                profile = getattr(item, "esim_profile", None)
+                if profile is None:
+                    continue
+                blocker = esim_services.esim_cancellation_blocker(profile)
+                if blocker:
+                    esim_results.append({"esim_id": str(profile.id), "cancelled": False, "detail": blocker})
+                    continue
+                try:
+                    esim_services.cancel_esim_at_supplier(profile, request=request)
+                except (SupplierError, ValueError) as exc:
+                    esim_results.append({"esim_id": str(profile.id), "cancelled": False, "detail": str(exc)})
+                else:
+                    esim_results.append({"esim_id": str(profile.id), "cancelled": True, "detail": "returned to the supplier"})
+
+        body = AdminRefundSerializer(refund).data
+        body["esims"] = esim_results
+        return Response(body, status=201)
 
 
 # --- eSIMs ---------------------------------------------------------------------------
@@ -833,6 +860,34 @@ class AdminEsimRefreshUsageView(PlatformAPIView):
             # them to the server logs for something the provider already explained.
             raise UpstreamUnavailable(message=f"The supplier could not be read: {exc}")
         record_audit(action="esim.usage_refreshed", obj=profile, request=request)
+        return Response(AdminEsimListSerializer(profile).data)
+
+
+class AdminEsimCancelView(PlatformAPIView):
+    """Hand an unused eSIM back to the supplier, in one click.
+
+    `MANAGE_REFUND`, not an ops capability: this is the inventory half of giving a
+    customer their money back, and it reclaims wholesale cost. Support can look at an
+    eSIM; only finance can return one.
+
+    No reason is collected. The audit row carries who and what, which is the trail that
+    matters, and a mandatory text box on a destructive action gets filled with "." by
+    the third use.
+    """
+
+    required_capability = roles.MANAGE_REFUND
+
+    def post(self, request, id):
+        profile = get_object_or_404(EsimProfile, pk=id)
+        try:
+            esim_services.cancel_esim_at_supplier(profile, request=request)
+        except ValueError as exc:
+            # `Conflict`, not a 500: the guard refusing is a considered answer about the
+            # state of THIS eSIM, and the operator needs to read the sentence — "12 MB has
+            # already been used" — rather than be sent to the server logs.
+            raise Conflict(message=str(exc))
+        except SupplierError as exc:
+            raise UpstreamUnavailable(message=f"The supplier refused the cancellation: {exc}")
         return Response(AdminEsimListSerializer(profile).data)
 
 

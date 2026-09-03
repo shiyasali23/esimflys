@@ -22,6 +22,7 @@ from .views import (
     AdminEsimListView,
     AdminEsimRefreshUsageView,
     AdminEsimSupplierProbeView,
+    AdminEsimCancelView,
     AdminEsimRevealView,
     AdminNotificationListView,
     AdminNotificationRetryView,
@@ -109,6 +110,7 @@ urlpatterns = [
     path("esims/", AdminEsimListView.as_view(), name="esim-list"),
     path("esims/<uuid:id>/", AdminEsimDetailView.as_view(), name="esim-detail"),
     path("esims/<uuid:id>/reveal/", AdminEsimRevealView.as_view(), name="esim-reveal"),
+    path("esims/<uuid:id>/cancel/", AdminEsimCancelView.as_view(), name="esim-cancel"),
     path(
         "esims/<uuid:id>/refresh-usage/",
         AdminEsimRefreshUsageView.as_view(),

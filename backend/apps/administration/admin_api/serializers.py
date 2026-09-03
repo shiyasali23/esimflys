@@ -377,6 +377,12 @@ class RefundAllocationSerializer(serializers.Serializer):
 class CreateRefundSerializer(serializers.Serializer):
     allocations = RefundAllocationSerializer(many=True, allow_empty=False)
     reason = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    #: Hand the order's eSIMs back to the supplier as part of the refund.
+    #
+    # Defaults TRUE, because refunding without it is the behaviour that leaked wholesale
+    # cost on every refund this platform has ever issued. Anything the guard refuses —
+    # a used or in-use eSIM — is reported and skipped rather than failing the refund.
+    cancel_esims = serializers.BooleanField(required=False, default=True)
 
 
 class AdminCustomerSerializer(serializers.ModelSerializer):

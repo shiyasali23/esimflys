@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, RefreshCw, Ban } from "lucide-react";
 import {
+  cancelAdminEsim,
   fetchAdminEsim,
   revealEsimCredentials,
   refreshAdminEsimUsage,
@@ -34,6 +35,7 @@ export function AdminEsimDetail({ esimId }) {
   const [credentials, setCredentials] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const focusCredentials = useFocusOnReveal();
 
   useEffect(() => {
@@ -59,6 +61,37 @@ export function AdminEsimDetail({ esimId }) {
           : err?.status === 429
             ? "Reveal limit reached (10 per hour). Try again later."
             : err?.message || "Couldn't reveal credentials.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /**
+   * Two clicks, no typing. The first arms it, the second sends it.
+   *
+   * No reason is collected — the audit row records who and what, and a mandatory text
+   * box on a destructive action gets filled with "." by the third use. The arming step
+   * stays because this is irreversible and moves money; a stray click on a row an
+   * operator was only reading would hand a customer's eSIM back to the supplier.
+   *
+   * A 409 is the server's guard, and its message is written for a person ("412 MB has
+   * already been used"), so it is shown as-is rather than replaced with something
+   * generic.
+   */
+  async function cancelEsim() {
+    setBusy("cancel");
+    setNotice(null);
+    try {
+      const updated = await cancelAdminEsim(esimId);
+      setEsim(updated?.id ? updated : await fetchAdminEsim(esimId));
+      setNotice("Cancelled at the supplier. The wholesale cost has been credited back.");
+      setConfirmingCancel(false);
+    } catch (err) {
+      setNotice(
+        err?.status === 403
+          ? "Your role can't cancel an eSIM — this needs the refunds capability."
+          : err?.message || "Couldn't cancel that eSIM.",
       );
     } finally {
       setBusy(null);
@@ -204,10 +237,43 @@ export function AdminEsimDetail({ esimId }) {
               {busy === "reveal" ? "Revealing…" : "Reveal credentials"}
             </button>
           )}
+          {esim?.status !== "cancelled" ? (
+            confirmingCancel ? (
+              <>
+                <button
+                  type="button"
+                  onClick={cancelEsim}
+                  disabled={busy !== null}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-4 py-2 text-label-bold text-destructive-foreground hover:brightness-110 disabled:opacity-50"
+                >
+                  <Ban size={16} aria-hidden />{" "}
+                  {busy === "cancel" ? "Cancelling…" : "Yes, cancel at supplier"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingCancel(false)}
+                  disabled={busy !== null}
+                  className="inline-flex items-center rounded-full border border-border px-4 py-2 text-label-bold text-foreground hover:bg-muted disabled:opacity-50"
+                >
+                  Keep it
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingCancel(true)}
+                disabled={busy !== null}
+                className="inline-flex items-center gap-1.5 rounded-full border border-destructive px-4 py-2 text-label-bold text-destructive-text hover:bg-destructive/5 disabled:opacity-50"
+              >
+                <Ban size={16} aria-hidden /> Cancel eSIM
+              </button>
+            )
+          ) : null}
         </div>
         <p className="mt-3 text-body-sm text-muted-foreground">
           Revealing is audited and limited to 10 per hour. Only reveal when a customer has asked for
-          help.
+          help. Cancelling returns the eSIM to the supplier and cannot be undone — the server
+          refuses it for any eSIM that has been used.
         </p>
       </section>
 

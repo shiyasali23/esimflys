@@ -226,6 +226,17 @@ export function refreshAdminEsimUsage(id) {
   return api.post(`/admin/esims/${encodeURIComponent(id)}/refresh-usage/`);
 }
 
+/**
+ * Hand an unused eSIM back to the supplier. Finance capability, and irreversible.
+ *
+ * 409 when the server's guard refuses — used, in use, already cancelled — and the
+ * message is a sentence written for the operator ("412 MB has already been used"),
+ * so show it rather than replacing it with something generic.
+ */
+export function cancelAdminEsim(id) {
+  return api.post(`/admin/esims/${encodeURIComponent(id)}/cancel/`);
+}
+
 /* ---- operations ---------------------------------------------------------- */
 
 export async function fetchSupplierEvents(params) {
