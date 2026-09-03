@@ -1,14 +1,10 @@
 import Link from "next/link";
-import { AppStoreBadge, GooglePlayBadge } from "@/components/media/store-badges";
+import { Globe } from "lucide-react";
 import { SocialLinks } from "@/components/layout/social-links";
 import { PaymentBadges } from "@/components/media/payment-badges";
 import nav from "@/content/nav.json";
 import site from "@/content/site.json";
-
-const APP_STORE_BADGES = {
-  "App Store": AppStoreBadge,
-  "Google Play": GooglePlayBadge,
-};
+import { SITE } from "@/config/site";
 
 /**
  * The full marketing footer, and a compact one for checkout.
@@ -58,13 +54,29 @@ export function Footer({ compact = false }) {
           <div className="col-span-2 md:col-span-1">
             <div className="font-display text-2xl font-bold uppercase text-primary">{site.brand}</div>
             <p className="mt-3 max-w-xs text-body-sm text-muted-foreground">{site.tagline}</p>
-            <PaymentBadges className="mt-5" />
-            <div className="mt-5 flex flex-wrap gap-3">
-              {site.appStores.map((a) => {
-                const Badge = APP_STORE_BADGES[a.label];
-                return Badge ? <Badge key={a.label} /> : null;
-              })}
-            </div>
+            {/*
+              The App Store and Google Play badges used to sit here. They were removed,
+              and the reason is worth keeping: `site.appStores` marks both apps
+              "coming-soon", the badges were <span>s with no href, and the Apple mark was
+              lucide's `Apple` icon — a piece of fruit with a leaf, not Apple Inc.'s
+              logo, beside a hand-drawn approximation of the Google Play triangle.
+
+              So the footer advertised two products that do not exist, could not be
+              tapped, and used two trademarks incorrectly. A visitor who taps "Download
+              on the App Store" and gets nothing has learned the site is broken — which
+              is the opposite of what a footer badge is for. They belong back here when
+              the apps ship, as real links using the official assets.
+            */}
+            <p className="mt-4 text-body-sm text-muted-foreground">
+              Questions? Email{" "}
+              <a
+                href={`mailto:${SITE.support.email}`}
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                {SITE.support.email}
+              </a>
+              . {SITE.support.responseTime}
+            </p>
           </div>
           {nav.footer.map((col) => (
             <nav key={col.title} aria-label={col.title}>
@@ -106,6 +118,24 @@ export function Footer({ compact = false }) {
               </ul>
             </nav>
           ))}
+        </div>
+      </div>
+      {/*
+        Payment methods run FULL WIDTH, not inside the brand column.
+
+        [MEASURED] in a five-column grid the brand column is about 190px. Five chips plus
+        an "American Express" that is wider than the column itself cannot share a line
+        there, so `flex-wrap` did the only thing it could and gave each badge its own row
+        — five stacked boxes reading as a broken layout. Given the full width they sit in
+        one row, which is what a payment row is supposed to look like.
+      */}
+      <div className="border-t border-border">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-6 md:flex-row md:items-center md:justify-between">
+          <PaymentBadges />
+          <p className="flex items-center gap-2 text-body-sm text-muted-foreground">
+            <Globe className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            {SITE.countryCount}+ countries · delivered by email in minutes
+          </p>
         </div>
       </div>
       <div className="border-t border-border">
