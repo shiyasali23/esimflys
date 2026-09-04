@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,13 @@ export default function GlossaryPage() {
                         ) : null}
                       </dt>
                       <dd className="text-body-md text-muted-foreground">{t.definition}</dd>
+                      {t.help ? (
+                        <dd className="mt-3 text-body-sm">
+                          <Link href={t.help} className="text-primary underline-offset-2 hover:underline">
+                            Where this comes up in the help centre
+                          </Link>
+                        </dd>
+                      ) : null}
                       {t.seeAlso?.length ? (
                         <dd className="mt-3 text-body-sm text-muted-foreground">
                           See also:{" "}

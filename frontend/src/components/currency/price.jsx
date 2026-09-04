@@ -24,6 +24,11 @@ import { useRates, useOfferedCurrencies } from "./rates-provider.client";
  * denomination shipped, and `public/llms.txt` was repeating the same stale claim to AI
  * crawlers until it was corrected alongside this.
  *
+ * The `data-sep` span between currencies is never displayed. It exists for text-only
+ * readers: with the spans adjacent, an extractor that ignores CSS read "$16.99₹1,539.00"
+ * as one number ([MEASURED] trafilatura on the live Thailand page). The separator turns
+ * that into "$16.99 · ₹1,539.00", which is at least two prices, not a garbled one.
+ *
  * `exact` turns OFF charm rounding, and belongs on derived figures only — the "from X/day"
  * rate, which is `retail / validity` and is never charged. Without it every per-day price
  * below one unit collapsed to 0.99 in EUR, GBP, AUD and CAD, so unrelated countries all
@@ -38,9 +43,12 @@ export function Price({ usd, className, exact = false }) {
 
   return (
     <span className={`price tabular-nums ${className || ""}`}>
-      {codes.map((code) => (
-        <span key={code} data-c={code} data-canonical={code === BASE_CURRENCY || undefined}>
-          {formatUsd(usd, code, fx, { charm: !exact })}
+      {codes.map((code, i) => (
+        <span key={code}>
+          {i > 0 ? <span data-sep aria-hidden> · </span> : null}
+          <span data-c={code} data-canonical={code === BASE_CURRENCY || undefined}>
+            {formatUsd(usd, code, fx, { charm: !exact })}
+          </span>
         </span>
       ))}
     </span>

@@ -1,0 +1,33 @@
+{
+  "_comment": "Display names for the wholesale supplier's network strings. Keyed by country slug; '*' applies everywhere a slug has no entry. A null value removes the entry (the operator no longer exists). Every rename is sourced in support_docs/seo-research/entities_carriers.md (2026-09-03). Where a technology generation could not be verified the generation is dropped rather than guessed.",
+  "*": {
+    "AirTel 4G": "Airtel 4G",
+    "A1.net 5G": "A1 5G",
+    "Mobitel 4G": "SLT-Mobitel 4G",
+    "Magti 4G": "Magticom",
+    "DS 5G": "DST 5G",
+    "Telekom.mk 5G": "Makedonski Telekom 5G",
+    "Tele2 5G": "Telemach 5G",
+    "Telenor Hungary 5G": "Yettel 5G",
+    "Aycell 5G": null,
+    "T-Mobile UK 5G": "EE 5G",
+    "IAM 4G": "Maroc Telecom 5G",
+    "XL 4G": "XLSmart",
+    "Smartfren 4G": "XLSmart",
+    "DTAC 5G": "dtac 5G (part of True)",
+    "Jazz 4G": "Jazz 5G",
+    "Hot Mobile 5G": "Hot Mobile"
+  },
+  "bulgaria": { "Telenor 4G": "Yettel 4G" },
+  "serbia": { "Telenor 4G": "Yettel 4G" },
+  "hungary": { "Vodafone 5G": "One 5G" },
+  "greece": { "Wind 5G": "Nova 5G" },
+  "italy": { "Wind 5G": "WindTre 5G" },
+  "malta": { "Vodafone 5G": "Epic 5G" },
+  "new-zealand": { "Vodafone 5G": "One NZ 5G" },
+  "macao": { "3 5G": null },
+  "united-kingdom": { "3 4G": "Three 4G" },
+  "uzbekistan": { "Beeline 5G": "Beeline" },
+  "poland": { "Orange 4G": "Orange 5G" },
+  "cambodia": { "Metfone 4G": "Metfone 5G", "Cellcard 4G": "Cellcard 5G" }
+}

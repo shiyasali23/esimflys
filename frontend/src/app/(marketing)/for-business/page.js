@@ -6,6 +6,8 @@ import { SITE } from "@/config/site";
 import { routes } from "@/config/routes";
 
 export const metadata = buildMetadata({
+  /* noindex until the programme is real: the page currently says it is being finalised. */
+  index: false,
   title: "eSIM Plans for Business",
   description: `Keep your travelling team connected across ${SITE.countryCount} countries with prepaid travel eSIMs and no roaming surprises. Ask eSIMFlys about plans for your business.`,
   path: "/for-business",

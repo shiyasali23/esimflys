@@ -30,6 +30,8 @@ export function organizationJsonLd() {
     name: SITE.name,
     legalName: SITE.legalName,
     url: SITE.baseUrl,
+    /* Year precision only: the launch year is what /about states, and nothing more exact is published. */
+    foundingDate: SITE.foundingYear,
     logo: `${SITE.baseUrl}/icons/logo-512.png`,
     /*
       Who actually takes the money, stated in the markup as well as on /about.

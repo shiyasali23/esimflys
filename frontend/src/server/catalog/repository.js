@@ -1,6 +1,8 @@
 import "server-only";
 import catalog from "@/data/catalog.json";
 import { withNetworks } from "./adapters";
+import { withDisplayNetworks, withDisplayNetworkNames } from "@/lib/catalog/network-aliases";
+import { RELATED_SLUGS } from "@/config/related";
 import { FEATURED_SLUGS } from "@/config/featured";
 
 /**
@@ -24,10 +26,11 @@ import { FEATURED_SLUGS } from "@/config/featured";
 const COUNTRIES = catalog.countries
   .filter((c) => c.isActive)
   .slice()
-  .sort((a, b) => a.sortOrder - b.sortOrder);
+  .sort((a, b) => a.sortOrder - b.sortOrder)
+  .map(withDisplayNetworks);
 
 const PLANS_BY_SLUG = catalog.plans.reduce((acc, plan) => {
-  (acc[plan.countrySlug] ||= []).push(plan);
+  (acc[plan.countrySlug] ||= []).push(withDisplayNetworkNames(plan));
   return acc;
 }, {});
 
@@ -101,31 +104,19 @@ export async function getRelatedCountries(slug, limit = 6) {
   const current = await getCountryBySlug(slug);
   if (!current) return [];
 
-  const others = COUNTRIES.filter((c) => c.slug !== slug);
+  const bySlug = new Map(COUNTRIES.map((c) => [c.slug, c]));
+  const curated = (RELATED_SLUGS[slug] || []).map((s) => bySlug.get(s)).filter(Boolean);
+
+  const others = COUNTRIES.filter((c) => c.slug !== slug && !curated.includes(c));
   const sameRegion = others.filter((c) => c.region === current.region);
   const elsewhere = others.filter((c) => c.region !== current.region && c.isPopular);
-
-  /*
-    Each country starts the regional list at its OWN position, so neighbouring pages suggest
-    different neighbours instead of all repeating the region's first six.
-
-    Without this rotation the ordering is `sortOrder` for everyone, so every page in a region
-    shows an identical row: [MEASURED] 19 of the 68 pages rendered the same six links, and
-    only 27 of 68 countries were reachable through related links at all. Rotating by position
-    spreads the coverage without inventing relevance — every suggestion is still a country in
-    the same region, just a different slice of it.
-
-    Deterministic on purpose. This runs at build time for a static export, so it must produce
-    the same output on every build; an index-based rotation does, where anything random would
-    reshuffle the internal link graph on each deploy.
-  */
   const regionAll = COUNTRIES.filter((c) => c.region === current.region);
   const pos = Math.max(0, regionAll.findIndex((c) => c.slug === slug));
   const rotated = sameRegion.length
     ? [...sameRegion.slice(pos % sameRegion.length), ...sameRegion.slice(0, pos % sameRegion.length)]
     : [];
 
-  return [...rotated, ...elsewhere].slice(0, limit);
+  return [...curated, ...rotated, ...elsewhere].slice(0, limit);
 }
 
 /**

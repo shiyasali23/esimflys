@@ -3,17 +3,17 @@
   "locale": "en",
   "status": "approved",
   "metaTitle": "Morocco eSIM | 4G/5G Data, from $0.43/day",
-  "metaDescription": "Get online in Morocco with an eSIM on Orange Morocco 5G and IAM 4G, from $0.43/day. Install by scanning a QR code and keep your number for calls and texts.",
+  "metaDescription": "Get online in Morocco with an eSIM on Orange Morocco and Maroc Telecom 5G, from $0.43/day. Install by scanning a QR code and keep your number.",
   "intro": "This page helps you set up mobile data for your trip to Morocco using a travel eSIM. The plan is data-only, so your usual SIM stays in place for calls and texts. You install it by scanning a QR code and turn it on when you arrive. Prices start from $0.43/day, with a range of data sizes to choose from.",
-  "countryContext": "Morocco is a destination in the Middle East & North Africa region, and you will want mobile data working from the moment you arrive. Instead of searching for a local shop or switching on costly roaming, an eSIM has your data ready in advance. In Morocco, that data runs on Orange Morocco and IAM.",
-  "networkNotes": "In Morocco, the eSIM connects through the local networks it is provisioned on: Orange Morocco, which carries 5G, and IAM, which carries 4G. Once the line is active, your phone uses the available signal automatically, as a physical SIM does. You do not choose a network manually or swap any card.",
-  "connectionDetails": "Choose a fixed bundle of 1, 3, 5, 10, 20, or 50 GB, or an unlimited-daily plan that refreshes your allowance each day. Validity runs from 5 to 30 days, from $0.43/day, and top-ups are available. The data suits maps, messaging, browsing, and internet calls while you travel.",
+  "countryContext": "Morocco is a destination in the Middle East & North Africa region, and you will want mobile data working from the moment you arrive. Instead of searching for a local shop or switching on costly roaming, an eSIM has your data ready in advance. In Morocco, that data runs on Orange Morocco and Maroc Telecom.",
+  "networkNotes": "In Morocco, the eSIM connects through the local networks it is provisioned on: Orange Morocco and Maroc Telecom, both of which carry 5G. Once the line is active, your phone uses the available signal automatically, as a physical SIM does. You do not choose a network manually or swap any card.",
+  "connectionDetails": "Choose a fixed bundle of 1, 3, 5, 10, 20, or 50 GB, or an unlimited-daily plan that refreshes your allowance each day. Validity runs from 5, 7, 10 or 30 days, from $0.43/day, and top-ups are available. The data suits maps, messaging, browsing, and internet calls while you travel.",
   "activationNotes": "Install the eSIM over Wi-Fi before you leave home by scanning the QR code. Keep the line switched off until you reach Morocco, then turn it on. Most plans start on the first connection to a local network, not at purchase, so enable data roaming on the eSIM line.",
   "whyEsim": "An eSIM saves you from hunting for a SIM shop after you land in Morocco and from a surprise roaming bill from your home carrier. Your number stays active for calls and texts, your data is set up before you travel, and there is no physical card to swap or lose along the way.",
   "faqs": [
     {
       "q": "Which networks will my eSIM use in Morocco, and will my phone work?",
-      "a": "In Morocco the eSIM connects through Orange Morocco, which carries 5G, and IAM, which carries 4G. It works on eSIM-capable, carrier-unlocked phones, including most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer. Dial *#06# to check for an EID."
+      "a": "In Morocco the eSIMFlys eSIM connects through Orange Morocco and Maroc Telecom, both of which carry 5G. It works on eSIM-capable, carrier-unlocked phones, including most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer. Dial *#06# to check for an EID."
     },
     {
       "q": "When does my Morocco plan start?",
@@ -25,7 +25,7 @@
     },
     {
       "q": "Which data plan should I choose for Morocco?",
-      "a": "It depends on your trip. Fixed bundles range from 1 GB to 50 GB over 5 to 30 days, from $0.43/day, and there are also unlimited-daily plans that refresh each day. Light users can pick a smaller tier, while longer or heavier trips suit a larger bundle. Top-ups are available if you need more."
+      "a": "It depends on your trip. Fixed bundles range from 1 GB to 50 GB over 5, 7, 10 or 30 days, from $0.43/day, and there are also unlimited-daily plans that refresh each day. Light users can pick a smaller tier, while longer or heavier trips suit a larger bundle. Top-ups are available if you need more."
     }
   ]
 }

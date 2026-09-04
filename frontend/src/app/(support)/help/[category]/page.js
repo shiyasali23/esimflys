@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
   Accordion,
   AccordionItem,
@@ -66,7 +67,20 @@ export default async function HelpCategoryPage({ params }) {
         {cat.articles.map((a, i) => (
           <AccordionItem key={i} name="help-faq">
             <AccordionTrigger>{a.q}</AccordionTrigger>
-            <AccordionContent>{a.a}</AccordionContent>
+            <AccordionContent>
+              <p>{a.a}</p>
+              {a.links?.length ? (
+                <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-body-sm">
+                  {a.links.map((l) => (
+                    <li key={l.href}>
+                      <Link href={l.href} className="text-primary underline-offset-2 hover:underline">
+                        {l.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </AccordionContent>
           </AccordionItem>
         ))}
       </Accordion>

@@ -301,6 +301,7 @@
 :root[data-consent="1"] { --consent-banner-h: 0px; }
 
 .price [data-c] { display: none; }
+.price [data-sep] { display: none; }
 :root:not([data-currency]) .price [data-c="USD"],
 :root[data-currency="USD"] .price [data-c="USD"],
 :root[data-currency="EUR"] .price [data-c="EUR"],

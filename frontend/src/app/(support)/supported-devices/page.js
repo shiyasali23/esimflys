@@ -4,7 +4,13 @@ import { CategoryTabs } from "@/features/devices/components/category-tabs.client
 import devices from "@/content/devices.json";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { JsonLd } from "@/components/seo/json-ld";
-import { itemListJsonLd } from "@/lib/seo/jsonld";
+import { faqPageJsonLd, itemListJsonLd } from "@/lib/seo/jsonld";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 export const metadata = buildMetadata({
   title: "eSIM Compatible Devices",
@@ -17,18 +23,20 @@ export default function SupportedDevicesPage() {
   return (
     <>
       {/*
-        The six CATEGORY names only, not the device models inside them.
-
-        The models live behind `CategoryTabs`, a client component that renders one tab at a
-        time, so they are not in the DOM on load. Listing them here would describe content
-        the page does not actually show. The tab labels themselves are server-rendered and
-        verified present, so they are what this mirrors.
+        Every category panel is now server-rendered (see category-tabs.client.jsx), so the
+        list can name the models the page actually shows. The FAQ block mirrors the visible
+        accordion below.
       */}
       <JsonLd
-        data={itemListJsonLd(
-          "eSIM compatible device categories",
-          devices.categories.map((c) => ({ name: c.name })),
-        )}
+        data={[
+          itemListJsonLd(
+            "eSIM compatible devices",
+            devices.categories.flatMap((c) =>
+              c.brands.map((b) => ({ name: `${c.name} — ${b.brand}: ${b.examples}` })),
+            ),
+          ),
+          faqPageJsonLd(devices.faqs),
+        ]}
       />
       <section className="relative -mt-16 overflow-hidden bg-gradient-to-br from-primary via-primary to-[#0f766e] text-white sm:-mt-20">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 pb-14 pt-32 md:pb-20 md:pt-44 lg:grid-cols-2">
@@ -59,6 +67,15 @@ export default function SupportedDevicesPage() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="mb-6 font-display text-2xl font-bold uppercase">Compatible device categories</h2>
         <CategoryTabs />
+        <h2 className="mb-6 mt-16 font-display text-2xl font-bold uppercase">Device questions</h2>
+        <Accordion>
+          {devices.faqs.map((f, i) => (
+            <AccordionItem key={i} name="device-faq">
+              <AccordionTrigger>{f.q}</AccordionTrigger>
+              <AccordionContent>{f.a}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </>
   );

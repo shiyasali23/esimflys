@@ -3,17 +3,17 @@
   "locale": "en",
   "status": "approved",
   "metaTitle": "Turkey eSIM | 5G Data, from $0.30/day",
-  "metaDescription": "Get online in Turkey with an eSIM on Türk Telekom, Aycell, or Vodafone 5G, from $0.30/day. Install by QR code and keep your number for calls and texts.",
+  "metaDescription": "Get online in Turkey with an eSIM on Türk Telekom or Vodafone 5G, from $0.30/day. Install by QR code and keep your number for calls and texts.",
   "intro": "This page helps you arrange mobile data for your trip to Turkey with a travel eSIM. The plan is data-only, so your normal SIM keeps handling calls and texts. You install it by scanning a QR code, then switch it on once you arrive. Prices begin at $0.30/day, with several data sizes and validity lengths to match your stay.",
-  "countryContext": "Turkey is a destination in the Middle East & North Africa region, and having mobile data ready on arrival makes the trip easier. Rather than looking for a local shop or turning on expensive roaming, an eSIM sets your data up in advance. In Turkey, that data runs on Türk Telekom, Aycell, and Vodafone.",
-  "networkNotes": "In Turkey, the eSIM connects through the local networks it is provisioned on: Türk Telekom, Aycell, and Vodafone. After the line is active, your phone uses the available signal automatically, the same as a physical SIM would. You do not pick a network by hand or swap any card.",
-  "connectionDetails": "Choose a fixed bundle of 1, 3, 5, 10, 20, or 50 GB, or an unlimited-daily plan offering 2 GB each day. Validity ranges from 5 to 30 days, from $0.30/day, and some plans allow top-ups. The data works well for maps, messaging, browsing, and internet calls.",
+  "countryContext": "Turkey is a destination in the Middle East & North Africa region, and having mobile data ready on arrival makes the trip easier. Rather than looking for a local shop or turning on expensive roaming, an eSIM sets your data up in advance. In Turkey, that data runs on Türk Telekom and Vodafone.",
+  "networkNotes": "In Turkey, the eSIM connects through the local networks it is provisioned on: Türk Telekom and Vodafone. After the line is active, your phone uses the available signal automatically, the same as a physical SIM would. You do not pick a network by hand or swap any card.",
+  "connectionDetails": "Choose a fixed bundle of 1, 3, 5, 10, 20, or 50 GB, or an unlimited-daily plan offering 2 GB each day. Validity ranges from 5, 7, 10 or 30 days, from $0.30/day, and some plans allow top-ups. The data works well for maps, messaging, browsing, and internet calls.",
   "activationNotes": "Install the eSIM over Wi-Fi before you fly by scanning the QR code. Keep the line turned off until you land in Turkey, then switch it on. The plan starts on its first connection to a local network, not at purchase, so remember to enable data roaming on the eSIM line.",
   "whyEsim": "With an eSIM there is no scramble to find a SIM kiosk after you land in Turkey and no roaming bill waiting from your home carrier. Your own number stays live for calls and texts, your data is arranged before you travel, and there is nothing physical to insert or misplace.",
   "faqs": [
     {
       "q": "Which networks will my eSIM use in Turkey, and will my phone work?",
-      "a": "In Turkey the eSIM connects through Türk Telekom, Aycell, and Vodafone. It works on eSIM-capable, carrier-unlocked phones, including most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer. Dial *#06# to check that your phone shows an EID."
+      "a": "In Turkey the eSIMFlys eSIM connects through Türk Telekom and Vodafone. It works on eSIM-capable, carrier-unlocked phones, including most iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer. Dial *#06# to check that your phone shows an EID."
     },
     {
       "q": "When does my Turkey plan start?",
@@ -25,7 +25,7 @@
     },
     {
       "q": "Which data size should I pick for Turkey?",
-      "a": "It comes down to your usage. Fixed bundles run from 1 GB up to 50 GB over 5 to 30 days, from $0.30/day, while the unlimited-daily plan provides 2 GB per day. Light users can take a smaller tier, and heavier or longer trips suit a larger bundle or unlimited-daily. Some plans support top-ups."
+      "a": "It comes down to your usage. Fixed bundles run from 1 GB up to 50 GB over 5, 7, 10 or 30 days, from $0.30/day, while the unlimited-daily plan provides 2 GB per day. Light users can take a smaller tier, and heavier or longer trips suit a larger bundle or unlimited-daily. Some plans support top-ups."
     }
   ]
 }

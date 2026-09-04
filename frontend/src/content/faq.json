@@ -2,17 +2,47 @@
   "title": "Frequently asked questions",
   "subtitle": "Fast answers on activating your prepaid travel eSIM — compatibility, delivery timing, and international data usage before you checkout.",
   "stillCurious": [
-    { "label": "What is an eSIM?", "href": "/what-is-esim" },
-    { "label": "Supported devices", "href": "/supported-devices" },
-    { "label": "Help center", "href": "/help" }
+    {
+      "label": "What is an eSIM?",
+      "href": "/what-is-esim"
+    },
+    {
+      "label": "Supported devices",
+      "href": "/supported-devices"
+    },
+    {
+      "label": "Help center",
+      "href": "/help"
+    }
   ],
   "items": [
-    { "q": "When should I buy my eSIM, and does it activate right away?", "a": "Buy as soon as your trip is confirmed. It activates on arrival, not at purchase. Your QR code is delivered immediately after payment, but most plans only start once you install the eSIM and connect in the destination country." },
-    { "q": "How do I install my eSIMFlys eSIM, and how long does setup take?", "a": "Installation usually takes two to three minutes. Open the QR code from your email on another screen, scan it from your phone settings, then choose the eSIM as your travel data line." },
-    { "q": "Can I keep using my regular SIM card and phone number?", "a": "Yes. Most compatible devices let you keep your physical SIM active for calls and texts while your eSIMFlys plan handles mobile data during the trip." },
-    { "q": "What happens if I run out of data before my trip ends?", "a": "Just buy another plan, or top up if your destination supports it. You can purchase a new plan any time from the website and extend your connection without starting over." },
-    { "q": "How do I know if my phone is compatible with an eSIM?", "a": "Check your cellular settings for options like \"Add eSIM\" or \"Add Cellular Plan.\" Most recent iPhones, Google Pixel models, and Samsung Galaxy flagships support eSIM." },
-    { "q": "Do you offer support if my eSIM is not working abroad?", "a": "Yes. If activation or coverage feels off, contact support with your order details and device model. We can help verify installation, APN settings, and destination network guidance." },
-    { "q": "Is there a refund policy if I bought the wrong plan?", "a": "Yes, if the QR code hasn't been installed and the plan hasn't started, we can usually review refund eligibility. Once a plan is active or consumed, refunds depend on the issue and carrier conditions." }
+    {
+      "q": "When should I buy my eSIM, and does it activate right away?",
+      "a": "Buy as soon as your trip is confirmed. It activates on arrival, not at purchase. Your QR code is delivered immediately after payment, but most plans only start once you install the eSIM and connect in the destination country."
+    },
+    {
+      "q": "How do I install my eSIMFlys eSIM, and how long does setup take?",
+      "a": "Installation usually takes two to three minutes. Open the QR code from your email on another screen, scan it from your phone settings, then choose the eSIM as your travel data line."
+    },
+    {
+      "q": "Can I keep using my regular SIM card and phone number?",
+      "a": "Yes. Most compatible devices let you keep your physical SIM active for calls and texts while your eSIMFlys plan handles mobile data during the trip."
+    },
+    {
+      "q": "What happens if I run out of data before my trip ends?",
+      "a": "Just buy another plan, or top up if your destination supports it. You can purchase a new plan any time from the website and extend your connection without starting over."
+    },
+    {
+      "q": "How do I know if my phone is compatible with an eSIM?",
+      "a": "Check your cellular settings for options like \"Add eSIM\" or \"Add Cellular Plan.\" Most recent iPhones, Google Pixel models, and Samsung Galaxy flagships support eSIM."
+    },
+    {
+      "q": "Do you offer support if my eSIM is not working abroad?",
+      "a": "Yes. If activation or coverage feels off, contact support with your order details and device model. We can help verify installation, APN settings, and destination network guidance."
+    },
+    {
+      "q": "Is there a refund policy if I bought the wrong plan?",
+      "a": "Yes. You have a 14-day right to withdraw from the purchase without giving a reason. If the eSIM has been activated and data used within those 14 days, the refund is proportionate to what is left. Email support with your order number to start it; the full rules are on the refund policy page under Legal."
+    }
   ]
 }

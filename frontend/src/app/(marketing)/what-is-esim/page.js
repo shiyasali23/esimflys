@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import content from "@/content/what-is-esim.json";
 import { buildMetadata } from "@/lib/seo/metadata";
@@ -20,7 +21,7 @@ export default function WhatIsEsimPage() {
           description: content.intro,
           path: "/what-is-esim",
           // Real last-change date of content/what-is-esim.json, from version control.
-          dateModified: "2026-07-25",
+          dateModified: "2026-09-04",
         })}
       />
       <h1 className="font-display text-4xl font-bold uppercase md:text-5xl">{content.title}</h1>
@@ -33,6 +34,20 @@ export default function WhatIsEsimPage() {
           </section>
         ))}
       </div>
+      {content.related?.length ? (
+        <section className="mt-10">
+          <h2 className="font-display text-xl font-semibold uppercase">Read next</h2>
+          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+            {content.related.map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} className="text-primary underline-offset-2 hover:underline">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <div className="mt-10">
         <Button href={content.cta.href} variant="cta" size="lg">
           {content.cta.label}

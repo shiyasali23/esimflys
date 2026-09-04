@@ -7,14 +7,50 @@
     "resultYes": "Yes — this device supports eSIM.",
     "resultUnknown": "Not in our quick list — try the manual check below.",
     "compatible": [
-      "iphone xs", "iphone xr", "iphone 11", "iphone 12", "iphone 13", "iphone 14",
-      "iphone 15", "iphone 16", "iphone se",
-      "pixel 3", "pixel 4", "pixel 5", "pixel 6", "pixel 7", "pixel 8", "pixel 9", "pixel fold",
-      "galaxy s20", "galaxy s21", "galaxy s22", "galaxy s23", "galaxy s24", "galaxy s25",
-      "galaxy z fold", "galaxy z flip", "galaxy note 20", "galaxy fold", "galaxy flip",
-      "motorola razr", "moto razr", "rakuten", "oppo find x", "huawei p40",
-      "xiaomi 12", "xiaomi 13", "xiaomi 14", "surface pro", "surface go",
-      "apple watch", "galaxy watch", "pixel watch", "ipad pro", "ipad air", "ipad mini"
+      "iphone xs",
+      "iphone xr",
+      "iphone 11",
+      "iphone 12",
+      "iphone 13",
+      "iphone 14",
+      "iphone 15",
+      "iphone 16",
+      "iphone se",
+      "pixel 3",
+      "pixel 4",
+      "pixel 5",
+      "pixel 6",
+      "pixel 7",
+      "pixel 8",
+      "pixel 9",
+      "pixel fold",
+      "galaxy s20",
+      "galaxy s21",
+      "galaxy s22",
+      "galaxy s23",
+      "galaxy s24",
+      "galaxy s25",
+      "galaxy z fold",
+      "galaxy z flip",
+      "galaxy note 20",
+      "galaxy fold",
+      "galaxy flip",
+      "motorola razr",
+      "moto razr",
+      "rakuten",
+      "oppo find x",
+      "huawei p40",
+      "xiaomi 12",
+      "xiaomi 13",
+      "xiaomi 14",
+      "surface pro",
+      "surface go",
+      "apple watch",
+      "galaxy watch",
+      "pixel watch",
+      "ipad pro",
+      "ipad air",
+      "ipad mini"
     ]
   },
   "manualCheck": {
@@ -25,47 +61,106 @@
     {
       "name": "Smartphones",
       "brands": [
-        { "brand": "Apple", "examples": "iPhone XS / XR and every model since" },
-        { "brand": "Samsung", "examples": "Galaxy S20+, Z Fold / Z Flip, Note 20" },
-        { "brand": "Google", "examples": "Pixel 3 and newer, Pixel Fold" },
-        { "brand": "Motorola", "examples": "Razr, Edge and select G-series" },
-        { "brand": "Xiaomi", "examples": "Xiaomi 12 / 13 / 14 (select regions)" },
-        { "brand": "Others", "examples": "Oppo Find X, Huawei P40, Rakuten (varies)" }
+        {
+          "brand": "Apple",
+          "examples": "iPhone XS / XR and every model since"
+        },
+        {
+          "brand": "Samsung",
+          "examples": "Galaxy S20+, Z Fold / Z Flip, Note 20"
+        },
+        {
+          "brand": "Google",
+          "examples": "Pixel 3 and newer, Pixel Fold"
+        },
+        {
+          "brand": "Motorola",
+          "examples": "Razr, Edge and select G-series"
+        },
+        {
+          "brand": "Xiaomi",
+          "examples": "Xiaomi 12 / 13 / 14 (select regions)"
+        },
+        {
+          "brand": "Others",
+          "examples": "Oppo Find X, Huawei P40, Rakuten (varies)"
+        }
       ]
     },
     {
       "name": "Smartwatches",
       "brands": [
-        { "brand": "Apple Watch", "examples": "Series 3 (Cellular) and newer" },
-        { "brand": "Samsung", "examples": "Galaxy Watch LTE models" },
-        { "brand": "Google", "examples": "Pixel Watch (LTE)" }
+        {
+          "brand": "Apple Watch",
+          "examples": "Series 3 (Cellular) and newer"
+        },
+        {
+          "brand": "Samsung",
+          "examples": "Galaxy Watch LTE models"
+        },
+        {
+          "brand": "Google",
+          "examples": "Pixel Watch (LTE)"
+        }
       ]
     },
     {
       "name": "Tablets",
       "brands": [
-        { "brand": "Apple", "examples": "iPad Pro / Air / mini (Wi-Fi + Cellular)" },
-        { "brand": "Samsung", "examples": "Galaxy Tab (select LTE / 5G models)" }
+        {
+          "brand": "Apple",
+          "examples": "iPad Pro / Air / mini (Wi-Fi + Cellular)"
+        },
+        {
+          "brand": "Samsung",
+          "examples": "Galaxy Tab (select LTE / 5G models)"
+        }
       ]
     },
     {
       "name": "Laptops",
       "brands": [
-        { "brand": "Microsoft", "examples": "Surface Pro / Go LTE" },
-        { "brand": "Windows PCs", "examples": "Select ThinkPad, Dell, HP with WWAN" }
+        {
+          "brand": "Microsoft",
+          "examples": "Surface Pro / Go LTE"
+        },
+        {
+          "brand": "Windows PCs",
+          "examples": "Select ThinkPad, Dell, HP with WWAN"
+        }
       ]
     },
     {
       "name": "Wi-Fi Routers",
       "brands": [
-        { "brand": "Travel routers", "examples": "eSIM-capable travel routers (availability varies by model)" }
+        {
+          "brand": "Travel routers",
+          "examples": "eSIM-capable travel routers (availability varies by model)"
+        }
       ]
     },
     {
       "name": "Cars",
       "brands": [
-        { "brand": "Connected vehicles", "examples": "eSIM-based infotainment on select makers" }
+        {
+          "brand": "Connected vehicles",
+          "examples": "eSIM-based infotainment on select makers"
+        }
       ]
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Does my iPhone support eSIM?",
+      "a": "Every iPhone from the XS and XR onward supports eSIM, including all iPhone 11 to 16 models and the iPhone SE (2nd generation and later). The exception is iPhones sold in mainland China, which have no eSIM. To confirm on your own phone, dial *#06#: if an EID number appears, the eSIMFlys eSIM will install."
+    },
+    {
+      "q": "Which Samsung and Google Pixel phones support eSIM?",
+      "a": "Samsung Galaxy S20 and newer, the Z Fold and Z Flip series and Note 20 support eSIM on most regional variants. Google Pixel 3 and newer support it, though the Pixel 3 and 3a only on some carriers. Because support varies by region and carrier lock, check Settings for an \"Add eSIM\" option or dial *#06# for an EID before you buy."
+    },
+    {
+      "q": "How do I check if my phone is eSIM-capable and unlocked?",
+      "a": "Dial *#06# and look for a line labelled EID; if it is there the hardware supports eSIM. Then confirm the phone is carrier-unlocked, because a locked phone rejects any profile that is not from its home carrier. On iPhone, Settings → General → About shows \"No SIM restrictions\" when it is unlocked."
     }
   ]
 }

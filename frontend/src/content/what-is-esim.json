@@ -2,10 +2,59 @@
   "title": "What is an eSIM?",
   "intro": "An eSIM (embedded SIM) is a digital SIM chip built into your phone, tablet, or watch. Instead of inserting a plastic card, you download a data plan and your device connects to a local network — so you skip roaming fees and airport SIM kiosks.",
   "sections": [
-    { "h": "How an eSIM works", "p": "Your device has a small reprogrammable chip. When you buy a plan you receive a QR code; scanning it installs the eSIM profile. You then choose it as your travel data line and connect to a partner network at your destination." },
-    { "h": "eSIM vs physical SIM", "p": "A physical SIM is a removable card tied to one carrier. An eSIM is digital: you can store several profiles, switch between them in settings, and keep your regular SIM active for calls and texts while an eSIM handles data." },
-    { "h": "Why travelers use eSIMs", "p": "No hunting for a kiosk on arrival, no swapping tiny trays, and no surprise roaming bills. You buy before you fly, install on Wi-Fi, and land already online with pricing shown upfront." },
-    { "h": "How to install an eSIM", "p": "Buy a plan, open the emailed QR code on another screen, and scan it from your phone's cellular settings. Choose the eSIM as your data line and turn it on when you reach your destination. Setup usually takes two to three minutes." }
+    {
+      "h": "How an eSIM works",
+      "p": "Your device has a small reprogrammable chip. When you buy a plan you receive a QR code; scanning it installs the eSIM profile. You then choose it as your travel data line and connect to a partner network at your destination. The profile carries the network credentials a plastic SIM would carry, so the phone behaves exactly as if a local SIM were inside it, except that the download replaces the card."
+    },
+    {
+      "h": "eSIM vs physical SIM",
+      "p": "A physical SIM is a removable card tied to one carrier. An eSIM is digital: you can store several profiles, switch between them in settings, and keep your regular SIM active for calls and texts while an eSIM handles data. Most phones sold since 2018 hold both, which is why a travel eSIM sits beside your home number rather than replacing it."
+    },
+    {
+      "h": "Does my phone support eSIM?",
+      "p": "Dial *#06#. If an EID number appears with the IMEI, the hardware supports eSIM. iPhone XS and newer, Google Pixel 3 and newer and Samsung Galaxy S20 and newer all qualify, with two caveats: iPhones sold in mainland China have no eSIM, and a carrier-locked phone rejects any profile that is not from its own carrier, so the phone must be unlocked."
+    },
+    {
+      "h": "Why travelers use eSIMs",
+      "p": "No hunting for a kiosk on arrival, no swapping tiny trays, and no surprise roaming bills. You buy before you fly, install on Wi-Fi, and land already online with pricing shown upfront. Because the plan is prepaid for a fixed amount of data and a fixed number of days, the cost is known before departure."
+    },
+    {
+      "h": "How to install an eSIM",
+      "p": "Buy a plan, open the emailed QR code on another screen, and scan it from your phone's cellular settings. Choose the eSIM as your data line and turn it on when you reach your destination. Setup usually takes two to three minutes. A profile downloads once, so install it on the phone you will travel with and do not delete it before the plan ends."
+    },
+    {
+      "h": "When does a travel eSIM start?",
+      "p": "Not at purchase and not at installation. Most plans start when the eSIM first connects to a network in the destination country, so installing days ahead loses nothing as long as the line stays switched off until you land. The validity, for example 7 or 30 days, counts from that first connection."
+    },
+    {
+      "h": "Do I keep my own phone number?",
+      "p": "Yes. A travel eSIM from eSIMFlys is data-only. Your usual SIM stays active for calls and texts on your own number while the eSIM carries the internet traffic. Keep the home line's data roaming off so nothing is billed by your home carrier."
+    },
+    {
+      "h": "What an eSIM does not do",
+      "p": "It does not give you a local phone number, it cannot be moved between phones once installed, and it needs an unlocked, eSIM-capable device. Whether it works in a specific spot depends on the partner network's own coverage, which the operator, not the eSIM seller, publishes."
+    }
   ],
-  "cta": { "label": "Browse travel plans", "href": "/destinations" }
+  "cta": {
+    "label": "Browse travel plans",
+    "href": "/destinations"
+  },
+  "related": [
+    {
+      "label": "Supported devices",
+      "href": "/supported-devices"
+    },
+    {
+      "label": "How activation works",
+      "href": "/help/activation"
+    },
+    {
+      "label": "eSIM glossary",
+      "href": "/glossary"
+    },
+    {
+      "label": "Browse destinations",
+      "href": "/destinations"
+    }
+  ]
 }

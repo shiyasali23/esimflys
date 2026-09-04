@@ -70,6 +70,7 @@ export const SITE = {
   },
   baseUrl: resolveBaseUrl(),
   tagline: "Instant Travel eSIM Data",
+  foundingYear: "2026",
   description:
     `Prepaid data-only travel eSIMs for ${catalog.meta.countryCount} countries. Buy online, scan a QR code, and get connected on arrival — no physical SIM, keep your number.`,
   countryCount: catalog.meta.countryCount,

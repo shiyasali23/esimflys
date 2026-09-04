@@ -1,53 +1,153 @@
 {
   "header": [
-    { "label": "Home", "href": "/" },
-    { "label": "Destinations", "href": "/destinations" },
-    { "label": "Supported devices", "href": "/supported-devices" },
-    { "label": "How it works", "href": "/#how-it-works" },
-    { "label": "FAQ", "href": "/#faq" }
+    {
+      "label": "Home",
+      "href": "/"
+    },
+    {
+      "label": "Destinations",
+      "href": "/destinations"
+    },
+    {
+      "label": "Supported devices",
+      "href": "/supported-devices"
+    },
+    {
+      "label": "How it works",
+      "href": "/#how-it-works"
+    },
+    {
+      "label": "FAQ",
+      "href": "/#faq"
+    }
   ],
   "footer": [
     {
       "title": "eSIMFlys",
       "links": [
-        { "label": "About", "href": "/about" },
-        { "label": "Browse plans", "href": "/destinations" },
-        { "label": "How it works", "href": "/how-it-works" },
-        { "label": "For business", "href": "/for-business" },
-        { "label": "Affiliates", "href": "/affiliates" },
-        { "label": "Contact", "href": "/contact" },
-        { "label": "Help center", "href": "/help" }
+        {
+          "label": "About",
+          "href": "/about"
+        },
+        {
+          "label": "Browse plans",
+          "href": "/destinations"
+        },
+        {
+          "label": "How it works",
+          "href": "/how-it-works"
+        },
+        {
+          "label": "For business",
+          "href": "/for-business"
+        },
+        {
+          "label": "Affiliates",
+          "href": "/affiliates"
+        },
+        {
+          "label": "Contact",
+          "href": "/contact"
+        },
+        {
+          "label": "Help center",
+          "href": "/help"
+        }
       ]
     },
     {
       "title": "Top destinations",
       "links": [
-        { "label": "Saudi Arabia", "href": "/esim/saudi-arabia" },
-        { "label": "UAE", "href": "/esim/united-arab-emirates" },
-        { "label": "Thailand", "href": "/esim/thailand" },
-        { "label": "Indonesia", "href": "/esim/indonesia" },
-        { "label": "Morocco", "href": "/esim/morocco" },
-        { "label": "Montenegro", "href": "/esim/montenegro" },
-        { "label": "All destinations", "href": "/destinations" }
+        {
+          "label": "Saudi Arabia",
+          "href": "/esim/saudi-arabia"
+        },
+        {
+          "label": "UAE",
+          "href": "/esim/united-arab-emirates"
+        },
+        {
+          "label": "Thailand",
+          "href": "/esim/thailand"
+        },
+        {
+          "label": "Malaysia",
+          "href": "/esim/malaysia"
+        },
+        {
+          "label": "Singapore",
+          "href": "/esim/singapore"
+        },
+        {
+          "label": "Indonesia",
+          "href": "/esim/indonesia"
+        },
+        {
+          "label": "Maldives",
+          "href": "/esim/maldives"
+        },
+        {
+          "label": "Turkey",
+          "href": "/esim/turkey"
+        },
+        {
+          "label": "Morocco",
+          "href": "/esim/morocco"
+        },
+        {
+          "label": "Montenegro",
+          "href": "/esim/montenegro"
+        },
+        {
+          "label": "All destinations",
+          "href": "/destinations"
+        }
       ]
     },
     {
       "title": "Resources",
       "links": [
-        { "label": "What is an eSIM", "href": "/what-is-esim" },
-        { "label": "Supported devices", "href": "/supported-devices" },
-        { "label": "Glossary", "href": "/glossary" },
-        { "label": "Help center", "href": "/help" },
-        { "label": "My eSIMs", "href": "/account/esims" },
-        { "label": "FAQ", "href": "/#faq" }
+        {
+          "label": "What is an eSIM",
+          "href": "/what-is-esim"
+        },
+        {
+          "label": "Supported devices",
+          "href": "/supported-devices"
+        },
+        {
+          "label": "Glossary",
+          "href": "/glossary"
+        },
+        {
+          "label": "Help center",
+          "href": "/help"
+        },
+        {
+          "label": "My eSIMs",
+          "href": "/account/esims"
+        },
+        {
+          "label": "FAQ",
+          "href": "/#faq"
+        }
       ]
     },
     {
       "title": "Legal",
       "links": [
-        { "label": "Terms", "href": "/legal/terms" },
-        { "label": "Privacy", "href": "/legal/privacy" },
-        { "label": "Refunds", "href": "/legal/refund" }
+        {
+          "label": "Terms",
+          "href": "/legal/terms"
+        },
+        {
+          "label": "Privacy",
+          "href": "/legal/privacy"
+        },
+        {
+          "label": "Refunds",
+          "href": "/legal/refund"
+        }
       ]
     }
   ]

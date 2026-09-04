@@ -22,8 +22,6 @@ export default async function sitemap() {
     "/what-is-esim",
     "/how-it-works",
     "/about",
-    "/for-business",
-    "/affiliates",
     "/contact",
     "/help",
     "/glossary",

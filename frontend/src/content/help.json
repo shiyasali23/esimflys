@@ -12,15 +12,47 @@
       "articles": [
         {
           "q": "How do I install my eSIM on iPhone?",
-          "a": "Open Settings → Cellular → Add eSIM, then scan the QR code from your confirmation email. Label it \"Travel\" so it's easy to find, and leave it turned off until you land."
+          "a": "Open Settings → Cellular → Add eSIM, choose \"Use QR Code\", and scan the QR code from your eSIMFlys confirmation email using another screen to display it. Label the new line \"Travel\" so it is easy to find later, and leave it switched off until you land. Installation needs a Wi-Fi or mobile connection, so do it at home or in the airport before departure.",
+          "links": [
+            {
+              "label": "Check your iPhone supports eSIM",
+              "href": "/supported-devices"
+            }
+          ]
         },
         {
           "q": "How do I install on Android?",
-          "a": "Open Settings → Network & internet → SIMs → Add eSIM (or Download a SIM instead), then scan your QR code. Steps vary slightly by manufacturer."
+          "a": "Open Settings → Network & internet → SIMs → Add eSIM (Samsung: Connections → SIM manager → Add eSIM), then scan your QR code. Labels and menu names vary slightly by manufacturer and Android version, but the flow is the same: scan, confirm the download, then keep the new line turned off until you arrive.",
+          "links": [
+            {
+              "label": "Android and Samsung models that support eSIM",
+              "href": "/supported-devices"
+            }
+          ]
         },
         {
           "q": "Can I install using the eSIM details manually?",
-          "a": "Yes. If you can't scan the QR, choose \"Enter details manually\" and paste the activation code (SM-DP+ address and activation token) from your email."
+          "a": "Yes. If you cannot scan the QR, choose \"Enter details manually\" and paste the SM-DP+ address and the activation code from your email. Both are printed under the QR code. Copy them exactly, including any hyphens; a single missing character makes the download fail.",
+          "links": [
+            {
+              "label": "What SM-DP+ means",
+              "href": "/glossary#sm-dp-plus"
+            }
+          ]
+        },
+        {
+          "q": "Can I install the eSIM more than once?",
+          "a": "No. An eSIM profile downloads to one device, one time. If you delete it from your phone you cannot scan the same QR code again, so install it on the phone you will actually travel with and do not remove it until the plan has expired. If a profile was lost before your trip, contact support with your order number."
+        },
+        {
+          "q": "When should I install it?",
+          "a": "Install as soon as your order arrives and you are on Wi-Fi. Installing does not start the plan: most plans begin counting on the first connection to a network in the destination country, so an eSIM installed a week early loses nothing. Keeping the line off until you land is what prevents an early start.",
+          "links": [
+            {
+              "label": "How activation works",
+              "href": "/help/activation"
+            }
+          ]
         }
       ]
     },
@@ -32,11 +64,41 @@
       "articles": [
         {
           "q": "When does my plan start?",
-          "a": "Most plans start when you install the eSIM and connect to a network in the destination country — not at purchase. Keep the line off until you arrive."
+          "a": "Most plans start when the eSIM first connects to a network in the destination country, not when you pay and not when you install. That is why installing at home is safe. The plan's validity, for example 7 or 30 days, counts from that first connection. Each country page states the exact validity options its plans offer.",
+          "links": [
+            {
+              "label": "Browse destinations",
+              "href": "/destinations"
+            }
+          ]
         },
         {
-          "q": "How do I turn on travel data?",
-          "a": "In your cellular settings, select the eSIM as your data line and enable data roaming for that line only. Your main SIM can stay active for calls and texts."
+          "q": "How do I turn on travel data when I land?",
+          "a": "Switch the eSIM line on, select it as your mobile-data line, and enable data roaming for that line only. On iPhone this is Settings → Cellular → Cellular Data, then the line's own Data Roaming toggle. Your phone registers on a partner network within a minute or two; if it does not, toggle Airplane mode once.",
+          "links": [
+            {
+              "label": "No signal after landing?",
+              "href": "/help/troubleshooting"
+            }
+          ]
+        },
+        {
+          "q": "Can I keep my usual SIM active?",
+          "a": "Yes. The eSIMFlys plan is data-only, so your regular SIM or eSIM stays in place for calls and texts on your own number. Set the travel eSIM as the data line and keep your home line's data roaming off, so nothing is billed by your home carrier while the eSIM carries the data."
+        },
+        {
+          "q": "Do I have to activate anything on the website?",
+          "a": "No. There is no activation button, code entry or account step after installation. Connecting to the local network is the activation. The order page in your account shows the eSIM's status and remaining validity once the plan has started."
+        },
+        {
+          "q": "Does the plan need to be activated on a specific date?",
+          "a": "No. Buy it when your trip is confirmed and activate it whenever you arrive. The only clock that matters is the validity window, which starts on first connection. If your trip is postponed, leave the line off and the plan waits.",
+          "links": [
+            {
+              "label": "Refund rules if plans change",
+              "href": "/help/billing"
+            }
+          ]
         }
       ]
     },
@@ -48,11 +110,39 @@
       "articles": [
         {
           "q": "How do I know my device supports eSIM?",
-          "a": "Dial *#06# — if you see an EID number, your device supports eSIM. Most iPhones (XS and newer), Google Pixel (3+), and Samsung Galaxy (S20+) are compatible. See our Supported devices page."
+          "a": "Dial *#06#. If an EID number appears alongside the IMEI, the hardware supports eSIM. As a rule, iPhone XS and newer, Google Pixel 3 and newer, and Samsung Galaxy S20 and newer qualify, but regional variants differ, so the EID check is the reliable test.",
+          "links": [
+            {
+              "label": "Full list by brand and category",
+              "href": "/supported-devices"
+            },
+            {
+              "label": "What an EID is",
+              "href": "/glossary#eid"
+            }
+          ]
         },
         {
           "q": "Does my phone need to be unlocked?",
-          "a": "Yes. Your device must be carrier-unlocked to use a third-party eSIM. If it's locked, contact your carrier to unlock it first."
+          "a": "Yes. A carrier-locked phone rejects any profile that is not from its own carrier, including a travel eSIM. On iPhone, Settings → General → About shows \"No SIM restrictions\" when the phone is unlocked. If it is locked, ask your carrier to unlock it before you buy; contract phones often qualify once the contract term has passed."
+        },
+        {
+          "q": "Which iPhones support eSIM?",
+          "a": "Every iPhone from the XS and XR onward, including all iPhone 11 to 16 models and the iPhone SE from the second generation. iPhones sold in mainland China have no eSIM. Dual-eSIM (two active eSIM lines) arrived with the iPhone 13."
+        },
+        {
+          "q": "Which Android phones support eSIM?",
+          "a": "Google Pixel 3 and newer (the Pixel 3 and 3a only on some carriers), Samsung Galaxy S20 and newer, the Z Fold and Z Flip series and Note 20, and selected Motorola, Xiaomi, Oppo and Huawei models. Support depends on the regional model, so check for an \"Add eSIM\" option in Settings or dial *#06#.",
+          "links": [
+            {
+              "label": "Supported devices by brand",
+              "href": "/supported-devices"
+            }
+          ]
+        },
+        {
+          "q": "Does the eSIM work on tablets, watches or laptops?",
+          "a": "It works on any eSIM-capable, unlocked device that can add a mobile-data profile, such as cellular iPads and Surface laptops. Smartwatches usually share a number with a phone and are not suited to a data-only travel plan. The supported devices page lists the categories the profile can be installed on."
         }
       ]
     },
@@ -68,23 +158,85 @@
         },
         {
           "q": "Can I get a refund?",
-          "a": "Yes. As a consumer you have a legal right to withdraw from your purchase within 14 days, without giving a reason. That period ends 14 days after you buy, or earlier if the eSIM has been activated and the data used up, in which case we refund an amount proportionate to what is left. To start a refund, email support with your order number. Full terms are on our refund policy page."
+          "a": "Yes. As a consumer you have a legal right to withdraw from your purchase within 14 days, without giving a reason. That period ends 14 days after you buy, or earlier if the eSIM has been activated and the data used up, in which case we refund an amount proportionate to what is left. To start a refund, email support with your order number.",
+          "links": [
+            {
+              "label": "Refund policy in full",
+              "href": "/legal/refund"
+            },
+            {
+              "label": "Contact support",
+              "href": "/contact"
+            }
+          ]
         },
         {
           "q": "Will I be charged for data I do not use?",
           "a": "No. A plan is a single prepaid purchase for a fixed amount of data and a fixed number of days. Nothing renews on its own, and there is no charge when a plan expires. If you need more data before your trip ends you can buy another plan at any time."
+        },
+        {
+          "q": "Which payment methods do you accept?",
+          "a": "Card payments through Stripe, which handles the card details; eSIMFlys never sees or stores your card number. The receipt and the eSIM QR code arrive by email after payment, and both stay available in your account if you created one."
+        },
+        {
+          "q": "Why does the price on the page differ from my card statement?",
+          "a": "Your bank may apply its own exchange rate or a foreign-transaction fee when the charge currency differs from your card's currency. The amount eSIMFlys charged is the one shown at checkout and on your receipt; anything added on top comes from the card issuer."
         }
       ]
     },
     {
       "slug": "coverage",
       "title": "Travel & Coverage",
-      "description": "Which local networks your eSIM connects to in each destination, what coverage to expect on arrival, and where to check the operators before you buy a plan.",
+      "description": "Which local networks your eSIM connects to in each destination, how the network is chosen, and where to check the operators before you buy a plan.",
       "icon": "public",
       "articles": [
         {
           "q": "Which networks will I connect to?",
-          "a": "Each plan connects through trusted local partner networks, shown on the country page before you buy. Coverage matches the local operator's footprint."
+          "a": "Each plan connects through the local operators it is provisioned on, and those operators are named on the country page before you buy. For example, plans for Thailand run on AIS and dtac, Malaysia on Maxis and CelcomDigi, Saudi Arabia on STC and the United Arab Emirates on du. The eSIM uses those partner networks only, so a country page is the place to confirm the operator you expect.",
+          "links": [
+            {
+              "label": "Thailand",
+              "href": "/esim/thailand"
+            },
+            {
+              "label": "Malaysia",
+              "href": "/esim/malaysia"
+            },
+            {
+              "label": "Saudi Arabia",
+              "href": "/esim/saudi-arabia"
+            },
+            {
+              "label": "United Arab Emirates",
+              "href": "/esim/united-arab-emirates"
+            },
+            {
+              "label": "All 68 destinations",
+              "href": "/destinations"
+            }
+          ]
+        },
+        {
+          "q": "Do I choose the network myself?",
+          "a": "No. Once the line is on, the phone registers on a partner network automatically and moves between them where more than one is available. Manual network selection is only useful as a troubleshooting step if the phone fails to register on arrival."
+        },
+        {
+          "q": "Is it 4G or 5G?",
+          "a": "The country page shows the technology each partner network offers on that plan, for example \"STC 5G\" or \"Dhiraagu 4G\". A 5G label means the network offers 5G; whether you get it in a given spot depends on your phone, the local coverage and the network's own rollout, none of which eSIMFlys controls."
+        },
+        {
+          "q": "Does one plan cover more than one country?",
+          "a": "Each plan on the site covers the single country it is listed under. If your trip crosses a border, buy a plan for each country; both can be installed in advance, and each starts only when it first connects in its own country.",
+          "links": [
+            {
+              "label": "Browse by country",
+              "href": "/destinations"
+            }
+          ]
+        },
+        {
+          "q": "What about coverage in rural areas or islands?",
+          "a": "Coverage follows the partner network's own footprint, which is normally strongest in cities, airports and along main routes. eSIMFlys does not publish coverage maps of its own; the operator named on the country page publishes the authoritative map for its network."
         }
       ]
     },
@@ -96,27 +248,87 @@
       "articles": [
         {
           "q": "How do I track my data?",
-          "a": "Once you're connected, check remaining data from your account dashboard. Where a plan supports it, we'll flag when you're getting close to your limit."
+          "a": "Once you are connected, check remaining data and validity from the order in your account dashboard. Your phone's own settings also show usage per line (iPhone: Settings → Cellular; Android: Settings → Network & internet → SIMs), which is handy for a quick check offline.",
+          "links": [
+            {
+              "label": "Your eSIMs",
+              "href": "/account/esims"
+            }
+          ]
+        },
+        {
+          "q": "What counts against my allowance?",
+          "a": "All data sent or received over the eSIM line: browsing, maps, messaging, video, app updates and background refresh. Traffic on your home SIM's line does not count, and neither does Wi-Fi. If you share the eSIM's connection with another device, that device's traffic counts too."
+        },
+        {
+          "q": "How much data do I need?",
+          "a": "As a guide, maps, messaging and browsing use well under 1 GB a day; video calls and streaming can use several GB a day. For a week of normal travel use, a 5 or 10 GB plan is a common choice; heavy users pick the daily-allowance plans where a country offers them. Every country page lists its sizes and validity options."
         },
         {
           "q": "What if I run out of data?",
-          "a": "Buy another plan any time, or top up if your destination supports it — no need to start over."
+          "a": "Buy another plan any time from the website, or top up if your destination supports it. Top-up availability is shown on each plan; where it is offered, the extra data is added to the eSIM you already installed, so there is nothing new to scan."
+        },
+        {
+          "q": "How can I use less data?",
+          "a": "Turn off background app refresh and automatic updates for the travel line, download maps and playlists on Wi-Fi before you go, and set video apps to lower quality. On iPhone, Low Data Mode for the eSIM line does most of this in one switch."
+        },
+        {
+          "q": "Does the allowance reset each day?",
+          "a": "Only on the daily-allowance plans, which give a fixed amount of high-speed data every day for the plan's length and reduce speed once that day's amount is used; the counter resets the next day. Fixed plans, for example 5 GB for 30 days, do not reset: the total is yours to use at any pace until the data or the days run out."
         }
       ]
     },
     {
       "slug": "account",
       "title": "Account & Security",
-      "description": "Manage your eSIMFlys account, re-download a QR code you have lost, look up an order without signing in, and control your password and privacy settings.",
+      "description": "Manage your eSIMFlys account, re-download a QR code you have lost, look up an order without signing in, and reset your password.",
       "icon": "security",
       "articles": [
         {
           "q": "Do I need an account to buy?",
-          "a": "No — you can check out as a guest and receive your QR code by email. An account lets you re-download eSIMs, view orders, and top up faster."
+          "a": "No. You can check out as a guest and receive your QR code by email. An account lets you re-download eSIMs, see every order in one place, and top up faster, because your details are already there."
+        },
+        {
+          "q": "I lost the email with my QR code. What now?",
+          "a": "Sign in and open the eSIM from Your eSIMs to display the QR code and the manual activation details again. If you bought as a guest, use Find my order with your order number and the email you used at checkout.",
+          "links": [
+            {
+              "label": "Your eSIMs",
+              "href": "/account/esims"
+            },
+            {
+              "label": "Find my order",
+              "href": "/orders/lookup"
+            }
+          ]
         },
         {
           "q": "How do I reset my password?",
-          "a": "Use \"Forgot password\" on the sign-in page. We'll email you a reset code."
+          "a": "Use \"Forgot password\" on the sign-in page. We email you a reset code; enter it with a new password and you are signed in again. Reset codes expire, so request a fresh one if you left it too long.",
+          "links": [
+            {
+              "label": "Sign in",
+              "href": "/auth/signin"
+            }
+          ]
+        },
+        {
+          "q": "Can I sign in with Google?",
+          "a": "Yes. The sign-in page offers Google sign-in as well as email and password. Either way the account is the same, so an order placed while signed in with Google appears alongside orders placed with a password."
+        },
+        {
+          "q": "What personal data do you keep?",
+          "a": "Your email, your orders and the eSIM records needed to deliver and support them. Card details are handled by Stripe and never stored by eSIMFlys. The privacy policy explains what is kept, for how long, and how to ask for it to be deleted.",
+          "links": [
+            {
+              "label": "Privacy policy",
+              "href": "/legal/privacy"
+            }
+          ]
+        },
+        {
+          "q": "Can I use one account on more than one phone?",
+          "a": "Yes for the account, no for a single eSIM. You can sign in from any device to see orders and QR codes, but each eSIM profile installs on one phone only. If two people travel together, buy one plan per phone; both can sit under the same account and both QR codes stay available there."
         }
       ]
     },
@@ -128,11 +340,49 @@
       "articles": [
         {
           "q": "My eSIM won't connect abroad.",
-          "a": "Confirm the eSIM line is selected for data, data roaming is on for that line, and you're in the plan's country. Toggle Airplane mode, or select the network manually in settings."
+          "a": "Confirm the eSIM line is on, selected for mobile data, and that data roaming is enabled for that line. Check you are inside the plan's country. Then toggle Airplane mode once; if there is still no signal, choose the network manually in the line's network settings, picking one of the operators named on the country page.",
+          "links": [
+            {
+              "label": "Which operators to pick",
+              "href": "/help/coverage"
+            }
+          ]
+        },
+        {
+          "q": "The eSIM will not install.",
+          "a": "Installation needs a working internet connection, an unlocked phone and an unused QR code. Connect to Wi-Fi, confirm the phone shows an EID when you dial *#06#, and check Settings → General → About for \"No SIM restrictions\" on iPhone. If the QR still fails, enter the SM-DP+ address and activation code manually.",
+          "links": [
+            {
+              "label": "Manual installation",
+              "href": "/help/installation"
+            }
+          ]
+        },
+        {
+          "q": "It says the QR code has already been used.",
+          "a": "An eSIM profile can be downloaded once. That message means it was already installed, on this phone or another. Look for the line in Settings → Cellular (iPhone) or the SIM manager (Android); if it is there, just turn it on. If it was deleted or installed on a phone you no longer have, contact support with your order number."
+        },
+        {
+          "q": "Data is slow.",
+          "a": "First check remaining allowance in your account: daily-allowance plans reduce speed once the day's high-speed data is used. Then make sure the eSIM, not your home SIM, is the data line, and try switching between 5G and 4G/LTE in the line's settings, since a weak 5G signal can be slower than solid 4G. Moving between partner networks manually also helps in some areas."
         },
         {
           "q": "I didn't get my QR code.",
-          "a": "Check spam and confirm the email on your order. You can re-download the QR from your account, or contact support with your order details."
+          "a": "Check spam and confirm the email address on your order. You can re-download the QR from your account, or look the order up with your order number, or contact support with your order details.",
+          "links": [
+            {
+              "label": "Find my order",
+              "href": "/orders/lookup"
+            },
+            {
+              "label": "Contact support",
+              "href": "/contact"
+            }
+          ]
+        },
+        {
+          "q": "Calls and texts stopped working.",
+          "a": "The travel eSIM carries data only. If calls or texts stopped, your home line was probably switched off or lost its roaming setting when the eSIM went on. Turn the home line back on for voice and texts, and keep the eSIM as the data line."
         }
       ]
     }
